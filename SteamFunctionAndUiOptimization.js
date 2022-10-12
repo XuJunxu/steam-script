@@ -551,7 +551,7 @@ function steamGameCardsPage() {  //徽章界面显示卡牌价格信息
 
 	async function showItemPriceInfo(marketHashName) {
 		var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} .table_title {text-align: center;} th, td {background: #1b2838; min-width: 100px; text-align: center;} #card_price_overview>span {margin-right: 40px;}</style>
-					<div style="min-height: 230px;"><div id="market_info_group">Loading...</div><br><div id="card_price_overview">Loading...</div></div>`;
+					<div style="min-height: 230px;" id="dialog_price_info" market-hash-name="${marketHashName}"><div id="market_info_group">Loading...</div><br><div id="card_price_overview">Loading...</div></div>`;
 		unsafeWindow.ShowDialog(decodeURIComponent(marketHashName), html);
 
 		showCurrentItemOrdersHistogram(marketHashName);
@@ -569,8 +569,8 @@ function steamGameCardsPage() {  //徽章界面显示卡牌价格信息
 	async function showCurrentItemOrdersHistogram(hashName) {
 		var data1 = await getCurrentItemOrdersHistogram(hashName);
 		if (data1) {
-			var elem1 = document.querySelector("#market_info_group");
-			if (elem1) {
+			var elem1 = document.querySelector(`#dialog_price_info[market-hash-name="${hashName}"] #market_info_group`);
+			if (elem1) {  //在弹出窗口上显示表格
 				if (data1.success) {
 					var html1 = `<div><div class="table_title">出售</div>${data1.sell_order_table}</div><div><div class="table_title">购买</div>${data1.buy_order_table}</div>`;
 				} else {
@@ -579,7 +579,7 @@ function steamGameCardsPage() {  //徽章界面显示卡牌价格信息
 				elem1.innerHTML = html1;
 			}
 			var elem2 = document.querySelector(`.show_market_info[data-market-hash-name="${hashName}"]`);
-			if (elem2) {
+			if (elem2) {  //在卡牌下方显示最低出售价和最高求购价
 				if (data1.success) {
 					var html2 = walletInfo.bSymbolIsPrefix ? `${walletInfo.strSymbol} ${data1.sell_order_graph[0][0]} | ${walletInfo.strSymbol} ${data1.buy_order_graph[0][0]}` : `${data1.sell_order_graph[0][0]} ${walletInfo.strSymbol} | ${data1.buy_order_graph[0][0]} ${walletInfo.strSymbol}`;
 				} else {
@@ -594,7 +594,7 @@ function steamGameCardsPage() {  //徽章界面显示卡牌价格信息
 	async function showCurrentPriceOverview(hashName) {
 		var data2 = await getCurrentPriceOverview(hashName);
 		if (data2) {
-			var elem = document.querySelector("#card_price_overview");
+			var elem = document.querySelector(`#dialog_price_info[market-hash-name="${hashName}"] #card_price_overview`);
 			if (elem) {
 				if (data2.success) {
 					var html2 = "";
