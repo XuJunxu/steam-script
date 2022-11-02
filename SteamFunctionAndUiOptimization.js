@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.01
+// @version      1.02
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -179,7 +179,7 @@ function steamStorePage() {
 	
 	function getAppid(elem, stopElem) {
 		var el = elem;
-		while(el != stopElem) {
+		while(el != stopElem && el != document.body) {
 			if(el.classList.contains("search_result_row")) {
 				return el.getAttribute("data-ds-appid");
 			}
@@ -190,7 +190,7 @@ function steamStorePage() {
 
 	function getTitle(elem, stopElem) {
 		var el = elem;
-		while(el != stopElem) {
+		while(el != stopElem && el != document.body) {
 			if(el.classList.contains("search_result_row")) {
 				return el.querySelector("span.title").textContent;
 			}
@@ -455,7 +455,7 @@ function steamInventoryPage(){
 			var data1 = await getItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, itemNameId);
 			if (data1.success) {
 				priceGramLoaded = true;
-				var html1 = `<div><div class="table_title">出售</div>${data1.sell_order_table}</div><div><div class="table_title">购买</div>${data1.buy_order_table}</div>`;
+				var html1 = `<div><div class="table_title">出售</div>${data1.sell_order_table || data1.sell_order_summary}</div><div><div class="table_title">购买</div>${data1.buy_order_table || data1.buy_order_summary}</div>`;
 				document.querySelector("#price_gram_container0 .price_gram").innerHTML = html1;
 				document.querySelector("#price_gram_container1 .price_gram").innerHTML = html1;
 
@@ -675,7 +675,9 @@ function steamMarketPage() {
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span:hover {background: #324965;}
-								#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price {cursor: pointer;}`;
+								#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price {cursor: pointer; position: relative;}
+								.market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
+								.market_price_label {line-height: normal;}`;
 		document.body.appendChild(styleElem);
 
 		//清空原有的表格
@@ -730,7 +732,7 @@ function steamMarketPage() {
 		}
 
 		//显示总售价
-		document.querySelector("#my_market_selllistings_number").textContent += ` ▶ ${totalPay / 100.0} ▶ ${totalReceive / 100.0}`;
+		document.querySelector("#my_market_selllistings_number").textContent += ` ▶ ${(totalPay / 100.0).toFixed(2)} ▶ ${(totalReceive / 100.0).toFixed(2)}`;
 
 		marketMyListings.timeSort = listingsTemp;
 		setListingsPage(marketMyListings.timeSort);
@@ -749,6 +751,10 @@ function steamMarketPage() {
 		marketMyListings.priceSort.sort(function(a, b) {
 			return a[2] - b[2];
 		});
+
+		if (settings.market_show_priceinfo) {
+			autoShowPriceInfo(listings);
+		}
 	}
 
 	//列表上下添加操作按键和页面导航
@@ -882,6 +888,27 @@ function steamMarketPage() {
 		elem.querySelector(".market_listing_cancel_button").appendChild(checkbox);
 	}
 
+	//在价格右侧显示最低售价和最高求购价
+	function addPriceLabel(listing, data) {
+		if (listing.querySelector(".market_price_container")) {
+			return;
+		}
+		var sellPrice = "null";
+		var buyPrice = "null";
+		if (data.lowest_sell_order) {
+			sellPrice = (parseInt(data.lowest_sell_order) / 100.0).toFixed(2);
+			sellPrice = data.price_prefix ? `${data.price_prefix} ${sellPrice}` : `${sellPrice} ${data.price_suffix}`;
+		}
+		if (data.highest_buy_order) {
+			buyPrice = (parseInt(data.highest_buy_order) / 100.0).toFixed(2);
+			buyPrice = data.price_prefix ? `${data.price_prefix} ${buyPrice}` : `${buyPrice} ${data.price_suffix}`;
+		}
+		var elem = document.createElement("div");
+		elem.className = "market_price_container";
+		elem.innerHTML = `<div class="market_price_label" title="最低出售价格">${sellPrice}</div><div class="market_price_label" title="最高求购价格">${buyPrice}</div>`;
+		listing.querySelector(".market_listing_my_price").appendChild(elem);
+	}
+
 	//点击表头排序
 	function tableHeaderClick(event) {
 		var elem = event.target;
@@ -935,7 +962,9 @@ function steamMarketPage() {
 		var listing = event.currentTarget.parentNode;
 		var assetInfo = getListingAssetInfo(listing);
 		var marketHashName = getMarketHashName(assetInfo);
-		dialogPriceInfo.show(assetInfo.appid, marketHashName, walletInfo);
+		dialogPriceInfo.show(assetInfo.appid, marketHashName, walletInfo, function(data) {
+			addPriceLabel(listing, data);
+		});
 	}
 
 	//用给定的列表设置显示物品页面，用于显示对应排序的页面
@@ -966,7 +995,20 @@ function steamMarketPage() {
 		currentPage = page;
 	}
 
-
+	//自动显示最低出售价格和最高求购价格
+	async function autoShowPriceInfo(listings) {
+		for (let listing of listings) {
+			var assetInfo = getListingAssetInfo(listing);
+			var hashName = getMarketHashName(assetInfo);
+			var data = await getCurrentItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, assetInfo.appid, hashName);
+			if (data) {
+				addPriceLabel(listing, data);
+				if (dialogPriceInfo.marketHashName == hashName) {
+					dialogPriceInfo.updateItemOrdersHistogram(data);
+				}
+			}
+		}
+	}
 }
 
 //steam物品市场界面
@@ -1239,7 +1281,8 @@ var dialogPriceInfo = {
 	show: function(appid, marketHashName, walletInfo, func1, func2) {
 		this.marketHashName = marketHashName;
 		var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
-					.table_title {text-align: center;} th, td {background: #1b2838; min-width: 100px; text-align: center;} #card_price_overview>span {margin-right: 40px;}</style>
+					#dialog_price_info .table_title {text-align: center;} #dialog_price_info th, #dialog_price_info td {background: #1b2838; min-width: 100px; text-align: center;} 
+					#card_price_overview>span {margin-right: 40px;} #dialog_price_info .market_commodity_orders_table {margin: 0px auto;} </style>
 					<div style="min-height: 230px;" id="dialog_price_info"><div id="card_price_overview">Loading...</div><br><div id="market_info_group">Loading...</div></div>`;
 		unsafeWindow.ShowDialog(decodeURIComponent(marketHashName), html);
 		this.model = document.querySelector("#dialog_price_info");
@@ -1261,7 +1304,7 @@ var dialogPriceInfo = {
 			var elem1 = this.model.querySelector("#market_info_group");
 			if (elem1) {  //在弹出窗口上显示表格
 				if (data.success) {
-					var html1 = `<div><div class="table_title">出售</div>${data.sell_order_table}</div><div><div class="table_title">购买</div>${data.buy_order_table}</div>`;
+					var html1 = `<div><div class="table_title">出售</div>${data.sell_order_table || data.sell_order_summary}</div><div><div class="table_title">购买</div>${data.buy_order_table || data.buy_order_summary}</div>`;
 				} else {
 					var html1 = `<div>${errorTranslator(data)}</div>`
 				}
@@ -1322,6 +1365,7 @@ function addSteamCommunitySetting() {
 						<div class="settings_page_title">市场页面设置：</div>
 						<div class="settings_row">
 						<div class="settings_option"><input id="sfu_market_adjust_selllistings" type="checkbox" ${settings.market_adjust_selllistings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_selllistings = this.checked;"></input><label for="sfu_market_adjust_selllistings" class="margin_right_20">调整出售物品表格</label></div>
+						<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">自动显示最低出售和最高求购</label></div>
 						<div class="settings_option"><label for="sfu_market_page_size">每页物品数量</label><input id="sfu_market_page_size" type="number" step="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = parseInt(this.value);"></input></div>
 						</div>
 						<div class="settings_page_title">市场物品页面设置：</div>
@@ -1359,6 +1403,7 @@ function getSteamCommunitySettings() {
 	typeof data.gamecards_show_priceoverview === "undefined" && (data.gamecards_show_priceoverview = true);
 	typeof data.gamecards_append_linkbtn === "undefined" && (data.gamecards_append_linkbtn = true);
 	typeof data.market_adjust_selllistings === "undefined" && (data.market_adjust_selllistings = true);
+	typeof data.market_show_priceinfo === "undefined" && (data.market_show_priceinfo = false);
 	typeof data.market_page_size === "undefined" && (data.market_page_size = 100);
 	return data;
 }
@@ -1578,11 +1623,11 @@ function getPriceOverview(country, currencyId, appid, marketHashName) {
 	});
 }
 
-var storageDB = localforage.createInstance({name: "sfu_storage"});
+var storageNameId = localforage.createInstance({name: "sfu_storage_itemnameid"});
 function getItemNameId(appid, marketHashName) {
 	return new Promise(async function (resolve, reject) {
 		try {
-			var data = await storageDB.getItem(marketHashName);
+			var data = await storageNameId.getItem(appid + "/" + marketHashName);
 		} catch (e) {
 			console.log(e);
 			var data = null;
@@ -1600,7 +1645,7 @@ function getItemNameId(appid, marketHashName) {
 					var html = e.target.responseText;
 					var res = html.match(/Market_LoadOrderSpread\(\s?(\d+)\s?\)/);
 					if (res && res.length > 1) {
-						storageDB.setItem(marketHashName, res[1]);
+						storageNameId.setItem(appid + "/" + marketHashName, res[1]);
 						resolve({success: true, nameid: res[1]});
 					} else {
 						console.log("getItemNameId failed");
