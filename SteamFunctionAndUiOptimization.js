@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.03
+// @version      1.04
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -481,7 +481,7 @@ function steamInventoryPage(){
 		if (data0.success) {
 			var itemNameId = data0.nameid;
 			var data1 = await getItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, itemNameId);
-			if (data1.success) {
+			if (data1.success && item.assetid == unsafeWindow.g_ActiveInventory.selectedItem.assetid) {
 				priceGramLoaded = true;
 				var html1 = `<div><div class="table_title">出售</div>${data1.sell_order_table || data1.sell_order_summary}</div><div><div class="table_title">购买</div>${data1.buy_order_table || data1.buy_order_summary}</div>`;
 				document.querySelector("#price_gram_container0 .price_gram").innerHTML = html1;
@@ -525,7 +525,7 @@ function steamInventoryPage(){
 
 	async function showPriceOverview(appid, marketHashName, item) {
 		var data = await getPriceOverview(walletInfo.country, walletInfo.eCurrencyCode, appid, marketHashName);
-		if (data.success) {
+		if (data.success && item.assetid == unsafeWindow.g_ActiveInventory.selectedItem.assetid) {
 			var html = "";
 			html += data.lowest_price ? `<span>${data.lowest_price}</span>` : "";
 			html += data.volume ? `<span>${data.volume} 个</span>` : "";
@@ -1031,9 +1031,7 @@ function steamMarketPage() {
 			var data = await getCurrentItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, assetInfo.appid, hashName);
 			if (data) {
 				addPriceLabel(listing, data);
-				if (dialogPriceInfo.marketHashName == hashName) {
-					dialogPriceInfo.updateItemOrdersHistogram(data);
-				}
+				dialogPriceInfo.checkUpdateItemOrdersHistogram(assetInfo.appid, hashName, data);
 			}
 		}
 	}
@@ -1250,9 +1248,7 @@ function steamGameCardsPage() {
 			var data = await getCurrentItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, 753, hashName);
 			if (data) {
 				showPirceUnderCard(hashName, data);
-				if (dialogPriceInfo.marketHashName == hashName) {
-					dialogPriceInfo.updateItemOrdersHistogram(data);
-				}
+				dialogPriceInfo.checkUpdateItemOrdersHistogram(753, hashName, data);
 			}
 		}
 	}
@@ -1307,6 +1303,7 @@ function steamGameCardsPage() {
 //市场价格信息的弹窗
 var dialogPriceInfo = {
 	show: function(appid, marketHashName, walletInfo, func1, func2) {
+		this.appid = appid;
 		this.marketHashName = marketHashName;
 		var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
 					#dialog_price_info .table_title {text-align: center;} #dialog_price_info th, #dialog_price_info td {background: #1b2838; min-width: 100px; text-align: center;} 
@@ -1321,10 +1318,15 @@ var dialogPriceInfo = {
 	showCurrentItemOrdersHistogram: async function(appid, hashName, walletInfo, func) {
 		var data = await getCurrentItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, appid, hashName);
 		if (data) {
-			this.updateItemOrdersHistogram(data);
+			this.checkUpdateItemOrdersHistogram(appid, hashName, data);
 			if (typeof func === "function") {
 				func(data);
 			}
+		}
+	},
+	checkUpdateItemOrdersHistogram: function(appid, hashName, data) {
+		if  (appid == this.appid && hashName == this.marketHashName) {
+			this.updateItemOrdersHistogram(data);
 		}
 	},
 	updateItemOrdersHistogram: function(data) {
@@ -1343,10 +1345,15 @@ var dialogPriceInfo = {
 	showCurrentPriceOverview: async function(appid, hashName, walletInfo, func) {
 		var data = await getCurrentPriceOverview(walletInfo.country, walletInfo.eCurrencyCode, appid, hashName);
 		if (data) {
-			this.updatePriceOverview(data);
+			this.checkUpdatePriceOverview(appid, hashName, data);
 			if (typeof func === "function") {
 				func(data);
 			}
+		}
+	},
+	checkUpdatePriceOverview: function(appid, hashName, data) {
+		if (appid == this.appid && hashName == this.marketHashName) { 
+			this.updatePriceOverview(data);
 		}
 	},
 	updatePriceOverview: function(data) {
@@ -1494,27 +1501,28 @@ function calculatePriceBuyerPay(amount, item) {
 
 var itemPriceGramInfo = {};
 async function getCurrentItemOrdersHistogram(country, currency, appid, hashName) {
-	if (itemPriceGramInfo[hashName]) {
-		if (itemPriceGramInfo[hashName].loaded) {
-			return itemPriceGramInfo[hashName];
+	var key = appid + "/" + hashName;
+	if (itemPriceGramInfo[key]) {
+		if (itemPriceGramInfo[key].loaded) {
+			return itemPriceGramInfo[key];
 		} else {
 			return null;  //正在加载中，避免重复获取
 		}
 	} else {
-		itemPriceGramInfo[hashName] = {};
+		itemPriceGramInfo[key] = {};
 		var res = await getItemNameId(appid, hashName);
 		if (res.success) {
 			var itemNameId = res.nameid;
 			var data1 = await getItemOrdersHistogram(country, currency, itemNameId);
 			if (data1.success) {
-				itemPriceGramInfo[hashName] = data1;
-				itemPriceGramInfo[hashName].loaded = true;
+				itemPriceGramInfo[key] = data1;
+				itemPriceGramInfo[key].loaded = true;
 			} else {
-				delete itemPriceGramInfo[hashName];
+				delete itemPriceGramInfo[key];
 			}
 			return data1;
 		} else {
-			delete itemPriceGramInfo[hashName];
+			delete itemPriceGramInfo[key];
 			return res;
 		}
 	}
@@ -1522,20 +1530,21 @@ async function getCurrentItemOrdersHistogram(country, currency, appid, hashName)
 
 var itemPriceOverviewInfo = {};
 async function getCurrentPriceOverview(country, currency, appid, hashName) {
-	if (itemPriceOverviewInfo[hashName]) {
-		if (itemPriceOverviewInfo[hashName].loaded) {
-			return itemPriceOverviewInfo[hashName];
+	var key = appid + "/" + hashName;
+	if (itemPriceOverviewInfo[key]) {
+		if (itemPriceOverviewInfo[key].loaded) {
+			return itemPriceOverviewInfo[key];
 		} else {
 			return null;  //正在加载中，避免重复获取
 		}
 	} else {
-		itemPriceOverviewInfo[hashName] = {};
+		itemPriceOverviewInfo[key] = {};
 		var data2 = await getPriceOverview(country, currency, appid, hashName);
 		if (data2.success) {
-			itemPriceOverviewInfo[hashName] = data2;
-			itemPriceOverviewInfo[hashName].loaded = true;
+			itemPriceOverviewInfo[key] = data2;
+			itemPriceOverviewInfo[key].loaded = true;
 		} else {
-			delete itemPriceOverviewInfo[hashName];
+			delete itemPriceOverviewInfo[key];
 		}
 		return data2;
 	}
