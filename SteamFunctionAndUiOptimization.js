@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.02
+// @version      1.03
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
 // @include      *://store.steampowered.com/wishlist*
+// @include      *://store.steampowered.com/app/*
 // @include      *://steamcommunity.com/id/*/inventory*
 // @include      *://steamcommunity.com/profiles/*/inventory*
 // @include      *://steamcommunity.com/market/*
@@ -251,6 +252,33 @@ function steamStorePage() {
 		return data;
 	}
 	
+}
+
+//app商店页面
+function steamAppStorePage() {
+	if(location.href.search(/store\.steampowered\.com\/app/) < 0) {
+		return;
+	}
+
+	var elems = document.querySelectorAll("#category_block a");
+	var target;
+	for (var el of elems) {
+		var label = el.querySelector(".label");
+		if (label.textContent.includes("集换式卡牌")) {
+			target = el;
+			console.log(11);
+			break;
+		}
+	}
+
+	if (target) {
+		target.onclick =  function(event) {
+			var appid = location.href.match(/store\.steampowered\.com\/app\/(\d+)\//)[1];
+			window.open(`https://steamcommunity.com/my/gamecards/${appid}/`, "_blank");
+			return false;
+		};
+	}
+
 }
 
 //库存界面
@@ -2320,6 +2348,7 @@ function getWalletInfo(code) {
 	}
 	unsafeWindow.sfu_inited = true;
 	steamStorePage();
+	steamAppStorePage();
 	steamInventoryPage();
 	steamMarketListingPage();
 	steamGameCardsPage();
