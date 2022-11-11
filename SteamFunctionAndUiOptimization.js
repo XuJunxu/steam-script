@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.04
+// @version      1.05
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -73,21 +73,25 @@ function steamStorePage() {
 		document.querySelector("div#wishlist_ctn").addEventListener("click", wishlistClicked);
 	}
 
-	function filterSearchResult() {  //搜索结果排序和过滤
+	//搜索结果排序和过滤
+	function filterSearchResult() {  
 		if (location.href.search(/store\.steampowered\.com\/search/) < 0) {
 			return;
 		}
 		var searchWord = document.querySelector("input#term").value;
 		if (searchWord == "" || searchWord == "输入搜索词或标签") {
 			var flag = false;
-			if (document.querySelector("input#sort_by").value != "Price_ASC") {  //价格从低到高
+
+			//价格从低到高
+			if (document.querySelector("input#sort_by").value != "Price_ASC") {  
 				document.querySelector("input#sort_by").value = "Price_ASC";
 				document.querySelector("a#sort_by_trigger").innerHTML = document.querySelector("a#Price_ASC").innerHTML;
 				flag = true;
 				//console.log("price ASC");
 			}
 	
-			if (document.querySelector("input#price_range").value != "1") {  //价格范围
+			//价格范围
+			if (document.querySelector("input#price_range").value != "1") {  
 				document.querySelector("input#price_range").value = "1";
 				document.querySelector("input#maxprice_input").value = rgPriceStopData[1].price;
 				document.querySelector("div#price_range_display").textContent = rgPriceStopData[1].label;
@@ -95,7 +99,8 @@ function steamStorePage() {
 				//console.log("price range");
 			}
 	
-			if (document.querySelector("input#hidef2p").value != "1") {   //隐藏免费开玩
+			//隐藏免费开玩
+			if (document.querySelector("input#hidef2p").value != "1") {   
 				document.querySelector("input#hidef2p").value = "1";
 				document.querySelector("div.tab_filter_control_row[data-param='hidef2p']").classList.add("checked");
 				document.querySelector("span.tab_filter_control_include[data-param='hidef2p']").classList.add("checked");
@@ -103,7 +108,8 @@ function steamStorePage() {
 				//console.log("hidef2p")
 			}
 	
-			if (document.querySelector("div#narrow_category1 input#category1").value != "998") {  //只搜索游戏
+			//只搜索游戏
+			if (document.querySelector("div#narrow_category1 input#category1").value != "998") {  
 				document.querySelector("div#narrow_category1 input#category1").value = "998";
 				document.querySelector("div#narrow_category1 div.tab_filter_control_row[data-value='998']").classList.add("checked");
 				document.querySelector("div#narrow_category1 span.tab_filter_control.tab_filter_control_include[data-value='998']").classList.add("checked");
@@ -111,12 +117,22 @@ function steamStorePage() {
 				//console.log("game only");
 			}
 	
-			if (document.querySelector("div#narrow_category2 input#category2").value != "29") {  //只搜索有卡牌
+			//只搜索有卡牌
+			if (document.querySelector("div#narrow_category2 input#category2").value != "29") {  
 				document.querySelector("div#narrow_category2 input#category2").value = "29";
 				document.querySelector("div#narrow_category2 div.tab_filter_control_row[data-value='29']").classList.add("checked");
 				document.querySelector("div#narrow_category2 span.tab_filter_control.tab_filter_control_include[data-value='29']").classList.add("checked");
 				flag = true;
 				//console.log("has card");
+			}
+
+			//不限制语言
+			if  (document.querySelector("div#LanguageFilter_Container input#supportedlang").value) {
+				document.querySelector("div#LanguageFilter_Container input#supportedlang").value = null;
+				for (var elem of document.querySelectorAll("div#LanguageFilter_Container>div.tab_filter_control_row ")) {
+					elem.classList.remove("checked");
+					elem.querySelector("span.tab_filter_control.tab_filter_control_include").classList.remove("checked");
+				}
 			}
 	
 			if (flag) {
@@ -331,21 +347,28 @@ function steamInventoryPage(){
 								.btn_reload_inventory {margin-right: 12px;}`;
 		document.body.appendChild(styleElem);
 	
-		document.querySelector("div.inventory_links").style.margin = "0px";
-		var inventory_rightnav = document.querySelector("div.inventory_rightnav");
+		var inventory_links = document.querySelector("div.inventory_links");
 		var context_selector = document.querySelector("div#context_selector");
-		var context_selector_parent = context_selector.parentNode;
-		inventory_rightnav.style.marginRight = "12px";
-		context_selector_parent.style.display = "flex";
-		context_selector_parent.style.flexWrap = "wrap";
-		context_selector_parent.style.justifyContent = "center";
-		context_selector_parent.appendChild(inventory_rightnav);
-		var reloadInventoryBtn = document.createElement("a");
-		reloadInventoryBtn.className = "btn_darkblue_white_innerfade btn_medium btn_reload_inventory";
-		reloadInventoryBtn.innerHTML = "<span>重新加载库存</span>";
-		inventory_rightnav.insertBefore(reloadInventoryBtn, inventory_rightnav.firstElementChild);
-		reloadInventoryBtn.onclick = function() { window.location.reload(); };
-	
+		if (inventory_links && context_selector) {
+			//调整交易报价按键的位置
+			inventory_links.style.margin = "0px";
+			var inventory_rightnav = document.querySelector("div.inventory_rightnav");
+			var context_selector_parent = context_selector.parentNode;
+			inventory_rightnav.style.marginRight = "12px";
+			context_selector_parent.style.display = "flex";
+			context_selector_parent.style.flexWrap = "wrap";
+			context_selector_parent.style.justifyContent = "center";
+			context_selector_parent.appendChild(inventory_rightnav);
+
+			//添加重新加载库存按键
+			var reloadInventoryBtn = document.createElement("a");
+			reloadInventoryBtn.className = "btn_darkblue_white_innerfade btn_medium btn_reload_inventory";
+			reloadInventoryBtn.innerHTML = "<span>重新加载库存</span>";
+			inventory_rightnav.insertBefore(reloadInventoryBtn, inventory_rightnav.firstElementChild);
+			reloadInventoryBtn.onclick = function() { window.location.reload(); };
+		}
+
+		//调整LOGO的位置
 		var inventory_logos = document.querySelector("div#inventory_logos");
 		document.querySelector("div#active_inventory_page>div.inventory_page_left").insertBefore(inventory_logos, document.querySelector("div#inventory_pagecontrols").nextElementSibling);
 	
@@ -448,7 +471,8 @@ function steamInventoryPage(){
 		});
 
 		//将logo替换成上架日志
-		var logHtml = `<style>#inventory_logos {height: auto;} #inventory_applogo {display: none;} #sell_log_text {font-size: 12px; max-height: 200px; overflow-y: auto;} #sell_log_total {font-weight: bold; margin-top: 5px} </style>
+		var logHtml = `<style>#inventory_logos {height: auto;} #inventory_applogo {display: none;} #sell_log_text {font-size: 12px; max-height: 200px; overflow-y: auto;} 
+						#sell_log_total {font-weight: bold; margin-top: 5px} .price_gram, .price_gram div{font-size: 12px; font-weight: normal;} </style>
 						<div id="sell_log_text"></div><div id="sell_log_total"></div><div><a id="clear_sell_log" style="display: none; margin-top: 10px" class="pagecontrol_element pagebtn">清空</a></div>`;
 		var logContainer = document.createElement("div");
 		logContainer.innerHTML = logHtml;
@@ -693,6 +717,10 @@ function steamMarketPage() {
 
 	//调整出售物品列表
 	async function adjustMySellListings() {
+		var marketListings = document.querySelector("#tabContentsMyActiveMarketListingsRows");
+		marketListings.style.display = "none";
+		marketListings.innerHTML = "";  //清空原有的表格
+		
 		var styleElem = document.createElement("style");
 		styleElem.innerHTML = `#tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
 								#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}
@@ -707,13 +735,11 @@ function steamMarketPage() {
 								.market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
 								.market_price_label {line-height: normal;}`;
 		document.body.appendChild(styleElem);
-
-		//清空原有的表格
-		document.querySelector("#tabContentsMyActiveMarketListingsRows").innerHTML = "";
-
+		
+		//添加页面导航
 		addMarketPageControl();
 
-		//表头可点击排序
+		//使表头可点击排序
 		var tableHeader = document.querySelector("#tabContentsMyActiveMarketListingsTable .market_listing_table_header");
 		tableHeader.lastElementChild.classList.add("market_listing_name");
 		tableHeader.lastElementChild.innerHTML = tableHeader.lastElementChild.textContent;
@@ -1306,8 +1332,9 @@ var dialogPriceInfo = {
 		this.appid = appid;
 		this.marketHashName = marketHashName;
 		var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
-					#dialog_price_info .table_title {text-align: center;} #dialog_price_info th, #dialog_price_info td {background: #1b2838; min-width: 100px; text-align: center;} 
-					#card_price_overview>span {margin-right: 40px;} #dialog_price_info .market_commodity_orders_table {margin: 0px auto;} </style>
+					#market_info_group .table_title, #market_info_group th, #market_info_group td {text-align: center;} #market_info_group th, #market_info_group td {min-width: 100px;} 
+					#card_price_overview>span {margin-right: 40px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
+					#market_info_group .market_commodity_orders_table tr:nth-child(even) {background: #00000033;} #market_info_group .market_commodity_orders_table tr:nth-child(odd) {background: #00000066;}</style>
 					<div style="min-height: 230px;" id="dialog_price_info"><div id="card_price_overview">Loading...</div><br><div id="market_info_group">Loading...</div></div>`;
 		unsafeWindow.ShowDialog(decodeURIComponent(marketHashName), html);
 		this.model = document.querySelector("#dialog_price_info");
@@ -1627,6 +1654,33 @@ function getMarketMyListings(start, count) {
 		};
 		xhr.ontimeout = function() {
 			console.log("getMarketMyListings timeout");
+			resolve({status: 408});
+		};
+		xhr.send();
+	});
+}
+
+//获取市场历史记录
+function getMarketMyHistory(start, count) {
+	return new Promise(function(resolve, reject) {
+		var url = `https://steamcommunity.com/market/myhistory/render/?query`;
+		var xhr = new XMLHttpRequest();
+		xhr.timeout = TIMEOUT;
+		xhr.open("GET", url, true);
+		xhr.onload = function(e) {
+			if (e.target.status == 200) {
+				resolve(JSON.parse(e.target.response));
+			} else {
+				console.log("getMarketMyHistory failed");
+				resolve(e.target);
+			}
+		};
+		xhr.onerror = function(error) {
+			console.log("getMarketMyHistory error");
+			resolve(error);
+		};
+		xhr.ontimeout = function() {
+			console.log("getMarketMyHistory timeout");
 			resolve({status: 408});
 		};
 		xhr.send();
