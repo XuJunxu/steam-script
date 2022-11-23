@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.05
+// @version      1.06
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -344,7 +344,8 @@ function steamInventoryPage(){
 								div.inventory_rightnav {margin: 0px 12px 12px auto; display: flex;}
 								div.inventory_rightnav>a, div.inventory_rightnav>div {flex: 0 0 auto; overflow: hidden; margin-bottom: auto;}
 								a.btn_medium>span, div#inventory_more_link>span {line-height: 22px;}
-								.btn_reload_inventory {margin-right: 12px;}`;
+								.btn_reload_inventory {margin-right: 12px;}
+								.tabitems_ctn>.games_list_separator.responsive_hidden {display: none;}`;
 		document.body.appendChild(styleElem);
 	
 		var inventory_links = document.querySelector("div.inventory_links");
@@ -403,7 +404,7 @@ function steamInventoryPage(){
 			}, 100);
 			return;
 		}
-		var checkbox = document.querySelector("#tag_filter_753_6_cardborder_cardborder_0");
+		var checkbox = document.querySelector("#tag_filter_753_0_cardborder_cardborder_0") || document.querySelector("#tag_filter_753_6_cardborder_cardborder_0");
 		if (checkbox) {
 			checkbox.click();
 		}
