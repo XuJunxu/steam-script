@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.06
+// @version      1.07
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -173,11 +173,7 @@ function steamStorePage() {
 			var aid = getAppid(elem, event.currentTarget);
 			if (aid) {
 				var url = `https://steamcommunity.com/my/gamecards/${aid}/`; 
-				if(event.ctrlKey) {
-					var win = window.open(url, "_blank");
-				} else {
-					var win = window.open(url, "_self");
-				}
+				var win = window.open(url, "_blank");
 			}
 		}  
 	}
@@ -188,9 +184,7 @@ function steamStorePage() {
 			event.preventDefault();
 			document.execCommand("Copy"); 
 			var appid = elem.href.match(/store\.steampowered\.com\/app\/(\d+)/)[1];
-			if (event.ctrlKey) {
-				window.open(`https://steamcommunity.com/my/gamecards/${appid}/`, "_blank");
-			}
+			window.open(`https://steamcommunity.com/my/gamecards/${appid}/`, "_blank");
 		}
 	}
 	
@@ -279,22 +273,13 @@ function steamAppStorePage() {
 	var elems = document.querySelectorAll("#category_block a");
 	var target;
 	for (var el of elems) {
-		var label = el.querySelector(".label");
-		if (label.textContent.includes("集换式卡牌")) {
-			target = el;
-			console.log(11);
+		if (el.href.search(/search\/\?category2\=29/) > 0) {
+			var appid = location.href.match(/store\.steampowered\.com\/app\/(\d+)\//)[1];
+			el.href = `https://steamcommunity.com/my/gamecards/${appid}/`;
+			el.setAttribute("target", "_blank");
 			break;
 		}
 	}
-
-	if (target) {
-		target.onclick =  function(event) {
-			var appid = location.href.match(/store\.steampowered\.com\/app\/(\d+)\//)[1];
-			window.open(`https://steamcommunity.com/my/gamecards/${appid}/`, "_blank");
-			return false;
-		};
-	}
-
 }
 
 //库存界面
@@ -657,10 +642,10 @@ function steamInventoryPage(){
 				var feeApp = selectedItem.description.market_fee_app;
 				var hashName = getMarketHashName(selectedItem.description);
 				var isfoil = hashName.search(/Foil/) < 0 ? false : true;
-				var html = `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/listings/${appid}/${hashName}"><span>打开市场页面</span></a>
-							<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/my/gamecards/${feeApp}/${isfoil ? '?border=1' : ''}"><span>打开徽章页面</span></a>
-							<a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}"><span>打开商店页面</span></a>
-							<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}"><span>Exchange页面</span></a>`;
+				var html = `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/listings/${appid}/${hashName}" target="_blank"><span>打开市场页面</span></a>
+							<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/my/gamecards/${feeApp}/${isfoil ? '?border=1' : ''}" target="_blank"><span>打开徽章页面</span></a>
+							<a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}" target="_blank"><span>打开商店页面</span></a>
+							<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>`;
 				
 				document.querySelector("#inventory_link_btn0").innerHTML = html;
 				document.querySelector("#inventory_link_btn1").innerHTML = html;
@@ -1152,9 +1137,9 @@ function steamMarketListingPage() {
 			var isfoil = location.href.search(/Foil/) < 0 ? false : true;
 			var linkElem = document.createElement("div");
 			linkElem.innerHTML = `<style>.page_link_btn {border-radius: 2px; cursor: pointer; background: black; color: white; margin: 10px 0px 0px 0px; display: inline-block;} .page_link_btn > span {padding: 0px 15px; font-size: 14px; line-height: 25px;} .page_link_btn:hover {background: rgba(102, 192, 244, 0.4)}</style>
-									<a href="https://steamcommunity.com/my/gamecards/${appid}/${isfoil ? '?border=1' : ''}" class="page_link_btn"><span>打开徽章页面</span></a>
-									<a href="https://store.steampowered.com/app/${appid}" class="page_link_btn"><span>打开商店页面</span></a>
-									<a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" class="page_link_btn"><span>打开Exchange页面</span></a>`;
+									<a href="https://steamcommunity.com/my/gamecards/${appid}/${isfoil ? '?border=1' : ''}" class="page_link_btn" target="_blank"><span>打开徽章页面</span></a>
+									<a href="https://store.steampowered.com/app/${appid}" class="page_link_btn" target="_blank"><span>打开商店页面</span></a>
+									<a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" class="page_link_btn" target="_blank"><span>打开Exchange页面</span></a>`;
 			var market_commodity_order_block = document.querySelector("div.market_commodity_order_block");
 			if (market_commodity_order_block) {
 				market_commodity_order_block.appendChild(linkElem);
@@ -1228,11 +1213,13 @@ function steamGameCardsPage() {
 		storeBtn.className = "btn_grey_grey btn_medium";
 		storeBtn.innerHTML = "<span>打开商店页面</span>";
 		storeBtn.href = `https://store.steampowered.com/app/${appid}`;
+		storeBtn.setAttribute("target", "_blank");
 		storeBtn.style.marginRight = "4px";
 		var exchangeInventoryBtn = document.createElement("a");
 		exchangeInventoryBtn.className = "btn_grey_grey btn_medium";
 		exchangeInventoryBtn.innerHTML = "<span>打开Exchange页面</span>";
 		exchangeInventoryBtn.href = `https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}`;
+		exchangeInventoryBtn.setAttribute("target", "_blank");
 
 		var elem = document.querySelector("div.badge_detail_tasks>div.gamecards_inventorylink")
 		if (!elem) {
@@ -1253,7 +1240,7 @@ function steamGameCardsPage() {
 		var cardElems = document.querySelectorAll("div.badge_card_set_card");
 
 		for (let i = 0; i < nameList.length; i++) {
-			var html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${nameList[i]}">打开市场页面</a>
+			var html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${nameList[i]}" target="_blank">打开市场页面</a>
 						<a class="market_link show_market_info" data-market-hash-name="${nameList[i]}" style="margin-top: 5px;">查看市场价格信息</a>`;
 			cardElems[i].lastElementChild.innerHTML = html;
 			cardElems[i].lastElementChild.onclick = function(event) { 
