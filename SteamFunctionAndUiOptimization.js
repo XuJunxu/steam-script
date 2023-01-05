@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.07
+// @version      1.08
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -24,7 +24,7 @@ function steamStorePage() {
 		return;
 	}
 
-	var appid, title;
+	var appid, title, price;
 	var settings = getSettings();
 	addSettingsBtn();
 	
@@ -168,6 +168,7 @@ function steamStorePage() {
 		} else if (elem.classList.contains("ds_options") || elem.parentNode.classList.contains("ds_options")) {
 			appid = getAppid(elem, event.currentTarget);
 			title = getTitle(elem, event.currentTarget);
+			price = getPrice(elem, event.currentTarget);
 		} else if (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule")) {  //点击游戏图片
 			event.preventDefault();
 			var aid = getAppid(elem, event.currentTarget);
@@ -203,7 +204,18 @@ function steamStorePage() {
 		var el = elem;
 		while(el != stopElem && el != document.body) {
 			if(el.classList.contains("search_result_row")) {
-				return el.querySelector("span.title").textContent;
+				return el.querySelector("span.title").textContent.trim().toLowerCase();
+			}
+			el = el.parentNode;
+		}
+		return null;
+	}
+
+	function getPrice(elem, stopElem) {
+		var el = elem;
+		while(el != stopElem && el != document.body) {
+			if(el.classList.contains("search_result_row")) {
+				return getPriceFromSymbolStr(el.querySelector("div.search_price").lastChild.textContent);
 			}
 			el = el.parentNode;
 		}
@@ -236,16 +248,17 @@ function steamStorePage() {
 	}
 
 	function autoAddToCart() {  //自动添加到购物车
-		if (appid && title) {
-			var win = unsafeWindow.open("https://store.steampowered.com/app/" + appid, "_blank", "width=800, height=800");
+		if (appid && title && price) {
+			var win = unsafeWindow.open(`https://store.steampowered.com/app/${appid}/?l=english`, "_blank", "width=800, height=800");
 			win.addEventListener("DOMContentLoaded", function() {
 				var elems = win.document.querySelectorAll("div.game_area_purchase_game");
 				for (var el of elems) {
 					if(el.id) {
-						var hTitle = el.querySelector("h1").textContent;
-						var index = hTitle.indexOf(title);
+						var gameName = el.querySelector("h1").textContent.replace("Buy", "").trim().toLowerCase();
+						var priceNode = el.querySelector("div.discount_final_price") || el.querySelector("div.game_purchase_price");
+						var gamePrice = priceNode ? getPriceFromSymbolStr(priceNode.textContent) : 0;
 						var subid = el.id.match(/add_to_cart_(\d+)$/);
-						if (index >= 0 && hTitle.substring(index) == title && subid && subid.length > 1) {
+						if (gameName == title && subid && subid.length > 1 && gamePrice == price) {
 							el.querySelector("#btn_add_to_cart_" + subid[1]).click();
 							break;
 						}
