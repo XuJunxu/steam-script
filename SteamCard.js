@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SteamCard
 // @namespace    SteamCard
-// @version      1.02
+// @version      1.03
 // @description  Steam Card
 // @author       Nin9
 // @include      https://store.steampowered.com/search*
@@ -14,14 +14,14 @@
 const TIMEOUT = 20000;
 
 const START = 0;
-const MAXCOUNT = 3500;  //获取游戏列表的总数量
+const MAXCOUNT = 10000;  //获取游戏列表的总数量
 const MAXPRICE = 70;  //最高价格
-const PRICE_ASC = false;  //价格从低到高
-const CATEGORY2=true;  //只搜索有卡牌的游戏
+const PRICE_ASC = true;  //价格从低到高
+const CATEGORY2 = true;  //只搜索有卡牌的游戏
 
-var checkDiscounted = 0;  //只比较打折的游戏
+var checkDiscounted = false;  //只比较打折的游戏
 var lowestPrice = 14;  //只比较高于该价格的游戏（不包括该价格）
-var exchangeRate = 174;  //汇率
+var exchangeRate = 185;  //汇率
 
 var flags_searchGamePriceUnderCardPrice = false;  //查找价格比其卡片价格低的游戏
 var flags_searchGameToExchange = false;  //查找可通过交换卡片回本的游戏
