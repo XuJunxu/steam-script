@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.08
+// @version      1.09
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -12,11 +12,99 @@
 // @include      *://steamcommunity.com/market/*
 // @include      *://steamcommunity.com/id/*/gamecards/*
 // @include      *://steamcommunity.com/profiles/*/gamecards/*
+// @include      *://store.steampowered.com/account/history/
 // @require      https://cdn.bootcdn.net/ajax/libs/localforage/1.7.1/localforage.min.js
 // @grant        unsafeWindow
 // ==/UserScript==
 
 const TIMEOUT = 20000;
+
+//消费记录
+function steamAccountHistory() {
+	if(location.href.search(/store\.steampowered\.com\/account\/history/) < 0) {
+		return;
+	}
+	
+	var loadButton = document.querySelector("#load_more_button");
+	if (loadButton) {
+		loadButton.click();
+	}
+
+	var settingBtn = document.createElement("div");
+	settingBtn.setAttribute("style", "cursor: pointer; position: absolute; background: #4c5564; right: 20px; top: 10px; padding: 3px 15px;");
+	settingBtn.innerHTML = "<div id='totalPurchase' style='line-height: 24px;'>计算额度</div>";
+	settingBtn.onclick = function() {
+		showTotalPurchase();
+	};
+	document.body.appendChild(settingBtn);
+
+	var times = 0;
+	var timer = setInterval(function() {
+		var button = document.querySelector("#load_more_button");
+		var loading = document.querySelector("#wallet_history_loading");
+		if ((!button || button.style.display == "none") && (!loading || loading.style.display == "none")) {
+			times = 999;
+			showTotalPurchase();
+		}
+		
+		times++;
+		if (times > 100) {
+			clearInterval(timer)
+		}
+	}, 200);
+
+	function showTotalPurchase() {
+		var [purchaseGames, purchaseGifts] = calculateTotalPurchase();
+		settingBtn.querySelector("#totalPurchase").innerHTML = `<div>购买游戏：${purchaseGames / 100.0}</div>
+																<div>购买礼物：${purchaseGifts / 100.0}</div>
+																<div>剩余额度：${(purchaseGames - purchaseGifts) / 100.0}</div>`;
+	}
+
+	//计算消费金额，只计算使用钱包余额的消费记录
+	function calculateTotalPurchase() {
+		var purchaseGames = 0;
+		var purchaseGifts = 0;
+		var transidGames = [];
+		var transidGifts = [];
+		var refunded = [];
+		var walletHistory = document.querySelectorAll("tr.wallet_table_row.wallet_table_row_amt_change");
+		if (walletHistory) {
+			for (var row of walletHistory) {
+				var wht_type = row.querySelector("td.wht_type > div:first-child").textContent.trim();
+				var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total").textContent);
+				var wht_wallet_change = row.querySelector("td.wht_wallet_change").textContent.trim();
+
+				var res = row.getAttribute("onclick").match(/transid=(\d+)/);
+				var transid = res? res[1]: null; 
+				
+				if (transid && wht_wallet_change) {
+					if (wht_wallet_change[0] == "-") {
+						if (wht_type == "购买") {
+							purchaseGames += wht_total;
+							transidGames.push(transid);
+							row.querySelector("td.wht_total").style.color = "#00A8FF";
+						} else if (wht_type == "礼物购买") {
+							purchaseGifts += wht_total;
+							transidGifts.push(transid);
+							row.querySelector("td.wht_total").style.color = "#FF0000";
+						}
+					} else if (wht_type == "退款") {
+						refunded.push([transid, wht_total]);
+					}
+				}
+			}
+			for (var item of refunded) {
+				if (transidGames.includes(item[0])) {
+					purchaseGames -= item[1];
+				} else if (transidGifts.includes(item[0])) {
+					purchaseGifts -= item[1];
+				}
+			}
+		}
+		return [purchaseGames, purchaseGifts];
+	}
+
+}
 
 //steam商店
 function steamStorePage() {  
@@ -2417,5 +2505,6 @@ function getWalletInfo(code) {
 	steamMarketListingPage();
 	steamGameCardsPage();
 	steamMarketPage();
+	steamAccountHistory();
 })();
 
