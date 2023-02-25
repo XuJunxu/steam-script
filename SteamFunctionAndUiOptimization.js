@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      1.09
+// @version      2.0.0
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -116,11 +116,9 @@ function steamStorePage() {
 	var settings = getSettings();
 	addSettingsBtn();
 	
-	//点击游戏名时选中并自动复制，点击图片跳转到徽章页面
-	if (settings.set_click) {
-		handleSearchResult();
-		handleWishlist();
-	}
+	//添加点击事件处理函数
+	handleSearchResult();
+	handleWishlist();
 	
 	//搜索结果排序和过滤
 	if (settings.set_filter) {
@@ -137,6 +135,7 @@ function steamStorePage() {
 		document.querySelector("div#search_results").addEventListener("click", searchResultClicked);
 
 		//添加选项"添加至购物车"
+		/*
 		var obs = new MutationObserver(function(record, obs) {
 			var elem = checkAddedOptionsTooltip(record);
 			if (elem) {
@@ -149,6 +148,7 @@ function steamStorePage() {
 			}
 		});
 		obs.observe(document.body, {childList: true}); 
+		*/
 	}
 
 	function handleWishlist() {
@@ -237,7 +237,9 @@ function steamStorePage() {
 		settingBtn.onclick = function() {
 			unsafeWindow.sfu_settings = settings;
 			var options = (`<div style="user-select: none;">
-							<div><input id="sfu_set_click" type="checkbox" onclick="window.sfu_settings.set_click = this.checked;" ${settings.set_click ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_click" style="cursor: pointer;">点击游戏名时选中并复制，点击图片跳转到徽章页面</label></div><br>
+							<div><input id="sfu_set_click_picture" type="checkbox" onclick="window.sfu_settings.set_click_picture = this.checked;" ${settings.set_click_picture ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_click_picture" style="cursor: pointer;">点击游戏图片跳转到徽章页面</label></div><br>
+							<div><input id="sfu_set_click_title" type="checkbox" onclick="window.sfu_settings.set_click_title = this.checked;" ${settings.set_click_title ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_click_title" style="cursor: pointer;">点击游戏名时选中并复制</label></div><br>
+							<div><input id="sfu_set_click_price" type="checkbox" onclick="window.sfu_settings.set_click_price = this.checked;" ${settings.set_click_price ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_click_price" style="cursor: pointer;">点击游戏价格时添加到购物车</label></div><br>
 							<div><input id="sfu_set_filter" type="checkbox" onclick="window.sfu_settings.set_filter = this.checked;" ${settings.set_filter ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_filter" style="cursor: pointer;">价格由低到高显示有卡牌的游戏</label></div><br></div>`);
 			unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
 				settings = unsafeWindow.sfu_settings;
@@ -250,21 +252,27 @@ function steamStorePage() {
 
 	function searchResultClicked(event) {
 		var elem = event.target;
-		if (elem.classList.contains("title")) {  //点击游戏名时选中并自动复制
+		if (settings.set_click_title && elem.classList.contains("title")) {  //点击游戏名时选中并自动复制
 			event.preventDefault();
 			document.execCommand("Copy"); 
 		} else if (elem.classList.contains("ds_options") || elem.parentNode.classList.contains("ds_options")) {
 			appid = getAppid(elem, event.currentTarget);
 			title = getTitle(elem, event.currentTarget);
 			price = getPrice(elem, event.currentTarget);
-		} else if (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule")) {  //点击游戏图片
+		} else if (settings.set_click_picture && (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule"))) {  //点击游戏图片时打开徽章页
 			event.preventDefault();
 			var aid = getAppid(elem, event.currentTarget);
 			if (aid) {
 				var url = `https://steamcommunity.com/my/gamecards/${aid}/`; 
 				var win = window.open(url, "_blank");
 			}
-		}  
+		} else if (settings.set_click_price && (elem.classList.contains("search_price") || elem.parentNode.classList.contains("search_price") || elem.parentNode.parentNode.classList.contains("search_price"))) {  //点击游戏价格时添加到购物车
+			event.preventDefault();
+			appid = getAppid(elem, event.currentTarget);
+			title = getTitle(elem, event.currentTarget);
+			price = getPrice(elem, event.currentTarget);
+			autoAddToCart();
+		}
 	}
 
 	function wishlistClicked(event) {
@@ -358,7 +366,9 @@ function steamStorePage() {
 
 	function getSettings() {
 		var data = getStorageValue("SFU_SETTINGS") || {};
-		typeof data.set_click === "undefined" && (data.set_click = true);
+		typeof data.set_click_picture === "undefined" && (data.set_click_picture = true);
+		typeof data.set_click_title === "undefined" && (data.set_click_title = true);
+		typeof data.set_click_price === "undefined" && (data.set_click_price = true);
 		typeof data.set_filter === "undefined" && (data.set_filter = true);
 		return data;
 	}
@@ -1541,7 +1551,7 @@ function addSteamCommunitySetting() {
 
 function getSteamCommunitySettings() {
 	var data = getStorageValue("SFU_COMMUNITY_SETTINGS") || {};
-	typeof data.currency_code === "undefined" && (data.currency_code = "CNY");
+	typeof data.currency_code === "undefined" && (data.currency_code = "ARS");
 	typeof data.inventory_set_style === "undefined" && (data.inventory_set_style = true);
 	typeof data.inventory_set_filter === "undefined" && (data.inventory_set_filter = true);
 	typeof data.inventory_append_linkbtn === "undefined" && (data.inventory_append_linkbtn = true);
@@ -2481,14 +2491,14 @@ var currencyData = {
 //获取钱包货币信息
 function getWalletInfo(code) {
 	var walletDefault = {
-		"country": "CN",
-        "strCode": "CNY",
-        "eCurrencyCode": 23,
-        "strSymbol": "¥",
+		"country": "AR",
+        "strCode": "ARS",
+        "eCurrencyCode": 34,
+        "strSymbol": "ARS$",
         "bSymbolIsPrefix": true,
         "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": ".",
         "strSymbolAndNumberSeparator": " "
 	};
 	return currencyData[code] || walletDefault;
