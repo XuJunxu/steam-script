@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SteamCard
 // @namespace    SteamCard
-// @version      1.03
+// @version      2.0.0
 // @description  Steam Card
 // @author       Nin9
 // @include      https://store.steampowered.com/search*
@@ -32,17 +32,26 @@ async function getStoreGameList() {
     var start = START;
     var snr = unsafeWindow.g_rgCurrentParameters.snr;
     var gameList = "";
+    var errorCount = 0;
     while (start < MAXCOUNT) {
         var data = await getStoreSearchResults(start, snr);
         if (data.success) {
             gameList += data.results_html;
             start += 50;
+            errorCount = 0;
             if (start >= data.total_count) {
                 break;
             }
+        } else {
+            errorCount++;
+            if (errorCount > 10) {
+                console.log("getStoreGameList failed");
+                return {success: false};
+            }
+            sleep(1);
         }
     }
-    return gameList;
+    return {success: true, data: gameList};
 }
 
 function getStoreSearchResults(start, snr) {
@@ -53,18 +62,24 @@ function getStoreSearchResults(start, snr) {
             timeout: TIMEOUT,
             onload: function(res) {
                 if (res.status = 200) {
-                    resolve(JSON.parse(res.responseText));
+                    try {
+                        resolve(JSON.parse(res.responseText));
+                    } catch (e) {
+                        console.log("getStoreSearchResults failed");
+                        console.log(e);
+                        resolve({status: 2, start: start});
+                    }
                 } else {
-                    console.log("getStoreGameList failed");
+                    console.log("getStoreSearchResults failed");
                     resolve(res);
                 }
             },
             onerror: function(err) {
-                console.log("getStoreGameList error");
+                console.log("getStoreSearchResults error");
                 resolve(err);
             },
             ontimeout: function() {
-                console.log("getStoreGameList timeout");
+                console.log("getStoreSearchResults timeout");
                 resolve({status: 408});
             }
         });
@@ -189,19 +204,28 @@ async function searchGamePriceUnderCardPrice() {
         return;
     }
     console.log("searchGamePriceUnderCardPrice start");
+    var html = "<style>.my_link{line-height: 25px; margin-left: 20px;} .my_price{margin-left: 20px;}</style>";
     var cardData = await getBadgePrices();
     if (cardData.data) {
         var gameData = await getStoreGameList();
-        var res = getGamePriceUnderCardPrice(processBadgePrices(cardData), processStoreGames(gameData));
-        var i = 1;
-        var html = "<style>.my_link{line-height: 25px; margin-left: 20px;} .my_price{margin-left: 20px;}</style>";
-        for (var game of res) {
-            html += `<div><span class="my_num">${i}</span><span class="my_price">${game[1]}<span><a href="https://steamcommunity.com/my/gamecards/${game[0]}" target="_blank" class="my_link">${game[0]}</a></div>`
-            //console.log(i, game[1], "https://steamcommunity.com/my/gamecards/" + game[0]);
-            i++;
+        if (gameData.success) {        
+            var res = getGamePriceUnderCardPrice(processBadgePrices(cardData), processStoreGames(gameData.data));
+            var i = 1;
+            
+            for (var game of res) {
+                html += `<div><span class="my_num">${i}</span><span class="my_price">${game[1]}<span><a href="https://steamcommunity.com/my/gamecards/${game[0]}" target="_blank" class="my_link">${game[0]}</a></div>`
+                //console.log(i, game[1], "https://steamcommunity.com/my/gamecards/" + game[0]);
+                i++;
+            }
+        } else {
+            html += "<div><span>getStoreGameList error</span></div>";
         }
-        document.querySelector("#search_resultsRows").innerHTML = html;
-    } 
+    } else {
+        html += "<div><span>getBadgePrices error</span></div>";
+    }
+
+    html += "<div><span>searchGamePriceUnderCardPrice finished</span></div>";
+    document.querySelector("#search_resultsRows").innerHTML = html;
     console.log("searchGamePriceUnderCardPrice finish");
 }
 
@@ -239,30 +263,38 @@ async function searchGameToExchange() {
         return;
     }
     console.log("searchGameToExchange start");
+    var html = "<style>.my_link{line-height: 25px; margin-left: 20px;} .my_price{margin-left: 20px;}</style>";
     var inventoryData = await getInventory();
-    var gameData = await getStoreGameList();
-    if (inventoryData.data && gameData) {
-        var inventoryData1 = processInventory(inventoryData);
-        var gameData1 = processStoreGames(gameData);
-        var results = [];
-        for (var appid in gameData1) {
-            if (inventoryData1[appid]) {
-                var gamePrice = gameData1[appid][0];
-                var worth = inventoryData1[appid][1];
-                var cardsInSet = inventoryData1[appid][3][0];
-                if (worth * Math.ceil(cardsInSet / 2) * 0.7 / 1.15 > gamePrice) {
-                    results.push(gameData1[appid]);
+    if (inventoryData.data) {
+        var gameData = await getStoreGameList();
+        if (gameData.success) {
+            var inventoryData1 = processInventory(inventoryData);
+            var gameData1 = processStoreGames(gameData.data);
+            var results = [];
+            for (var appid in gameData1) {
+                if (inventoryData1[appid]) {
+                    var gamePrice = gameData1[appid][0];
+                    var worth = inventoryData1[appid][1];
+                    var cardsInSet = inventoryData1[appid][3][0];
+                    if (worth * Math.ceil(cardsInSet / 2) * 0.7 / 1.15 > gamePrice) {
+                        results.push(gameData1[appid]);
+                    }
                 }
             }
+            results.sort(function(a, b) {return a[0] - b[0]});
+            
+            for (var i = 0; i < results.length; i++) {
+                html += `<div><span class="my_num">${i+1}</span><span class="my_price">${results[i][0]}</span><a href="https://steamcommunity.com/my/gamecards/${results[i][2]}" target="_blank" class="my_link">${results[i][2]}</a><a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${results[i][2]}" target="_blank" class="my_link">${results[i][2]}</a></div>`;
+                //console.log(i+1, results[i][0], "https://steamcommunity.com/my/gamecards/" + results[i][2], "https://www.steamcardexchange.net/index.php?inventorygame-appid-" + results[i][2]);
+            }
+        } else {
+            html += "<div><span>getStoreGameList error</span></div>";
         }
-        results.sort(function(a, b) {return a[0] - b[0]});
-        var html = "<style>.my_link{line-height: 25px; margin-left: 20px;} .my_price{margin-left: 20px;}</style>";
-        for (var i = 0; i < results.length; i++) {
-            html += `<div><span class="my_num">${i+1}</span><span class="my_price">${results[i][0]}</span><a href="https://steamcommunity.com/my/gamecards/${results[i][2]}" target="_blank" class="my_link">${results[i][2]}</a><a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${results[i][2]}" target="_blank" class="my_link">${results[i][2]}</a></div>`;
-            //console.log(i+1, results[i][0], "https://steamcommunity.com/my/gamecards/" + results[i][2], "https://www.steamcardexchange.net/index.php?inventorygame-appid-" + results[i][2]);
-        }
-        document.querySelector("#search_resultsRows").innerHTML = html;
-    } 
+    } else {
+        html += "<div><span>getInventory error</span></div>";
+    }
+    html += "<div><span>searchGameToExchange finished</span></div>";
+    document.querySelector("#search_resultsRows").innerHTML = html;
     console.log("searchGameToExchange finish");
 }
 
@@ -274,7 +306,9 @@ async function checkHaveCard() {
     var res = await getInventory();
     if (res.data) {
         checkInventoryData = processInventory(res);
-        console.log("get");
+        console.log("getExchangeInventory success");
+    } else {
+        console.log("getExchangeInventory failed");
     }
     document.querySelector("#search_results").onmouseover = function(event) {
         var elem = event.target;
