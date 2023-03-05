@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.0
+// @version      2.0.1
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
 // @include      *://store.steampowered.com/wishlist*
 // @include      *://store.steampowered.com/app/*
+// @include      *://steamcommunity.com/tradeoffer/new/*
 // @include      *://steamcommunity.com/id/*/inventory*
 // @include      *://steamcommunity.com/profiles/*/inventory*
 // @include      *://steamcommunity.com/market/*
@@ -391,6 +392,74 @@ function steamAppStorePage() {
 			break;
 		}
 	}
+}
+
+//新建交易报价
+function steamTradeOfferNew() {
+	if(location.href.search(/steamcommunity\.com\/tradeoffer\/new/) < 0) {
+		return;
+	}
+
+	var div = document.createElement("div");
+	div.id = "trade_offer_buttons";
+	div.innerHTML = `<style>#trade_offer_buttons{margin: 10px 0px 0px 10px;} .btn_move_items{padding: 5px 15px;}</style>
+					 <a id="btn_add_all" class="btn_move_items btn_green_white_innerfade">添加全部普通卡牌</a>
+					 <a id="btn_remove_all" class="btn_move_items btn_green_white_innerfade">移除全部物品</a>`;
+	document.querySelector("#trade_yours .offerheader").appendChild(div);
+
+	div.querySelector("#btn_add_all").onclick = addAllCommonCards;
+	div.querySelector("#btn_remove_all").onclick = removeAllItems;
+
+	function addAllCommonCards() {
+		var event = new Event("dblclick");
+		if (unsafeWindow.g_rgAppContextData && unsafeWindow.g_rgAppContextData[753] && unsafeWindow.g_rgAppContextData[753].rgContexts && 
+			unsafeWindow.g_rgAppContextData[753].rgContexts[6] && unsafeWindow.g_rgAppContextData[753].rgContexts[6].asset_count > 0) {
+
+			var rgItemElements = unsafeWindow.g_rgAppContextData[753].rgContexts[6].inventory.rgItemElements;
+			for (var itemHolder of rgItemElements) {
+				var element = itemHolder.querySelector("div.item");
+				if (element && element.rgItem && element.rgItem.tradable && checkCommonCard(element.rgItem.tags)) {
+					element.dispatchEvent(event);
+				}
+			}
+		}
+	}
+
+	function removeAllItems() {
+		var event = new Event("dblclick");
+		var itemElements = document.querySelectorAll("#your_slots div.item");
+
+		for (var element of itemElements) {
+			element.dispatchEvent(event);
+		}
+
+		var waitId = setInterval(function() {
+			if (document.querySelectorAll("#your_slots div.item").count > 0) {
+				return;
+			}
+
+			clearInterval(waitId);
+
+			for (var itemHolder of document.querySelectorAll("#trade_yours > div.trade_item_box > div.trade_slot")) {
+				itemHolder.parentNode.removeChild(itemHolder);
+			}
+			document.querySelectorAll("#trade_yours > div.trade_item_box").style = null;
+
+		}, 100);
+
+
+	}
+
+	function checkCommonCard(tags) {
+		var flag = 0;
+		for (var tag of tags) {
+			if ((tag.category == "item_class" && tag.internal_name == "item_class_2") || (tag.category == "cardborder" && tag.internal_name == "cardborder_0")) {
+				flag++;
+			}
+		}
+		return flag == 2;
+	}
+
 }
 
 //库存界面
@@ -2511,6 +2580,7 @@ function getWalletInfo(code) {
 	unsafeWindow.sfu_inited = true;
 	steamStorePage();
 	steamAppStorePage();
+	steamTradeOfferNew();
 	steamInventoryPage();
 	steamMarketListingPage();
 	steamGameCardsPage();
