@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.1
+// @version      2.0.2
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -25,34 +25,38 @@ function steamAccountHistory() {
 	if(location.href.search(/store\.steampowered\.com\/account\/history/) < 0) {
 		return;
 	}
-	
-	var loadButton = document.querySelector("#load_more_button");
-	if (loadButton) {
-		loadButton.click();
-	}
 
 	var settingBtn = document.createElement("div");
 	settingBtn.setAttribute("style", "cursor: pointer; position: absolute; background: #4c5564; right: 20px; top: 10px; padding: 3px 15px;");
 	settingBtn.innerHTML = "<div id='totalPurchase' style='line-height: 24px;'>计算额度</div>";
 	settingBtn.onclick = function() {
-		showTotalPurchase();
+		waitShowPurchase();
 	};
 	document.body.appendChild(settingBtn);
 
-	var times = 0;
-	var timer = setInterval(function() {
-		var button = document.querySelector("#load_more_button");
-		var loading = document.querySelector("#wallet_history_loading");
-		if ((!button || button.style.display == "none") && (!loading || loading.style.display == "none")) {
-			times = 999;
-			showTotalPurchase();
+	waitShowPurchase();
+
+	function waitShowPurchase() {
+		var loadButton = document.querySelector("#load_more_button");
+		if (loadButton) {
+			loadButton.click();
 		}
-		
-		times++;
-		if (times > 100) {
-			clearInterval(timer)
-		}
-	}, 200);
+
+		var times = 0;
+		var timer = setInterval(function() {
+			var button = document.querySelector("#load_more_button");
+			var loading = document.querySelector("#wallet_history_loading");
+			if ((!button || button.style.display == "none") && (!loading || loading.style.display == "none")) {
+				times = 999;
+				showTotalPurchase();
+			}
+			
+			times++;
+			if (times > 100) {
+				clearInterval(timer)
+			}
+		}, 200);
+	}
 
 	function showTotalPurchase() {
 		var [purchaseGames, purchaseGifts] = calculateTotalPurchase();
