@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SteamCard
 // @namespace    SteamCard
-// @version      2.0.2
+// @version      2.0.3
 // @description  Steam Card
 // @author       Nin9
 // @include      https://store.steampowered.com/search*
@@ -56,7 +56,7 @@ async function getStoreGameList() {
                 console.log("getStoreGameList failed");
                 return {success: false};
             }
-            sleep(1);
+            await sleep(1000);
         }
     }
     return {success: true, data: gameList};
@@ -371,6 +371,14 @@ async function checkHaveCard() {
     }
 
 }
+
+
+function sleep(time) {
+    return new Promise(function(resolve) {
+        setTimeout(resolve, time);
+    });
+}
+
 
 (function main() {
     flags_searchGamePriceUnderCardPrice && searchGamePriceUnderCardPrice();
