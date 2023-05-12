@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.2
+// @version      2.0.3
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -30,30 +30,29 @@ function steamAccountHistory() {
 	settingBtn.setAttribute("style", "cursor: pointer; position: absolute; background: #4c5564; right: 20px; top: 10px; padding: 3px 15px;");
 	settingBtn.innerHTML = "<div id='totalPurchase' style='line-height: 24px;'>计算额度</div>";
 	settingBtn.onclick = function() {
-		waitShowPurchase();
+		waitShowPurchase(0);
 	};
 	document.body.appendChild(settingBtn);
 
-	waitShowPurchase();
+	waitShowPurchase(0);
 
-	function waitShowPurchase() {
+	function waitShowPurchase(times) {
 		var loadButton = document.querySelector("#load_more_button");
-		if (loadButton) {
+		if (times == 0 || loadButton.style.display != "none") {
 			loadButton.click();
 		}
 
-		var times = 0;
-		var timer = setInterval(function() {
+		setTimeout(function() {
 			var button = document.querySelector("#load_more_button");
 			var loading = document.querySelector("#wallet_history_loading");
-			if ((!button || button.style.display == "none") && (!loading || loading.style.display == "none")) {
-				times = 999;
+			if (button.style.display == "none" && loading.style.display == "none") {
 				showTotalPurchase();
+				return;
 			}
 			
 			times++;
-			if (times > 100) {
-				clearInterval(timer)
+			if (times < 150) {
+				waitShowPurchase(times);
 			}
 		}, 200);
 	}
@@ -903,7 +902,9 @@ function steamMarketPage() {
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span:hover {background: #324965;}
 								#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price {cursor: pointer; position: relative;}
 								.market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
-								.market_price_label {line-height: normal;}`;
+								.market_price_label {line-height: normal;}
+								.market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px;}
+								.market_show_filter > option {color: #ffffff; background-color: #333333;}`;
 		document.body.appendChild(styleElem);
 		
 		//添加页面导航
@@ -953,10 +954,27 @@ function steamMarketPage() {
 			listings[i].querySelector(".market_listing_my_price").onclick = showListingPriceInfo;
 			totalPay += pricePay;
 			totalReceive += pricReceive;
+
+			var assetInfo = getListingAssetInfo(listings[i]);
+			var itemType = "";
+			if (assetInfo.appid == 753 && assetInfo.contextid == "6" && assetInfo.owner_actions[0].link.startsWith("https://steamcommunity.com/my/gamecards/")) {
+				if (assetInfo.market_hash_name.includes("Foil")) {
+					itemType = "FoilCard";
+				} else {
+					itemType = "TradingCard";
+				}
+			} else {
+				itemType = "Other";
+			}
+			listings[i].setAttribute("market_item_type", itemType);
 		}
 
 		//显示总售价
-		document.querySelector("#my_market_selllistings_number").textContent += ` ▶ ${(totalPay / 100.0).toFixed(2)} ▶ ${(totalReceive / 100.0).toFixed(2)}`;
+		if (listings.length == totalCount) {
+			document.querySelector("#my_market_selllistings_number").textContent += ` ▶ ${(totalPay / 100.0).toFixed(2)} ▶ ${(totalReceive / 100.0).toFixed(2)}`;
+		} else {
+			document.querySelector("#my_market_selllistings_number").textContent += ` ▶ Error`;
+		}
 
 		marketMyListings.timeSort = listingsTemp;
 		setListingsPage(marketMyListings.timeSort);
@@ -983,11 +1001,16 @@ function steamMarketPage() {
 
 	//列表上下添加操作按键和页面导航
 	function addMarketPageControl() {
+		var styleElem = document.createElement("style");
+		styleElem.id = "market_page_control_style";
+		document.body.appendChild(styleElem);
+
 		var controlBefore = document.createElement("div");
 		controlBefore.id = "market_page_control_before";
 		var controlAfter = document.createElement("div");
 		controlAfter.id = "market_page_control_after";
 		var html = `<div class="market_action_btn_container"><a class="market_select_all market_action_btn pagebtn">选中全部物品</a><a class="market_remove_listing market_action_btn pagebtn">下架选中物品</a></div>
+					<select class="market_show_filter pagebtn"><option value="All">全部物品</option><option value="TradingCard">普通卡牌</option><option value="FoilCard">闪亮卡牌</option><option value="Other">其他物品</option></select>
 					<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span><div>`;
 		controlBefore.innerHTML = html;
 		controlAfter.innerHTML = html;
@@ -998,6 +1021,8 @@ function steamMarketPage() {
 		controlAfter.querySelector(".market_paging_controls").onclick = pageControlClick;
 		controlBefore.querySelector(".market_action_btn_container").onclick = marketActionBtnClick;
 		controlAfter.querySelector(".market_action_btn_container").onclick = marketActionBtnClick;
+		controlBefore.querySelector(".market_show_filter").onchange = showFilterChanged;
+		controlAfter.querySelector(".market_show_filter").onchange = showFilterChanged;
 	}
 
 	//更新页面导航中的页面编号
@@ -1043,6 +1068,20 @@ function steamMarketPage() {
 		if (page > 0 && page <= marketMyListingsPage.length) {
 			showPage(page);
 			updatePageControl(page);
+		}
+	}
+
+	function showFilterChanged(event) {
+		var elem = event.target;
+		var showType = elem.value;
+		var html = "";
+		if (showType != "All") {
+			html = `#tabContentsMyActiveMarketListingsRows > .market_listing_row:not([market_item_type=${showType}]) {display: none;}`
+		}
+		document.querySelector("#market_page_control_style").innerHTML = html;
+
+		for (var el of document.querySelectorAll("select.market_show_filter")) {
+			el.value = showType;
 		}
 	}
 
