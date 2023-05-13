@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.3
+// @version      2.0.4
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -880,6 +880,10 @@ function steamMarketPage() {
 	var sortType = TIME_ASC;
 	var currentPage = 1;
 
+	var numTradingCard = 0;
+	var numFoilCard = 0;
+	var numOther = 0;
+
 	if (settings.market_adjust_selllistings) {
 		adjustMySellListings();
 	}
@@ -906,9 +910,6 @@ function steamMarketPage() {
 								.market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px;}
 								.market_show_filter > option {color: #ffffff; background-color: #333333;}`;
 		document.body.appendChild(styleElem);
-		
-		//添加页面导航
-		addMarketPageControl();
 
 		//使表头可点击排序
 		var tableHeader = document.querySelector("#tabContentsMyActiveMarketListingsTable .market_listing_table_header");
@@ -957,17 +958,23 @@ function steamMarketPage() {
 
 			var assetInfo = getListingAssetInfo(listings[i]);
 			var itemType = "";
-			if (assetInfo.appid == 753 && assetInfo.contextid == "6" && assetInfo.owner_actions[0].link.startsWith("https://steamcommunity.com/my/gamecards/")) {
+			if (assetInfo.appid == 753 && assetInfo.contextid == "6" && assetInfo.owner_actions[0].link.includes("https://steamcommunity.com/my/gamecards/")) {
 				if (assetInfo.market_hash_name.includes("Foil")) {
 					itemType = "FoilCard";
+					numFoilCard++;
 				} else {
 					itemType = "TradingCard";
+					numTradingCard++;
 				}
 			} else {
 				itemType = "Other";
+				numOther++;
 			}
 			listings[i].setAttribute("market_item_type", itemType);
 		}
+
+		//添加页面导航
+		addMarketPageControl();
 
 		//显示总售价
 		if (listings.length == totalCount) {
@@ -1009,8 +1016,9 @@ function steamMarketPage() {
 		controlBefore.id = "market_page_control_before";
 		var controlAfter = document.createElement("div");
 		controlAfter.id = "market_page_control_after";
+		var numAll = numFoilCard + numOther + numTradingCard;
 		var html = `<div class="market_action_btn_container"><a class="market_select_all market_action_btn pagebtn">选中全部物品</a><a class="market_remove_listing market_action_btn pagebtn">下架选中物品</a></div>
-					<select class="market_show_filter pagebtn"><option value="All">全部物品</option><option value="TradingCard">普通卡牌</option><option value="FoilCard">闪亮卡牌</option><option value="Other">其他物品</option></select>
+					<select class="market_show_filter pagebtn"><option value="All">全部物品 (${numAll})</option><option value="TradingCard">普通卡牌 (${numTradingCard})</option><option value="FoilCard">闪亮卡牌 (${numFoilCard})</option><option value="Other">其他物品 (${numOther})</option></select>
 					<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span><div>`;
 		controlBefore.innerHTML = html;
 		controlAfter.innerHTML = html;
