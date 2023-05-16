@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SteamCard
 // @namespace    SteamCard
-// @version      2.0.3
+// @version      2.0.4
 // @description  Steam Card
 // @author       Nin9
 // @include      https://store.steampowered.com/search*
@@ -35,6 +35,18 @@ var flags_checkHaveCard = true;  //检查游戏是否有可交换卡片
 
 var flags_compareAccoutsGames = false;  //另一账号已拥有而当前账号未拥有的游戏
 var flags_saveOwnedGames = false;  //保存已拥有的游戏id
+
+function steamcardexchangeStyle() {
+    if(location.href.search(/www\.steamcardexchange\.net/) < 0) {
+		return;
+	}
+
+    var styleElem = document.createElement("style");
+    styleElem.innerHTML = `main.container { max-width: 1024px; }
+                           .grid-cols-2 {grid-template-columns: repeat(6,minmax(0,1fr));}
+                           .flex-col.items-center > .text-sm {font-size: 12px;}`;
+    document.head.appendChild(styleElem);
+}
 
 async function getStoreGameList() {
     var start = START;
@@ -381,6 +393,7 @@ function sleep(time) {
 
 
 (function main() {
+    steamcardexchangeStyle();
     flags_searchGamePriceUnderCardPrice && searchGamePriceUnderCardPrice();
     flags_searchGameToExchange && searchGameToExchange();
     flags_checkHaveCard && checkHaveCard();
