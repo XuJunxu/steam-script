@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.4
+// @version      2.0.5
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -573,8 +573,16 @@ function steamInventoryPage(){
 			return;
 		}
 		var checkbox = document.querySelector("#tag_filter_753_0_cardborder_cardborder_0") || document.querySelector("#tag_filter_753_6_cardborder_cardborder_0");
+		var checkbox2 = document.querySelector("#tag_filter_753_0_misc_tradable") || document.querySelector("#tag_filter_753_6_misc_tradable");
+		var checkbox3 = document.querySelector("#tag_filter_753_0_misc_marketable") || document.querySelector("#tag_filter_753_6_misc_marketable");
 		if (checkbox) {
 			checkbox.click();
+		}
+		if (checkbox2) {
+			checkbox2.click();
+		}
+		if (checkbox3) {
+			checkbox3.click();
 		}
 	}
 
