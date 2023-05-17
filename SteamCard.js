@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SteamCard
 // @namespace    SteamCard
-// @version      2.0.4
+// @version      2.0.5
 // @description  Steam Card
 // @author       Nin9
 // @include      https://store.steampowered.com/search*
@@ -42,9 +42,12 @@ function steamcardexchangeStyle() {
 	}
 
     var styleElem = document.createElement("style");
-    styleElem.innerHTML = `main.container { max-width: 1024px; }
-                           .grid-cols-2 {grid-template-columns: repeat(6,minmax(0,1fr));}
-                           .flex-col.items-center > .text-sm {font-size: 12px;}`;
+    styleElem.innerHTML = `html { font-size: smaller; }
+                           main.container { max-width: 1024px; }
+                           .\\32xl\\:grid-cols-8 { grid-template-columns: repeat(6,minmax(0,1fr)); }
+                           .flex-col.items-center > .text-sm { font-size: 12px; }
+                           .table-fixed { font-size: 12px; }
+                           th.w-48 { width: 8rem; }`;
     document.head.appendChild(styleElem);
 }
 
