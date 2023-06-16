@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.5
+// @version      2.0.6
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -119,7 +119,7 @@ function steamStorePage() {
 	var appid, title, price;
 	var settings = getSettings();
 	addSettingsBtn();
-	
+
 	//添加点击事件处理函数
 	handleSearchResult();
 	handleWishlist();
@@ -160,7 +160,7 @@ function steamStorePage() {
 			return;
 		}
 		var styleElem = document.createElement("style");
-		styleElem.innerHTML = "a.title {user-select:all; cursor:text; }";
+		styleElem.innerHTML = "a.title {user-select:all; cursor:text; } div.discount_prices{ cursor:pointer; }";
 		document.body.appendChild(styleElem);
 		document.querySelector("div#wishlist_ctn").addEventListener("click", wishlistClicked);
 	}
@@ -259,20 +259,16 @@ function steamStorePage() {
 		if (settings.set_click_title && elem.classList.contains("title")) {  //点击游戏名时选中并自动复制
 			event.preventDefault();
 			document.execCommand("Copy"); 
-		} else if (elem.classList.contains("ds_options") || elem.parentNode.classList.contains("ds_options")) {
-			appid = getAppid(elem, event.currentTarget);
-			title = getTitle(elem, event.currentTarget);
-			price = getPrice(elem, event.currentTarget);
 		} else if (settings.set_click_picture && (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule"))) {  //点击游戏图片时打开徽章页
 			event.preventDefault();
-			var aid = getAppid(elem, event.currentTarget);
+			var aid = getAppid(elem, event.currentTarget, "search_result_row", "data-ds-appid");
 			if (aid) {
 				var url = `https://steamcommunity.com/my/gamecards/${aid}/`; 
-				var win = window.open(url, "_blank");
+				var win = window.open(url);
 			}
 		} else if (settings.set_click_price && (elem.classList.contains("search_price") || elem.parentNode.classList.contains("search_price") || elem.parentNode.parentNode.classList.contains("search_price"))) {  //点击游戏价格时添加到购物车
 			event.preventDefault();
-			appid = getAppid(elem, event.currentTarget);
+			appid = getAppid(elem, event.currentTarget, "search_result_row", "data-ds-appid");
 			title = getTitle(elem, event.currentTarget);
 			price = getPrice(elem, event.currentTarget);
 			autoAddToCart();
@@ -281,19 +277,23 @@ function steamStorePage() {
 
 	function wishlistClicked(event) {
 		var elem = event.target;
+		var aid = getAppid(elem, event.currentTarget, "wishlist_row", "data-app-id");
 		if (elem.classList.contains("title")) {
 			event.preventDefault();
 			document.execCommand("Copy"); 
-			var appid = elem.href.match(/store\.steampowered\.com\/app\/(\d+)/)[1];
-			window.open(`https://steamcommunity.com/my/gamecards/${appid}/`, "_blank");
+		} else if (elem.classList.contains("discount_prices") || elem.parentNode.classList.contains("discount_prices")) {
+			window.open(`https://store.steampowered.com/app/${aid}/`);
+		} else if (elem.parentNode.classList.contains("screenshots")) {
+			event.preventDefault();
+			window.open(`https://steamcommunity.com/my/gamecards/${aid}/`);
 		}
 	}
 	
-	function getAppid(elem, stopElem) {
+	function getAppid(elem, stopElem, className, attrName) {
 		var el = elem;
 		while(el != stopElem && el != document.body) {
-			if(el.classList.contains("search_result_row")) {
-				return el.getAttribute("data-ds-appid");
+			if(el.classList.contains(className)) {
+				return el.getAttribute(attrName);
 			}
 			el = el.parentNode;
 		}
