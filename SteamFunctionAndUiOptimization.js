@@ -386,7 +386,6 @@ function steamAppStorePage() {
 	}
 
 	var elems = document.querySelectorAll("#category_block a");
-	var target;
 	for (var el of elems) {
 		if (el.href.search(/search\/\?category2\=29/) > 0) {
 			var appid = location.href.match(/store\.steampowered\.com\/app\/(\d+)\//)[1];
@@ -530,7 +529,8 @@ function steamInventoryPage(){
 								div.inventory_rightnav>a, div.inventory_rightnav>div {flex: 0 0 auto; overflow: hidden; margin-bottom: auto;}
 								a.btn_medium>span, div#inventory_more_link>span {line-height: 22px;}
 								.btn_reload_inventory {margin-right: 12px;}
-								.tabitems_ctn>.games_list_separator.responsive_hidden {display: none;}`;
+								.tabitems_ctn>.games_list_separator.responsive_hidden {display: none;}
+								.btn_small>span {user-select: none;}`;
 		document.body.appendChild(styleElem);
 	
 		var inventory_links = document.querySelector("div.inventory_links");
@@ -923,7 +923,7 @@ function steamMarketPage() {
 		styleElem.innerHTML = `#tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
 								#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}
 								.market_listing_check {position: absolute; top: 6px; right: 20px; cursor: pointer;}
-								#market_page_control_before {margin-top: 10px;} #market_page_control_after {margin-top: 10px;}
+								#market_page_control_before {margin-top: 10px; user-select: none;} #market_page_control_after {margin-top: 10px; user-select: none;}
 								.market_action_btn {padding: 0px 5px; margin-right: 5px; font-size: 12px;} .market_action_btn_container {display: inline-block;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header {display: flex; flex-direction: row-reverse;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
@@ -1061,22 +1061,34 @@ function steamMarketPage() {
 	//更新页面导航中的页面编号
 	function updatePageControl(page) {
 		var html = `<span class="market_paging_pagelink" data-page-num="1"> 1 </span>`;
+		var maxPage = marketMyListingsPage.length;
 		var begin = 2;
-		var end = marketMyListingsPage.length;
-		if (page > 5) {
-			html += `<span class="market_paging_pagelink" data-page-num="-1"> ⋯ </span>`;
-			begin = page - 2;
+		var end = maxPage - 1;
+
+		if (maxPage > 9) {
+			if (page <= 5) {
+				end = 7;
+			} else if (page >= maxPage - 4) {
+				begin = maxPage - 6;
+			} else {
+				begin = page - 2;
+				end = page + 2;
+			}
 		}
-		if (page < marketMyListingsPage.length - 4) {
-			end = page + 2;
+
+		if (begin > 3) {
+			html += `<span class="market_paging_pagelink" data-page-num="-1"> ⋯ </span>`;
 		}
 		for (var i = begin; i <= end; i++) {
 			html += `<span class="market_paging_pagelink" data-page-num="${i}"> ${i} </span>`;
 		}
-		if (end != marketMyListingsPage.length) {
+		if (end < maxPage - 2) {
 			html += `<span class="market_paging_pagelink" data-page-num="-2"> ⋯ </span>`;
-			html += `<span class="market_paging_pagelink" data-page-num="${marketMyListingsPage.length}"> ${marketMyListingsPage.length} </span>`;
 		}
+		if (maxPage > 1) {
+			html += `<span class="market_paging_pagelink" data-page-num="${maxPage}"> ${maxPage} </span>`;
+		}
+
 		document.querySelector("#market_page_control_before .page_link").innerHTML = html;
 		document.querySelector("#market_page_control_after .page_link").innerHTML = html;
 		document.querySelector(`#market_page_control_before .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
@@ -1770,21 +1782,32 @@ function appendPageControl() {
 		var iMaxPage = typeof(g_ActiveInventory.m_cPages) !== 'undefined' ? g_ActiveInventory.m_cPages : g_ActiveInventory.pageTotal;
 		var html = `<span class="pagecontrol_pagelink" data-page-num="1"> 1 </span>`;
 		var begin = 2;
-		var end = iMaxPage;
-		if (iCurPage > 5) {
-			html += `<span class="pagecontrol_pagelink" data-page-num="-1"> ⋯ </span>`;
-			begin = iCurPage - 2;
+		var end = iMaxPage - 1;
+
+		if (iMaxPage > 9) {
+			if (iCurPage <= 5) {
+				end = 7;
+			} else if (iCurPage >= iMaxPage - 4) {
+				begin = iMaxPage - 6;
+			} else {
+				begin = iCurPage - 2;
+				end = iCurPage + 2;
+			}
 		}
-		if (iCurPage < iMaxPage - 4) {
-			end = iCurPage + 2;
+
+		if (begin > 3) {
+			html += `<span class="pagecontrol_pagelink" data-page-num="-1"> ⋯ </span>`;
 		}
 		for (var i = begin; i <= end; i++) {
 			html += `<span class="pagecontrol_pagelink" data-page-num="${i}"> ${i} </span>`;
 		}
-		if (end != iMaxPage) {
+		if (end < iMaxPage - 2) {
 			html += `<span class="pagecontrol_pagelink" data-page-num="-2"> ⋯ </span>`;
+		}
+		if (iMaxPage > 1) {
 			html += `<span class="pagecontrol_pagelink" data-page-num="${iMaxPage}"> ${iMaxPage} </span>`;
 		}
+		
 		pageLinks.innerHTML = html;
 		pageLinks.querySelector(`.pagecontrol_pagelink[data-page-num="${iCurPage}"]`).classList.add("active");
 	}
