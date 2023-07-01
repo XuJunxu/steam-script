@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.6
+// @version      2.0.7
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
 // @include      *://store.steampowered.com/wishlist*
 // @include      *://store.steampowered.com/app/*
-// @include      *://steamcommunity.com/tradeoffer/new/*
+// @include      *://steamcommunity.com/tradeoffer/*
 // @include      *://steamcommunity.com/id/*/inventory*
 // @include      *://steamcommunity.com/profiles/*/inventory*
 // @include      *://steamcommunity.com/market/*
@@ -20,7 +20,7 @@
 
 const TIMEOUT = 20000;
 
-//消费记录
+//消费记录页面
 function steamAccountHistory() {
 	if(location.href.search(/store\.steampowered\.com\/account\/history/) < 0) {
 		return;
@@ -110,7 +110,7 @@ function steamAccountHistory() {
 
 }
 
-//steam商店
+//steam商店搜索页面
 function steamStorePage() {  
 	if(location.href.search(/store\.steampowered\.com\/(search|wishlist)/) < 0) {
 		return;
@@ -379,7 +379,7 @@ function steamStorePage() {
 	
 }
 
-//app商店页面
+//app页面
 function steamAppStorePage() {
 	if(location.href.search(/store\.steampowered\.com\/app/) < 0) {
 		return;
@@ -397,32 +397,50 @@ function steamAppStorePage() {
 	}
 }
 
-//新建交易报价
+//交易报价页面
 function steamTradeOfferNew() {
-	if(location.href.search(/steamcommunity\.com\/tradeoffer\/new/) < 0) {
+	if(location.href.search(/steamcommunity\.com\/tradeoffer/) < 0) {
 		return;
 	}
 
 	var div = document.createElement("div");
 	div.id = "trade_offer_buttons";
 	div.innerHTML = `<style>#trade_offer_buttons{margin: 10px 0px 0px 10px;} .btn_move_items{padding: 5px 15px;}</style>
-					 <a id="btn_add_all" class="btn_move_items btn_green_white_innerfade">添加全部普通卡牌</a>
+					 <a id="btn_add_cards" class="btn_move_items btn_green_white_innerfade">添加全部普通卡牌</a>
+					 <a id="btn_add_all" class="btn_move_items btn_green_white_innerfade">添加全部物品</a>
 					 <a id="btn_remove_all" class="btn_move_items btn_green_white_innerfade">移除全部物品</a>`;
 	document.querySelector("#trade_yours .offerheader").appendChild(div);
 
-	div.querySelector("#btn_add_all").onclick = addAllCommonCards;
+	div.querySelector("#btn_add_cards").onclick = addAllCommonCards;
+	div.querySelector("#btn_add_all").onclick = addAllItems;
 	div.querySelector("#btn_remove_all").onclick = removeAllItems;
+
+	appendPageControl();
 
 	function addAllCommonCards() {
 		var event = new Event("dblclick");
-		if (unsafeWindow.g_rgAppContextData && unsafeWindow.g_rgAppContextData[753] && unsafeWindow.g_rgAppContextData[753].rgContexts && 
-			unsafeWindow.g_rgAppContextData[753].rgContexts[6] && unsafeWindow.g_rgAppContextData[753].rgContexts[6].asset_count > 0) {
+		var g_rgAppContextData = unsafeWindow.g_rgAppContextData;
+		if (g_rgAppContextData && g_rgAppContextData[753] && g_rgAppContextData[753].rgContexts && 
+			g_rgAppContextData[753].rgContexts[6] && g_rgAppContextData[753].rgContexts[6].inventory) {
 
-			var rgItemElements = unsafeWindow.g_rgAppContextData[753].rgContexts[6].inventory.rgItemElements;
+			var rgItemElements = g_rgAppContextData[753].rgContexts[6].inventory.rgItemElements;
 			for (var itemHolder of rgItemElements) {
-				var element = itemHolder.querySelector("div.item");
-				if (element && element.rgItem && element.rgItem.tradable && checkCommonCard(element.rgItem.tags)) {
-					element.dispatchEvent(event);
+				if (itemHolder && itemHolder.rgItem && itemHolder.rgItem.tradable && checkCommonCard(itemHolder.rgItem.tags)) {
+					itemHolder.rgItem.element.dispatchEvent(event);
+				}
+			}
+		}
+	}
+
+	function addAllItems() {
+		var event = new Event("dblclick");
+		var g_rgAppContextData = unsafeWindow.g_rgAppContextData;
+		var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
+		var contextIds = g_ActiveInventory.rgContextIds ? g_ActiveInventory.rgContextIds : [g_ActiveInventory.contextid];
+		for (var contextid of contextIds) {
+			for (var itemHolder of g_rgAppContextData[g_ActiveInventory.appid].rgContexts[contextid].inventory.rgItemElements) {
+				if (itemHolder && itemHolder.rgItem && itemHolder.rgItem.tradable) {
+					itemHolder.rgItem.element.dispatchEvent(event);
 				}
 			}
 		}
@@ -449,8 +467,6 @@ function steamTradeOfferNew() {
 			document.querySelectorAll("#trade_yours > div.trade_item_box").style = null;
 
 		}, 100);
-
-
 	}
 
 	function checkCommonCard(tags) {
@@ -489,6 +505,7 @@ function steamInventoryPage(){
 	//修改页面布局
 	if (settings.inventory_set_style) {
 		changeInventoryPage();
+		appendPageControl();
 	}
 
 	//只显示普通卡牌
@@ -1076,7 +1093,7 @@ function steamMarketPage() {
 		} else if (elem.classList.contains("market_paging_pagelink")) {
 			page = parseInt(elem.getAttribute("data-page-num"));
 			if (page == -1) {  //向前跳转5页
-				page = Math.max(0, currentPage - 5);
+				page = Math.max(1, currentPage - 5);
 			} else if (page == -2) {  //向后跳转5页
 				page = Math.min(marketMyListingsPage.length, currentPage + 5);
 			}
@@ -1695,6 +1712,128 @@ function getSteamCommunitySettings() {
 	typeof data.market_show_priceinfo === "undefined" && (data.market_show_priceinfo = false);
 	typeof data.market_page_size === "undefined" && (data.market_page_size = 100);
 	return data;
+}
+
+//添加库存页面导航
+function appendPageControl() {
+	var styleElem = document.createElement("style");
+	styleElem.innerHTML = `#inventory_pagecontrols { display: none; }
+						   #SFU_pagecontrols { float: right; user-select: none; line-height: 22px; text-align: center; }
+						   .pagecontrol_pagelink { color: #ffffff; cursor: pointer; margin: 0 3px; }
+					  	   .pagecontrol_pagelink:hover { text-decoration: underline; }
+					  	   .pagecontrol_pagelink.active:hover { text-decoration: none; }
+					  	   .pagecontrol_pagelink.active { color: #747474; cursor: default; }`;
+	document.body.appendChild(styleElem);
+
+	var pageControl = document.createElement('div');
+	pageControl.id = 'SFU_pagecontrols';
+	var html = `<a class="pagebtn" href="javascript:InventoryPreviousPage();"> < </a>
+				<span id="pagecontrol_links"></span>
+				<a class="pagebtn" href="javascript:InventoryNextPage();"> > </a>`;
+	pageControl.innerHTML = html;
+	var inventory_pagecontrols = document.querySelector('#inventory_pagecontrols');
+	inventory_pagecontrols.parentNode.insertBefore(pageControl, inventory_pagecontrols);
+
+	var pageLinks = pageControl.querySelector('#pagecontrol_links');
+	pageLinks.onclick = function(event) {
+		var elem = event.target;
+		var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
+		if (elem.classList.contains("pagecontrol_pagelink")) {
+			var iCurPage = typeof(g_ActiveInventory.m_iCurrentPage) !== 'undefined' ? g_ActiveInventory.m_iCurrentPage : g_ActiveInventory.pageCurrent;
+			var iMaxPage = typeof(g_ActiveInventory.m_cPages) !== 'undefined' ? g_ActiveInventory.m_cPages : g_ActiveInventory.pageTotal;
+			var iNextPage = parseInt(elem.getAttribute("data-page-num"));
+			if (iNextPage == -1) {  //向前跳转5页
+				iNextPage = Math.max(0, iCurPage - 5);
+			} else if (iNextPage == -2) {  //向后跳转5页
+				iNextPage = Math.min(iMaxPage - 1, iCurPage + 5);
+			} else {
+				iNextPage -= 1;
+			}
+			if (iNextPage != iCurPage) {
+				changeInventoryPage(iNextPage);
+			}
+		}
+	};
+	
+	var obs = new MutationObserver(function() {
+		updatePageControl();
+	});
+	obs.observe(inventory_pagecontrols.querySelector('.pagecontrol_element.pagecounts'), { childList: true, subtree: true }); 
+
+	function updatePageControl() {
+		var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
+		if (!g_ActiveInventory) {
+			return;
+		}
+
+		var iCurPage = (typeof(g_ActiveInventory.m_iCurrentPage) !== 'undefined' ? g_ActiveInventory.m_iCurrentPage : g_ActiveInventory.pageCurrent) + 1;
+		var iMaxPage = typeof(g_ActiveInventory.m_cPages) !== 'undefined' ? g_ActiveInventory.m_cPages : g_ActiveInventory.pageTotal;
+		var html = `<span class="pagecontrol_pagelink" data-page-num="1"> 1 </span>`;
+		var begin = 2;
+		var end = iMaxPage;
+		if (iCurPage > 5) {
+			html += `<span class="pagecontrol_pagelink" data-page-num="-1"> ⋯ </span>`;
+			begin = iCurPage - 2;
+		}
+		if (iCurPage < iMaxPage - 4) {
+			end = iCurPage + 2;
+		}
+		for (var i = begin; i <= end; i++) {
+			html += `<span class="pagecontrol_pagelink" data-page-num="${i}"> ${i} </span>`;
+		}
+		if (end != iMaxPage) {
+			html += `<span class="pagecontrol_pagelink" data-page-num="-2"> ⋯ </span>`;
+			html += `<span class="pagecontrol_pagelink" data-page-num="${iMaxPage}"> ${iMaxPage} </span>`;
+		}
+		pageLinks.innerHTML = html;
+		pageLinks.querySelector(`.pagecontrol_pagelink[data-page-num="${iCurPage}"]`).classList.add("active");
+	}
+}
+
+//跳转到指定库存页
+function changeInventoryPage(iNextPage) {
+	var _this = unsafeWindow.g_ActiveInventory;
+	if(location.href.search(/steamcommunity\.com\/(id|profiles)\/.+\/inventory/) >= 0) {
+		if (_this.m_iCurrentPage != iNextPage && !_this.m_$Inventory.hasClass('paging_transition')) {
+			var nPageWidth = _this.m_$Inventory.children('.inventory_page:first').width();
+			var iCurPage = _this.m_iCurrentPage;
+	
+			_this.PrepPageTransition(nPageWidth, iCurPage, iNextPage);
+	
+			if (iCurPage < iNextPage) {
+				_this.m_$Inventory.css('left', '0');
+				_this.m_$Inventory.animate({left: -nPageWidth}, 250, null, function() {
+					_this.FinishPageTransition(iCurPage, iNextPage);
+				});
+			} else {
+				_this.m_$Inventory.css('left', '-' + nPageWidth + 'px');
+				_this.m_$Inventory.animate({left: 0}, 250, null, function() {
+					_this.FinishPageTransition(iCurPage, iNextPage);
+				});
+			}
+	
+		} else if (_this.m_$Inventory.hasClass('paging_transition' )) {
+			_this.m_fnQueuedPageTransition = function() { changeInventoryPage(iNextPage); };
+		}
+	} else if (location.href.search(/steamcommunity\.com\/tradeoffer/) >= 0) {
+		if (_this.pageCurrent != iNextPage && !_this.bInPagingTransition) {
+			var nPageWidth = parseInt(window.getComputedStyle(_this.elInventory.firstElementChild).width.replace('px', ''));
+
+			var iCurPage = _this.pageCurrent;
+
+			_this.PrepPageTransition(nPageWidth, iCurPage, iNextPage);
+			var fnOnFinish = _this.FinishPageTransition.bind(_this, iCurPage, iNextPage);
+
+			if (iCurPage < iNextPage) {
+				_this.elInventory.style.left = '0px';
+				_this.transitionEffect = new Effect.Move(_this.elInventory, {x: -nPageWidth, duration: 0.25, afterFinish: fnOnFinish });
+			} else {
+				_this.elInventory.style.left = '-' + nPageWidth + 'px';
+				_this.transitionEffect = new Effect.Move(_this.elInventory, {x: nPageWidth, duration: 0.25, afterFinish: fnOnFinish });
+			}
+		}
+	}
+
 }
 
 function appendCartForm(subid, sessionid, snr, orgsnr) {
