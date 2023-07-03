@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.7
+// @version      2.0.8
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
 // @include      *://store.steampowered.com/wishlist*
 // @include      *://store.steampowered.com/app/*
+// @include      *://store.steampowered.com/explore/
 // @include      *://steamcommunity.com/tradeoffer/*
 // @include      *://steamcommunity.com/id/*/inventory*
 // @include      *://steamcommunity.com/profiles/*/inventory*
@@ -17,6 +18,8 @@
 // @require      https://cdn.bootcdn.net/ajax/libs/localforage/1.7.1/localforage.min.js
 // @grant        unsafeWindow
 // ==/UserScript==
+
+'use strict';
 
 const TIMEOUT = 20000;
 
@@ -112,64 +115,34 @@ function steamAccountHistory() {
 
 //steam商店搜索页面
 function steamStorePage() {  
-	if(location.href.search(/store\.steampowered\.com\/(search|wishlist)/) < 0) {
+	if(location.href.search(/store\.steampowered\.com\/search/) < 0) {
 		return;
 	}
 
 	var appid, title, price;
-	var settings = getSettings();
-	addSettingsBtn();
+	var settings = getStoreSettings();
+	addStoreSettings();
 
-	//添加点击事件处理函数
-	handleSearchResult();
-	handleWishlist();
+	if (settings.search_click_picture || settings.search_click_price || settings.search_click_title) {
+		handleSearchResult();
+	}
 	
 	//搜索结果排序和过滤
-	if (settings.set_filter) {
+	if (settings.search_set_filter) {
 		filterSearchResult();
 	}
 
 	function handleSearchResult() {
-		if (location.href.search(/store\.steampowered\.com\/search/) < 0) {
-			return;
+		if (settings.search_click_title) {
+			var styleElem = document.createElement("style");
+			styleElem.innerHTML = "span.title { user-select:all; cursor:text; }";
+			document.body.appendChild(styleElem);
 		}
-		var styleElem = document.createElement("style");
-		styleElem.innerHTML = "span.title {user-select:all; cursor:text; }";
-		document.body.appendChild(styleElem);
 		document.querySelector("div#search_results").addEventListener("click", searchResultClicked);
-
-		//添加选项"添加至购物车"
-		/*
-		var obs = new MutationObserver(function(record, obs) {
-			var elem = checkAddedOptionsTooltip(record);
-			if (elem) {
-				appendOpiton(elem);
-			} else {
-				var elems = document.querySelectorAll(".ds_options_tooltip");
-				for(var el of elems) {
-					el.parentNode.removeChild(el);
-				}
-			}
-		});
-		obs.observe(document.body, {childList: true}); 
-		*/
-	}
-
-	function handleWishlist() {
-		if (location.href.search(/store\.steampowered\.com\/wishlist/) < 0) {
-			return;
-		}
-		var styleElem = document.createElement("style");
-		styleElem.innerHTML = "a.title {user-select:all; cursor:text; } div.discount_prices{ cursor:pointer; }";
-		document.body.appendChild(styleElem);
-		document.querySelector("div#wishlist_ctn").addEventListener("click", wishlistClicked);
 	}
 
 	//搜索结果排序和过滤
 	function filterSearchResult() {  
-		if (location.href.search(/store\.steampowered\.com\/search/) < 0) {
-			return;
-		}
 		var searchWord = document.querySelector("input#term").value;
 		if (searchWord == "" || searchWord == "输入搜索词或标签") {
 			var flag = false;
@@ -233,71 +206,25 @@ function steamStorePage() {
 		}
 	}
 
-	//添加设置按键
-	function addSettingsBtn() {
-		var settingBtn = document.createElement("div");
-		settingBtn.className = "store_header_btn_gray store_header_btn";
-		settingBtn.innerHTML = "<a class='store_header_btn_content' style='cursor: pointer;'>设置</a>";
-		settingBtn.onclick = function() {
-			unsafeWindow.sfu_settings = settings;
-			var options = (`<div style="user-select: none;">
-							<div><input id="sfu_set_click_picture" type="checkbox" onclick="window.sfu_settings.set_click_picture = this.checked;" ${settings.set_click_picture ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_click_picture" style="cursor: pointer;">点击游戏图片跳转到徽章页面</label></div><br>
-							<div><input id="sfu_set_click_title" type="checkbox" onclick="window.sfu_settings.set_click_title = this.checked;" ${settings.set_click_title ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_click_title" style="cursor: pointer;">点击游戏名时选中并复制</label></div><br>
-							<div><input id="sfu_set_click_price" type="checkbox" onclick="window.sfu_settings.set_click_price = this.checked;" ${settings.set_click_price ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_click_price" style="cursor: pointer;">点击游戏价格时添加到购物车</label></div><br>
-							<div><input id="sfu_set_filter" type="checkbox" onclick="window.sfu_settings.set_filter = this.checked;" ${settings.set_filter ? "checked=true" : ""} style="cursor: pointer;"></input><label for="sfu_set_filter" style="cursor: pointer;">价格由低到高显示有卡牌的游戏</label></div><br></div>`);
-			unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
-				settings = unsafeWindow.sfu_settings;
-				setStorageValue("SFU_SETTINGS", settings);
-			});
-		};
-		var cartElem = document.querySelector("div#cart_status_data");
-		cartElem.insertBefore(settingBtn, cartElem.firstElementChild);
-	}
-
 	function searchResultClicked(event) {
 		var elem = event.target;
-		if (settings.set_click_title && elem.classList.contains("title")) {  //点击游戏名时选中并自动复制
+		if (settings.search_click_title && elem.classList.contains("title")) {  //点击游戏名时选中并自动复制
 			event.preventDefault();
 			document.execCommand("Copy"); 
-		} else if (settings.set_click_picture && (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule"))) {  //点击游戏图片时打开徽章页
+		} else if (settings.search_click_picture && (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule"))) {  //点击游戏图片时打开徽章页
 			event.preventDefault();
 			var aid = getAppid(elem, event.currentTarget, "search_result_row", "data-ds-appid");
 			if (aid) {
 				var url = `https://steamcommunity.com/my/gamecards/${aid}/`; 
 				var win = window.open(url);
 			}
-		} else if (settings.set_click_price && (elem.classList.contains("search_price") || elem.parentNode.classList.contains("search_price") || elem.parentNode.parentNode.classList.contains("search_price"))) {  //点击游戏价格时添加到购物车
+		} else if (settings.search_click_price && (elem.classList.contains("search_price") || elem.parentNode.classList.contains("search_price") || elem.parentNode.parentNode.classList.contains("search_price"))) {  //点击游戏价格时添加到购物车
 			event.preventDefault();
 			appid = getAppid(elem, event.currentTarget, "search_result_row", "data-ds-appid");
 			title = getTitle(elem, event.currentTarget);
 			price = getPrice(elem, event.currentTarget);
 			autoAddToCart();
 		}
-	}
-
-	function wishlistClicked(event) {
-		var elem = event.target;
-		var aid = getAppid(elem, event.currentTarget, "wishlist_row", "data-app-id");
-		if (elem.classList.contains("title")) {
-			event.preventDefault();
-			document.execCommand("Copy"); 
-		} else if (elem.classList.contains("discount_prices") || elem.parentNode.classList.contains("discount_prices")) {
-			window.open(`https://store.steampowered.com/app/${aid}/`);
-		} else if (elem.parentNode.classList.contains("screenshots")) {
-			event.preventDefault();
-			window.open(`https://steamcommunity.com/my/gamecards/${aid}/`);
-		}
-	}
-	
-	function getAppid(elem, stopElem, className, attrName) {
-		var el = elem;
-		while(el != stopElem && el != document.body) {
-			if(el.classList.contains(className)) {
-				return el.getAttribute(attrName);
-			}
-			el = el.parentNode;
-		}
-		return null;
 	}
 
 	function getTitle(elem, stopElem) {
@@ -322,31 +249,6 @@ function steamStorePage() {
 		return null;
 	}
 
-	function checkAddedOptionsTooltip(record) {
-		for (var rd of record) {
-			if (rd.addedNodes.length > 0) {
-				for (var node of rd.addedNodes) {
-					if (node.classList && node.classList.contains("ds_options_tooltip")) {
-						return node;
-					}
-				}
-			}
-		}
-		return null;
-	}
-
-	function appendOpiton(elemTarget) {
-		elemTarget = elemTarget || document.querySelector(".ds_options_tooltip");
-		if (elemTarget && !elemTarget.querySelector("#add_to_cart_btn")) {
-			var elem = document.createElement("div");
-			elem.className = "option";
-			elem.id = "add_to_cart_btn";
-			elem.innerHTML = "添加至购物车";
-			elemTarget.appendChild(elem);
-			elem.onclick = autoAddToCart;
-		}
-	}
-
 	function autoAddToCart() {  //自动添加到购物车
 		if (appid && title && price) {
 			var win = unsafeWindow.open(`https://store.steampowered.com/app/${appid}/?l=english`, "_blank", "width=800, height=800");
@@ -367,16 +269,48 @@ function steamStorePage() {
 			});
 		}
 	}
+}
 
-	function getSettings() {
-		var data = getStorageValue("SFU_SETTINGS") || {};
-		typeof data.set_click_picture === "undefined" && (data.set_click_picture = true);
-		typeof data.set_click_title === "undefined" && (data.set_click_title = true);
-		typeof data.set_click_price === "undefined" && (data.set_click_price = true);
-		typeof data.set_filter === "undefined" && (data.set_filter = true);
-		return data;
+//愿望单页面
+function steamWishlistPage() {
+	if(location.href.search(/store\.steampowered\.com\/wishlist/) < 0) {
+		return;
 	}
-	
+
+	var settings = getStoreSettings();
+	addStoreSettings();
+
+	if (settings.wishlist_click_picture || settings.wishlist_click_price || settings.wishlist_click_title) {
+		handleWishlist();
+	}
+
+	function handleWishlist() {
+		var styleElem = document.createElement("style");
+		var html = "";
+		if (settings.wishlist_click_title) {
+			html += "a.title {user-select:all; cursor:text; }";
+		}
+		if (settings.wishlist_click_price) {
+			html += "div.discount_prices{ cursor:pointer; }";
+		}
+		styleElem.innerHTML = html;
+		document.body.appendChild(styleElem);
+		document.querySelector("div#wishlist_ctn").addEventListener("click", wishlistClicked);
+	}
+
+	function wishlistClicked(event) {
+		var elem = event.target;
+		var aid = getAppid(elem, event.currentTarget, "wishlist_row", "data-app-id");
+		if (settings.wishlist_click_title && elem.classList.contains("title")) {
+			event.preventDefault();
+			document.execCommand("Copy"); 
+		} else if (settings.wishlist_click_price && (elem.classList.contains("discount_prices") || elem.parentNode.classList.contains("discount_prices"))) {
+			window.open(`https://store.steampowered.com/app/${aid}/`);
+		} else if (settings.wishlist_click_picture && elem.parentNode.classList.contains("screenshots")) {
+			event.preventDefault();
+			window.open(`https://steamcommunity.com/my/gamecards/${aid}/`);
+		}
+	}
 }
 
 //app页面
@@ -396,8 +330,108 @@ function steamAppStorePage() {
 	}
 }
 
+//探索队列界面
+function steamExplorePage() {
+	if(location.href.search(/store\.steampowered\.com\/explore/) < 0) {
+		return;
+	}
+
+	var exploreBtn = document.createElement('div');
+	exploreBtn.className = 'btnv6_blue_hoverfade btn_medium auto_explore_btn';
+	exploreBtn.innerHTML = '<span>自动探索队列</span>';
+	exploreBtn.style = 'float: right;';
+	exploreBtn.onclick = autoExploreQueue;
+
+	var header = document.querySelector('div.header_area');
+	header.insertBefore(exploreBtn, header.firstElementChild);
+
+	async function autoExploreQueue() {
+		exploreBtn.onclick = null;
+		exploreBtn.className = 'discovery_queue_customize_ctn auto_explore_btn';
+		exploreBtn.style = 'float: right; margin-bottom: 0; padding: 0 15px; line-height: 32px;';
+		exploreBtn.innerHTML = '<span>生成新的队列</span>';
+		var sessionid = unsafeWindow.g_sessionID;
+		var result = await generateNewDiscoveryQueue(sessionid, 0);
+		if (result.success) {
+			var queue = result.data.queue;
+			var num = 1;
+			var total = queue.length;
+			for (var appid of queue) {
+				exploreBtn.innerHTML = `<span>探索队列中：${num}/${total}</span>`;
+				var res = await clearFromQueue(sessionid, appid);
+				if (!res.success) {
+					break;
+				}
+				num++;
+			}
+			if (num > total) {
+				exploreBtn.innerHTML = '<span>探索队列完成</span>';
+			} else {
+				exploreBtn.innerHTML = '<span>探索队列失败</span>';
+			}
+		} else {
+			exploreBtn.innerHTML = '<span>生成新的队列失败</span>';
+		}
+	}
+
+	function generateNewDiscoveryQueue(sessionid, queuetype) {
+		return new Promise(function(resolve, reject) {
+			var url = "https://store.steampowered.com/explore/generatenewdiscoveryqueue";
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("POST", url, true);
+			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve({success: true, data: JSON.parse(e.target.response)});
+				} else {
+					console.log("generateNewDiscoveryQueue failed");
+					resolve(e.target);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("generateNewDiscoveryQueue error");
+				resolve(error);
+			};
+			xhr.ontimeout = function() {
+				console.log("generateNewDiscoveryQueue timeout");
+				resolve({status: 408});
+			};
+			xhr.send(`sessionid=${sessionid}&queuetype=${queuetype}`);
+		});
+	}
+
+	function clearFromQueue(sessionid, appid) {
+		return new Promise(function(resolve, reject) {
+			var url = "https://store.steampowered.com/app/20";
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("POST", url, true);
+			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve({success: true});
+				} else {
+					console.log("clearFromQueue failed");
+					resolve(e.target);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("clearFromQueue error");
+				resolve(error);
+			};
+			xhr.ontimeout = function() {
+				console.log("clearFromQueue timeout");
+				resolve({status: 408});
+			};
+			xhr.send(`sessionid=${sessionid}&appid_to_clear_from_queue=${appid}`);
+		});
+	}
+
+}
+
 //交易报价页面
-function steamTradeOfferNew() {
+function steamTradeOfferPage() {
 	if(location.href.search(/steamcommunity\.com\/tradeoffer/) < 0) {
 		return;
 	}
@@ -1427,7 +1461,7 @@ function steamMarketListingPage() {
 	}
 }
 
-//徽章界面显示卡牌价格信息
+//steam徽章界面
 function steamGameCardsPage() {  
 	if(location.href.search(/steamcommunity\.com\/(id|profiles)\/.+\/gamecards/) < 0) {
 		return;
@@ -1656,6 +1690,51 @@ var dialogPriceInfo = {
 		}
 	}
 };
+
+//添加商店设置
+function addStoreSettings() {
+	var settingBtn = document.createElement("div");
+	settingBtn.className = "store_header_btn_gray store_header_btn";
+	settingBtn.innerHTML = "<a class='store_header_btn_content' style='cursor: pointer;'>设置</a>";
+	settingBtn.onclick = function() {
+		var settings = getStoreSettings();
+		unsafeWindow.sfu_settings = settings;
+		var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_row input[type="checkbox"], .settings_row label {cursor: pointer;}
+						.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="checkbox"] {margin: 3px 3px 3px 4px;}</style>
+						<div class="settings_container">
+						<div class="settings_page_title">商店搜索页面设置：</div>
+						<div class="settings_row">
+						<div class="settings_option"><input id="sfu_search_click_picture" type="checkbox" onclick="window.sfu_settings.search_click_picture = this.checked;" ${settings.search_click_picture ? "checked=true" : ""}></input><label for="sfu_search_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
+						<div class="settings_option"><input id="sfu_search_click_title" type="checkbox" onclick="window.sfu_settings.search_click_title = this.checked;" ${settings.search_click_title ? "checked=true" : ""}></input><label for="sfu_search_click_title" class="margin_right_20">点击游戏名时选中并复制</label></div>
+						<div class="settings_option"><input id="sfu_search_click_price" type="checkbox" onclick="window.sfu_settings.search_click_price = this.checked;" ${settings.search_click_price ? "checked=true" : ""}></input><label for="sfu_search_click_price" class="margin_right_20">点击游戏价格时添加到购物车</label></div>
+						<div class="settings_option"><input id="sfu_search_set_filter" type="checkbox" onclick="window.sfu_settings.search_set_filter = this.checked;" ${settings.search_set_filter ? "checked=true" : ""}></input><label for="sfu_search_set_filter">价格由低到高显示有卡牌的游戏</label></div>
+						</div>
+						<div class="settings_page_title">愿望单页面设置：</div>
+						<div class="settings_row">
+						<div class="settings_option"><input id="sfu_wishlist_click_picture" type="checkbox" onclick="window.sfu_settings.wishlist_click_picture = this.checked;" ${settings.wishlist_click_picture ? "checked=true" : ""}></input><label for="sfu_wishlist_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
+						<div class="settings_option"><input id="sfu_wishlist_click_title" type="checkbox" onclick="window.sfu_settings.wishlist_click_title = this.checked;" ${settings.wishlist_click_title ? "checked=true" : ""}></input><label for="sfu_wishlist_click_title" class="margin_right_20">点击游戏名时选中并复制</label></div>
+						<div class="settings_option"><input id="sfu_wishlist_click_price" type="checkbox" onclick="window.sfu_settings.wishlist_click_price = this.checked;" ${settings.wishlist_click_price ? "checked=true" : ""}></input><label for="sfu_wishlist_click_price">点击游戏价格时打开商店页面</label></div>
+						</div></div>`);
+		unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
+			settings = unsafeWindow.sfu_settings;
+			setStorageValue("SFU_STORE_SETTINGS", settings);
+		});
+	};
+	var cartElem = document.querySelector("div#cart_status_data");
+	cartElem.insertBefore(settingBtn, cartElem.firstElementChild);
+}
+
+function getStoreSettings() {
+	var data = getStorageValue("SFU_STORE_SETTINGS") || {};
+	typeof data.search_click_picture === "undefined" && (data.search_click_picture = true);
+	typeof data.search_click_title === "undefined" && (data.search_click_title = true);
+	typeof data.search_click_price === "undefined" && (data.search_click_price = true);
+	typeof data.search_set_filter === "undefined" && (data.search_set_filter = true);
+	typeof data.wishlist_click_picture === "undefined" && (data.wishlist_click_picture = true);
+	typeof data.wishlist_click_title === "undefined" && (data.wishlist_click_title = true);
+	typeof data.wishlist_click_price === "undefined" && (data.wishlist_click_price = true);
+	return data;
+}
 
 //添加设置按键和设置页面
 function addSteamCommunitySetting() {
@@ -1891,6 +1970,17 @@ function getPriceFromSymbolStr(str) {
 		str = str + ',00';
 	}
 	return parseInt(str.replace(/\D/g, ''));
+}
+
+function getAppid(elem, stopElem, className, attrName) {
+	var el = elem;
+	while(el != stopElem && el != document.body) {
+		if(el.classList.contains(className)) {
+			return el.getAttribute(attrName);
+		}
+		el = el.parentNode;
+	}
+	return null;
 }
 
 //由买家支付的金额计算卖家收到的金额
@@ -2800,8 +2890,10 @@ function getWalletInfo(code) {
 	}
 	unsafeWindow.sfu_inited = true;
 	steamStorePage();
+	steamWishlistPage();
 	steamAppStorePage();
-	steamTradeOfferNew();
+	steamExplorePage();
+	steamTradeOfferPage();
 	steamInventoryPage();
 	steamMarketListingPage();
 	steamGameCardsPage();
