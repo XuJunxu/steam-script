@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.8
+// @version      2.0.9
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -862,33 +862,38 @@ function steamInventoryPage(){
 		btns0.className = "item_owner_actions";
 		btns0.style.padding = "10px 0px 0px 10px";
 		btns0.style.display = "none";
-		var iconElem = document.querySelector("#iteminfo0_content>div.item_desc_icon");
-		iconElem.style.display = "flex";
-		iconElem.appendChild(btns0);
+		var iconElem0 = document.querySelector("#iteminfo0_content>div.item_desc_icon");
+		iconElem0.appendChild(btns0);
 		var btns1 = document.createElement("div");
 		btns1.id = "inventory_link_btn1";
 		btns1.className = "item_owner_actions";
 		btns1.style.padding = "10px 0px 0px 10px";
 		btns1.style.display = "none";
-		var iconElem = document.querySelector("#iteminfo1_content>div.item_desc_icon");
-		iconElem.style.display = "flex";
-		iconElem.appendChild(btns1);
+		var iconElem1 = document.querySelector("#iteminfo1_content>div.item_desc_icon");
+		iconElem1.appendChild(btns1);
 
 		document.querySelector("#inventories").addEventListener("click", function(event) {
 			if (!event.target.classList.contains("inventory_item_link")) {
 				return;
 			}
 			var selectedItem = unsafeWindow.g_ActiveInventory.selectedItem;
-			if (selectedItem && selectedItem.description.marketable && selectedItem.appid == 753 && selectedItemIsCard(selectedItem)) {
+			if (selectedItem && selectedItemMarketable(selectedItem)) {
 				var appid = selectedItem.appid;
 				var feeApp = selectedItem.description.market_fee_app;
 				var hashName = getMarketHashName(selectedItem.description);
-				var isfoil = hashName.search(/Foil/) < 0 ? false : true;
-				var html = `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/listings/${appid}/${hashName}" target="_blank"><span>打开市场页面</span></a>
-							<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/my/gamecards/${feeApp}/${isfoil ? '?border=1' : ''}" target="_blank"><span>打开徽章页面</span></a>
-							<a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}" target="_blank"><span>打开商店页面</span></a>
-							<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>`;
-				
+				var html = `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/listings/${appid}/${hashName}" target="_blank"><span>打开市场页面</span></a>`;
+				if (selectedItem.appid == 753 && selectedItemIsCard(selectedItem)) {
+					var isfoil = hashName.search(/Foil/) < 0 ? false : true;
+					html += `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/my/gamecards/${feeApp}/${isfoil ? '?border=1' : ''}" target="_blank"><span>打开徽章页面</span></a>
+							 <a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}" target="_blank"><span>打开商店页面</span></a>
+							 <a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>`;
+					iconElem0.style.display = "flex";
+					iconElem1.style.display = "flex";
+				} else {
+					iconElem0.style.display = null;
+					iconElem1.style.display = null;
+				}
+
 				document.querySelector("#inventory_link_btn0").innerHTML = html;
 				document.querySelector("#inventory_link_btn1").innerHTML = html;
 				document.querySelector("#inventory_link_btn0").style.display = "block";
@@ -912,6 +917,19 @@ function steamInventoryPage(){
 		for(var tag of selectedItem.description.tags) {
 			if (tag.category == "cardborder") {
 				return true;
+			}
+		}
+		return false;
+	}
+
+	function selectedItemMarketable(selectedItem) {
+		if (selectedItem.description.marketable) {
+			return true;
+		} else if (selectedItem.description.owner_descriptions) {
+			for (var des of selectedItem.description.owner_descriptions) {
+				if (des.value.search(/\[date\]\d{10}\[\/date\]/) >= 0) {
+					return true;
+				}
 			}
 		}
 		return false;
