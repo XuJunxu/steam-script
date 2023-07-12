@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.0.9
+// @version      2.1.0
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @include      *://store.steampowered.com/search*
@@ -649,7 +649,9 @@ function steamInventoryPage(){
 
 		var html = `<div><a class="show_market_info">显示市场价格信息</a></div><div class="market_info"><div class="price_gram"></div><div class="price_overview"></div></div>
 					<div class="sell_btn_container"><div><input class="sell_price_input" type="number" step="0.01" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
-					<a class="btn_small btn_green_white_innerfade sell_comfirm"><span>确认出售</span></a><label class="price_receive" title="收到的金额"><label></div><div class="sell_btns"></div></div>`;
+					<a class="btn_small btn_green_white_innerfade sell_comfirm"><span>确认出售</span></a>
+					<a class="btn_small btn_green_white_innerfade sell_all_same" title="出售全部相同的物品"><span>批量出售</span></a><br>
+					<label class="price_receive" title="收到的金额"><label></div><div class="sell_btns"></div></div>`;
 		var container0 = document.createElement("div");
 		container0.id = "price_gram_container0";
 		var container1 = document.createElement("div");
@@ -676,6 +678,8 @@ function steamInventoryPage(){
 					document.querySelector("#price_gram_container1 .sell_price_input").oninput = event => showPriceReceive(event, selectedItem);
 					document.querySelector("#price_gram_container0 .sell_comfirm").onclick = event => sellItemCustom(event, selectedItem);
 					document.querySelector("#price_gram_container1 .sell_comfirm").onclick = event => sellItemCustom(event, selectedItem);
+					document.querySelector("#price_gram_container0 .sell_all_same").onclick = event => sellAllSameItem(event, selectedItem);
+					document.querySelector("#price_gram_container1 .sell_all_same").onclick = event => sellAllSameItem(event, selectedItem);
 				} else {
 					document.querySelector("#price_gram_container0 .sell_btn_container").style.display = "none";
 					document.querySelector("#price_gram_container1 .sell_btn_container").style.display = "none";
@@ -815,19 +819,37 @@ function steamInventoryPage(){
 	}
 
 	function sellItemCustom(event, item) {
-		var input = event.currentTarget.previousElementSibling;
+		var input = event.currentTarget.parentNode.querySelector("input");
 		var amount = isNaN(parseFloat(input.value)) ? 0 : Math.round(parseFloat(input.value) * 100);
 		sellSelectedItem(amount, item);
 	}
 
-	async function sellSelectedItem(amount, item) {
-		var price = calculatePriceYouReceive(amount, item);
+	//批量上架出售相同的物品
+	async function sellAllSameItem(event, item) {
+		var hashName = item.description.market_hash_name;
+		var m_rgAssets = unsafeWindow.g_rgAppContextData[item.appid].rgContexts[parseInt(item.contextid)].inventory.m_rgAssets;
+		if (hashName && m_rgAssets) {
+			var input = event.currentTarget.parentNode.querySelector("input");
+			var amount = isNaN(parseFloat(input.value)) ? 0 : Math.round(parseFloat(input.value) * 100);
+			var price = calculatePriceYouReceive(amount, item);
+			var buyerPay = calculatePriceBuyerPay(price, item);
+			for (let assetid in m_rgAssets) {
+				let it = m_rgAssets[assetid];
+				if (it.description && it.description.marketable && it.description.market_hash_name == hashName) {
+					await sellSelectedItem(0, it, price, buyerPay);
+				}
+			}
+		}
+	}
+
+	async function sellSelectedItem(amount, item, priceReceive=0, pricePay=0) {
+		var price = priceReceive || calculatePriceYouReceive(amount, item);
 		if (price > 0) {
 			var data = await sellItem(unsafeWindow.g_sessionID, item.appid, item.contextid, item.assetid, 1, price);
 			if (data.success) {
 				item.element.style.background = "green";
 
-				var buyerPay = calculatePriceBuyerPay(price, item);
+				var buyerPay = pricePay || calculatePriceBuyerPay(price, item);
 				sellTotalPriceBuyerPay += buyerPay;
 				sellTotalPriceReceive += price;
 				sellCount ++;
@@ -967,16 +989,17 @@ function steamMarketPage() {
 
 	//调整出售物品列表
 	async function adjustMySellListings() {
+		document.querySelector("#tabMyMarketHistory").addEventListener("click", showMarketHistory, true);
+
 		var marketListings = document.querySelector("#tabContentsMyActiveMarketListingsRows");
-		marketListings.style.display = "none";
-		marketListings.innerHTML = "";  //清空原有的表格
+		marketListings.innerHTML = "<div style='text-align: center;'><img src='https://community.steamstatic.com/public/images/login/throbber.gif' alt='载入中'></div>";
 		
 		var styleElem = document.createElement("style");
 		styleElem.innerHTML = `#tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
 								#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}
 								.market_listing_check {position: absolute; top: 6px; right: 20px; cursor: pointer;}
-								#market_page_control_before {margin-top: 10px; user-select: none;} #market_page_control_after {margin-top: 10px; user-select: none;}
-								.market_action_btn {padding: 0px 5px; margin-right: 5px; font-size: 12px;} .market_action_btn_container {display: inline-block;}
+								#market_page_control_before, #market_page_control_after, #history_page_control_before, #history_page_control_after {margin-top: 10px; user-select: none;}
+								.market_action_btn {padding: 0px 5px; margin-right: 5px; font-size: 12px;} .market_action_btn_container, .history_action_btn_container {padding-left: 6px; display: inline-block; position: relative;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header {display: flex; flex-direction: row-reverse;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
@@ -985,7 +1008,12 @@ function steamMarketPage() {
 								.market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
 								.market_price_label {line-height: normal;}
 								.market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px;}
-								.market_show_filter > option {color: #ffffff; background-color: #333333;}`;
+								.market_show_filter > option {color: #ffffff; background-color: #333333;}
+								.history_action_btn_container .history_page_number {width: 45px; height: 18px; border-radius: 3px; color: #fff; background-color: #324965; font-family: "Motiva Sans", Sans-serif; border-color: #45566A; margin: 1px 5px 0 0; text-align: center;}
+								.history_action_btn_container .history_total_page {margin-right: 5px;}
+								#market_page_control_before .market_paging_controls, #market_page_control_after .market_paging_controls, #history_page_control_before .market_paging_controls, #history_page_control_after .market_paging_controls {margin-top: 2px;}
+								.wait_loading_history {position: absolute; height: 20px; top: 2px;}
+								.history_page_number::-webkit-outer-spin-button, .history_page_number::-webkit-inner-spin-button{-webkit-appearance: none !important;}`;
 		document.body.appendChild(styleElem);
 
 		//使表头可点击排序
@@ -1083,6 +1111,122 @@ function steamMarketPage() {
 		}
 	}
 
+	//显示市场历史记录
+	async function showMarketHistory(event) {
+		event.preventDefault();
+		event.stopPropagation();
+		unsafeWindow.HideHover();
+		document.querySelector("#tabContentsMyListings").hide();
+		document.querySelector("#tabContentsMyMarketHistory").show();
+		document.querySelector("#tabMyListings").addClassName("market_tab_well_tab_inactive");
+		document.querySelector("#tabMyListings").removeClassName("market_tab_well_tab_active");
+		document.querySelector("#tabMyMarketHistory").addClassName("market_tab_well_tab_active");
+		document.querySelector("#tabMyMarketHistory").removeClassName("market_tab_well_tab_inactive");
+
+		if (document.querySelector("#tabContentsMyMarketHistory #history_page_control_before")) {
+			return;
+		}
+
+		var res = await getMarketMyHistory();
+		if (res.success) {
+			document.querySelector("#tabContentsMyMarketHistory").innerHTML = res.results_html;
+			addHistoryPageControl();
+			updateHistoryPageControl(res);
+			addMarketLink(res);
+		} else {
+			document.querySelector("#tabContentsMyMarketHistory").innerHTML = "Failed";
+		}
+	}
+
+	async function updateMarketHistory(page, pageSize=10) {
+		if (page > 0) {
+			document.querySelector("#history_page_control_before .wait_loading_history").style.display = null;
+			document.querySelector("#history_page_control_after .wait_loading_history").style.display = null;
+			document.querySelector("#history_page_control_before .get_history_failed").style.display = "none";
+				document.querySelector("#history_page_control_after .get_history_failed").style.display = "none";
+			var start = (page - 1) * pageSize;
+			var res = await getMarketMyHistory(start, pageSize);
+			if (res.success) {
+				document.querySelector("#tabContentsMyMarketHistoryRows").innerHTML = res.results_html;
+				updateHistoryPageControl(res);
+				addMarketLink(res);
+			} else {
+				document.querySelector("#history_page_control_before .wait_loading_history").style.display = "none";
+				document.querySelector("#history_page_control_after .wait_loading_history").style.display = "none";
+				document.querySelector("#history_page_control_before .get_history_failed").style.display = null;
+				document.querySelector("#history_page_control_after .get_history_failed").style.display = null;
+			}
+		}
+	}
+
+	function addHistoryPageControl() {
+		document.querySelector("#tabContentsMyMarketHistory_ctn").style.display = "none";
+		var controlBefore = document.createElement("div");
+		controlBefore.id = "history_page_control_before";
+		var controlAfter = document.createElement("div");
+		controlAfter.id = "history_page_control_after";
+
+		var html = `<div class="history_action_btn_container"><a class="update_market_history market_action_btn pagebtn">刷新</a><a class="goto_history_page market_action_btn pagebtn">转到</a>
+					<input type="number" class="history_page_number" min="1"><span class="history_total_page"></span>
+					<img class="wait_loading_history" src="https://community.steamstatic.com/public/images/login/throbber.gif" alt="载入中" style="display: none;">
+					<span class="get_history_failed" style="display: none;">Failed<span></div>
+					<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span><div>`;
+		controlBefore.innerHTML = html;
+		controlAfter.innerHTML = html;
+		var marketTable = document.querySelector("#tabContentsMyMarketHistoryTable");
+		marketTable.insertBefore(controlBefore, marketTable.querySelector("#tabContentsMyMarketHistoryRows"));
+		marketTable.appendChild(controlAfter);
+		controlBefore.querySelector(".market_paging_controls").onclick = historyPageControlClick;
+		controlAfter.querySelector(".market_paging_controls").onclick = historyPageControlClick;
+		controlBefore.querySelector(".history_action_btn_container").onclick = historyActionBtnClick;
+		controlAfter.querySelector(".history_action_btn_container").onclick = historyActionBtnClick;
+	}
+
+	function historyActionBtnClick(event) {
+		var elem = event.target;
+		if (elem.classList.contains("update_market_history")) {
+			updateMarketHistory(1);
+		} else if (elem.classList.contains("goto_history_page")) {
+			var input = event.currentTarget.querySelector(".history_page_number");
+			var page = isNaN(parseInt(input.value)) ? 0 : parseInt(input.value);
+			updateMarketHistory(page);
+		}
+	}
+
+	function historyPageControlClick(event) {
+		var elem = event.target;
+		var cpage = parseInt(event.currentTarget.querySelector(".market_paging_pagelink.active").getAttribute("data-page-num"));
+		var maxPage = parseInt(event.currentTarget.querySelector(".market_paging_pagelink:last-child").getAttribute("data-page-num"));
+		var page = getNextPage(elem, cpage, maxPage);
+
+		if (page > 0 && page != cpage && page <= maxPage) {
+			updateMarketHistory(page);
+		}
+	}
+
+	function updateHistoryPageControl(data) {
+		document.querySelector("#history_page_control_before .wait_loading_history").style.display = "none";
+		document.querySelector("#history_page_control_after .wait_loading_history").style.display = "none";
+		document.querySelector("#history_page_control_before .get_history_failed").style.display = "none";
+		document.querySelector("#history_page_control_after .get_history_failed").style.display = "none";
+
+		var page = Math.ceil(data.start / data.pagesize) + 1;
+		var maxPage = Math.ceil(data.total_count / data.pagesize);
+		var html = createPageLink(page, maxPage);
+
+		document.querySelector("#history_page_control_before .page_link").innerHTML = html;
+		document.querySelector("#history_page_control_after .page_link").innerHTML = html;
+		document.querySelector(`#history_page_control_before .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
+		document.querySelector(`#history_page_control_after .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
+
+		document.querySelector("#history_page_control_before .history_page_number").value = page.toString();
+		document.querySelector("#history_page_control_after .history_page_number").value = page.toString();
+
+		var content = `/ ${maxPage} 页`;
+		document.querySelector("#history_page_control_before .history_total_page").textContent = content;
+		document.querySelector("#history_page_control_after .history_total_page").textContent = content;
+	}
+
 	//列表上下添加操作按键和页面导航
 	function addMarketPageControl() {
 		var styleElem = document.createElement("style");
@@ -1102,8 +1246,8 @@ function steamMarketPage() {
 		var marketTable = document.querySelector("#tabContentsMyActiveMarketListingsTable");
 		marketTable.insertBefore(controlBefore, marketTable.querySelector(".market_listing_table_header"));
 		marketTable.appendChild(controlAfter);
-		controlBefore.querySelector(".market_paging_controls").onclick = pageControlClick;
-		controlAfter.querySelector(".market_paging_controls").onclick = pageControlClick;
+		controlBefore.querySelector(".market_paging_controls").onclick = marketPageControlClick;
+		controlAfter.querySelector(".market_paging_controls").onclick = marketPageControlClick;
 		controlBefore.querySelector(".market_action_btn_container").onclick = marketActionBtnClick;
 		controlAfter.querySelector(".market_action_btn_container").onclick = marketActionBtnClick;
 		controlBefore.querySelector(".market_show_filter").onchange = showFilterChanged;
@@ -1111,35 +1255,9 @@ function steamMarketPage() {
 	}
 
 	//更新页面导航中的页面编号
-	function updatePageControl(page) {
-		var html = `<span class="market_paging_pagelink" data-page-num="1"> 1 </span>`;
+	function updateMarketPageControl(page) {
 		var maxPage = marketMyListingsPage.length;
-		var begin = 2;
-		var end = maxPage - 1;
-
-		if (maxPage > 9) {
-			if (page <= 5) {
-				end = 7;
-			} else if (page >= maxPage - 4) {
-				begin = maxPage - 6;
-			} else {
-				begin = page - 2;
-				end = page + 2;
-			}
-		}
-
-		if (begin > 3) {
-			html += `<span class="market_paging_pagelink" data-page-num="-1"> ⋯ </span>`;
-		}
-		for (var i = begin; i <= end; i++) {
-			html += `<span class="market_paging_pagelink" data-page-num="${i}"> ${i} </span>`;
-		}
-		if (end < maxPage - 2) {
-			html += `<span class="market_paging_pagelink" data-page-num="-2"> ⋯ </span>`;
-		}
-		if (maxPage > 1) {
-			html += `<span class="market_paging_pagelink" data-page-num="${maxPage}"> ${maxPage} </span>`;
-		}
+		var html = createPageLink(page, maxPage);
 
 		document.querySelector("#market_page_control_before .page_link").innerHTML = html;
 		document.querySelector("#market_page_control_after .page_link").innerHTML = html;
@@ -1147,24 +1265,14 @@ function steamMarketPage() {
 		document.querySelector(`#market_page_control_after .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
 	}
 
-	function pageControlClick(event) {
+	function marketPageControlClick(event) {
 		var elem = event.target;
-		var page = 0;
-		if (elem.classList.contains("prev_page")) {
-			page = currentPage - 1;
-		} else if (elem.classList.contains("next_page")) {
-			page = currentPage + 1;
-		} else if (elem.classList.contains("market_paging_pagelink")) {
-			page = parseInt(elem.getAttribute("data-page-num"));
-			if (page == -1) {  //向前跳转5页
-				page = Math.max(1, currentPage - 5);
-			} else if (page == -2) {  //向后跳转5页
-				page = Math.min(marketMyListingsPage.length, currentPage + 5);
-			}
-		}
-		if (page > 0 && page <= marketMyListingsPage.length) {
-			showPage(page);
-			updatePageControl(page);
+		var maxPage = marketMyListingsPage.length;
+		var page = getNextPage(elem, currentPage, maxPage);
+
+		if (page > 0 && page != currentPage && page <= maxPage) {
+			showMarketPage(page);
+			updateMarketPageControl(page);
 		}
 	}
 
@@ -1217,22 +1325,75 @@ function steamMarketPage() {
 		}
 	}
 
-	async function removeSelectedListings(listingsToRemove) {
-		for (var listingElem of listingsToRemove) {
-			var btn = listingElem.querySelector("a.item_market_action_button_edit");
-			var listingid = getListid(listingElem);
-			var data = await marketRemoveListing(listingid, unsafeWindow.g_sessionID);
-			if (data.success) {
-				listingElem.querySelector(".market_listing_check").setAttribute("data-removed", "true");
-				btn.querySelector(".item_market_action_button_contents").textContent = "已下架";
-				btn.style.color = "red";
+	function createPageLink(page, maxPage) {
+		var html = `<span class="market_paging_pagelink" data-page-num="1"> 1 </span>`;
+		var begin = 2;
+		var end = maxPage - 1;
+
+		if (maxPage > 9) {
+			if (page <= 5) {
+				end = 7;
+			} else if (page >= maxPage - 4) {
+				begin = maxPage - 6;
+			} else {
+				begin = page - 2;
+				end = page + 2;
 			}
 		}
+
+		if (begin > 3) {
+			html += `<span class="market_paging_pagelink" data-page-num="-1"> ⋯ </span>`;
+		}
+		for (var i = begin; i <= end; i++) {
+			html += `<span class="market_paging_pagelink" data-page-num="${i}"> ${i} </span>`;
+		}
+		if (end < maxPage - 2) {
+			html += `<span class="market_paging_pagelink" data-page-num="-2"> ⋯ </span>`;
+		}
+		if (maxPage > 1) {
+			html += `<span class="market_paging_pagelink" data-page-num="${maxPage}"> ${maxPage} </span>`;
+		}
+		return html;
 	}
 
-	function getListid(listing) {
-		var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(" ", "").split(",");
-		return eval(args[1]);
+	function getNextPage(elem, cpage, maxPage) {
+		var page = 0;
+		if (elem.classList.contains("prev_page")) {
+			page = cpage - 1;
+		} else if (elem.classList.contains("next_page")) {
+			page = cpage + 1;
+		} else if (elem.classList.contains("market_paging_pagelink")) {
+			page = parseInt(elem.getAttribute("data-page-num"));
+			if (page == -1) {  //向前跳转5页
+				page = Math.max(1, cpage - 5);
+			} else if (page == -2) {  //向后跳转5页
+				page = Math.min(maxPage, cpage + 5);
+			}
+		}
+		return page;
+	}
+
+	function addMarketLink(data) {
+		if (data.assets && data.assets[753] && data.assets[753][6]) {
+			var assets  = data.assets[753][6];
+			var marketData = {};
+			for (var assetid in assets) {
+				var info = assets[assetid];
+				if (info.type && info.name && info.market_hash_name) {
+					marketData[info.type + info.name] = info.market_hash_name;
+				}
+			}
+
+			var historyRows = document.querySelectorAll("#tabContentsMyMarketHistoryRows .market_listing_row");
+			for (var row of historyRows) {
+				var name = row.querySelector(".market_listing_item_name").textContent;
+				var gameName = row.querySelector(".market_listing_game_name").textContent;
+				if (marketData[gameName + name]) {
+					var hashName = encodeURIComponent(marketData[gameName + name]);
+					row.querySelector(".market_listing_item_name").innerHTML = `<a class="market_listing_item_name_link" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">${name}</a>`;
+				}
+			}
+		}
 	}
 
 	function getListingAssetInfo(listing) {
@@ -1339,12 +1500,12 @@ function steamMarketPage() {
 			marketMyListingsPage.push(listings.slice(start, start + settings.market_page_size));
 			start += settings.market_page_size;
 		}
-		showPage(1);
-		updatePageControl(1);
+		showMarketPage(1);
+		updateMarketPageControl(1);
 	}
 
 	//显示指定页面的物品列表
-	function showPage(page) {
+	function showMarketPage(page) {
 		var container = document.querySelector("#tabContentsMyActiveMarketListingsRows");
 		container.style.display = "none";
 		container.innerHTML = "";
@@ -1405,13 +1566,83 @@ function steamMarketListingPage() {
 								div.my_listing_section {margin: 0px;}
 								div#largeiteminfo_item_descriptors {overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0px;}
 								div#largeiteminfo_warning {margin: 0px 18px;}
-								div#largeiteminfo_item_actions > a {margin-bottom: 0px;}`;
+								div#largeiteminfo_item_actions > a {margin-bottom: 0px;}
+								.market_listing_check {position: absolute; top: 6px; right: 20px; cursor: pointer;}
+								#market_page_control_before {margin-top: 10px; user-select: none;}
+								.market_action_btn_container {display: inline-block; padding-left: 6px;}
+								.market_action_btn {margin-right: 5px; font-size: 12px;}
+								#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}`;
 		document.body.appendChild(styleElem);
 	
 		//最新动态移到页面最后
 		var activity_section = document.querySelector("div#market_activity_section");
 		if (activity_section) {
 			document.querySelector("div.market_listing_iteminfo").appendChild(activity_section);
+		}
+
+		addRowCheckbox();
+		addSellListingControl();
+	}
+
+	//在物品右侧添加复选框
+	function addRowCheckbox() {
+		var listingRows = document.querySelector("#tabContentsMyActiveMarketListingsTable #tabContentsMyActiveMarketListingsRows");
+		if (listingRows) {
+			for (var elem of listingRows.querySelectorAll(".market_listing_row")) {
+				var checkbox = document.createElement("input");
+				checkbox.setAttribute("type", "checkbox");
+				checkbox.className = "market_listing_check";
+				elem.querySelector(".market_listing_cancel_button").appendChild(checkbox);
+			}
+		}
+	}
+
+	//出售列表上添加操作按键
+	function addSellListingControl() {
+		var table = document.querySelector("#tabContentsMyActiveMarketListingsTable");
+		if (table) {
+			var header = table.querySelector(".market_listing_table_header");
+			if (header) {
+				var controlBefore = document.createElement("div");
+				controlBefore.id = "market_page_control_before";
+				var html = `<div class="market_action_btn_container"><a class="market_select_all market_action_btn pagebtn">选中全部物品</a><a class="market_remove_listing market_action_btn pagebtn">下架选中物品</a></div>`;
+				controlBefore.innerHTML = html;
+				table.insertBefore(controlBefore, header);
+				controlBefore.querySelector(".market_action_btn_container").onclick = marketActionBtnClick;
+			}
+		}
+	}
+
+	function marketActionBtnClick(event) {
+		var elem = event.target;
+		var rows = document.querySelectorAll("#tabContentsMyActiveMarketListingsTable #tabContentsMyActiveMarketListingsRows .market_listing_row");
+		if (rows.length == 0) {
+			return;
+		}
+		if (elem.classList.contains("market_select_all")) {
+			var selectBtn0 = document.querySelector("#market_page_control_before .market_select_all");
+			if (elem.classList.contains("checked")) {  //取消选中
+				selectBtn0.classList.remove("checked");
+				selectBtn0.textContent = "选中全部物品";
+				for (var item of rows) {
+					item.querySelector(".market_listing_check").checked = false;
+				}
+			} else {
+				selectBtn0.classList.add("checked");
+				selectBtn0.textContent = "取消选中物品";
+				for (var item of rows) {
+					item.querySelector(".market_listing_check").checked = true;
+				}
+			}
+		} else if (elem.classList.contains("market_remove_listing")) {
+			var listingsToRemove = [];
+			for (var item of rows) {
+				var checkbox = item.querySelector(".market_listing_check");
+				if (checkbox.checked && !checkbox.hasAttribute("data-removed")) {
+					listingsToRemove.push(item);
+				}
+			}
+			removeSelectedListings(listingsToRemove);
 		}
 	}
 
@@ -1767,7 +1998,7 @@ function addSteamCommunitySetting() {
 			selectOptions += `<option value="${code}" ${code == settings.currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 		}
 		var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_select, .settings_row input[type="checkbox"], .settings_row label {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} 
-						.settings_row input[type="number"] {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} .margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;}</style>
+						.settings_row input[type="number"] {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} .margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="number"]::-webkit-outer-spin-button, .settings_row input[type="number"]::-webkit-inner-spin-button{-webkit-appearance: none !important;}</style>
 						<div class="settings_container"><div><span>货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;">${selectOptions}</select></div><br>
 						<div class="settings_page_title">库存页面设置：</div>
 						<div class="settings_row">
@@ -1781,7 +2012,7 @@ function addSteamCommunitySetting() {
 						<div class="settings_row">
 						<div class="settings_option"><input id="sfu_market_adjust_selllistings" type="checkbox" ${settings.market_adjust_selllistings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_selllistings = this.checked;"></input><label for="sfu_market_adjust_selllistings" class="margin_right_20">调整出售物品表格</label></div>
 						<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">自动显示最低出售和最高求购</label></div>
-						<div class="settings_option"><label for="sfu_market_page_size">每页物品数量</label><input id="sfu_market_page_size" type="number" step="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = parseInt(this.value);"></input></div>
+						<div class="settings_option"><label for="sfu_market_page_size">每页物品数量</label><input id="sfu_market_page_size" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
 						</div>
 						<div class="settings_page_title">市场物品页面设置：</div>
 						<div class="settings_row">
@@ -1820,6 +2051,7 @@ function getSteamCommunitySettings() {
 	typeof data.market_adjust_selllistings === "undefined" && (data.market_adjust_selllistings = true);
 	typeof data.market_show_priceinfo === "undefined" && (data.market_show_priceinfo = false);
 	typeof data.market_page_size === "undefined" && (data.market_page_size = 100);
+	data.market_page_size = Math.max(data.market_page_size, 10);
 	return data;
 }
 
@@ -2102,6 +2334,24 @@ function sellItem(sessionid, appid, contextid, assetid, amount, price) {
 	});
 }
 
+async function removeSelectedListings(listingsToRemove) {
+	for (var listingElem of listingsToRemove) {
+		var btn = listingElem.querySelector("a.item_market_action_button_edit");
+		var listingid = getListid(listingElem);
+		var data = await marketRemoveListing(listingid, unsafeWindow.g_sessionID);
+		if (data.success) {
+			listingElem.querySelector(".market_listing_check").setAttribute("data-removed", "true");
+			btn.querySelector(".item_market_action_button_contents").textContent = "已下架";
+			btn.style.color = "red";
+		}
+	}
+}
+
+function getListid(listing) {
+	var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(" ", "").split(",");
+	return eval(args[1]);
+}
+
 //下架物品
 function marketRemoveListing(listingid, sessionid) {
 	return new Promise(function(resolve, reject) {
@@ -2158,9 +2408,12 @@ function getMarketMyListings(start, count) {
 }
 
 //获取市场历史记录
-function getMarketMyHistory(start, count) {
+function getMarketMyHistory(start=-1, count=10) {
 	return new Promise(function(resolve, reject) {
-		var url = `https://steamcommunity.com/market/myhistory/render/?query`;
+		var url = `https://steamcommunity.com/market/myhistory`;
+		if (start >= 0) {
+			url += `/render/?query=&start=${start}&count=${count}`;
+		}
 		var xhr = new XMLHttpRequest();
 		xhr.timeout = TIMEOUT;
 		xhr.open("GET", url, true);
