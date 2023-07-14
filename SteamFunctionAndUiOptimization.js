@@ -2210,8 +2210,11 @@ function addSteamCommunitySetting() {
 						<div class="settings_option"><input id="sfu_gamecards_append_linkbtn" type="checkbox" ${settings.gamecards_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_append_linkbtn = this.checked;"></input><label for="sfu_gamecards_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
 						<div class="settings_option"><input id="sfu_gamecards_show_priceoverview" type="checkbox" ${settings.gamecards_show_priceoverview ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_show_priceoverview = this.checked;"></input><label for="sfu_gamecards_show_priceoverview">自动显示市场价格信息</label></div>
 						</div>
-						
-						
+						<div class="settings_page_title">消费历史记录页面设置：</div>
+						<div class="settings_row">
+						<div class="settings_option"><input id="sfu_history_append_filter" type="checkbox" ${settings.history_append_filter ? "checked=true" : ""} onclick="window.sfu_settings.history_append_filter = this.checked;"></input><label for="sfu_history_append_filter" class="margin_right_20">添加筛选栏和统计栏</label></div>
+						<div class="settings_option"><input id="sfu_history_change_onclick" type="checkbox" ${settings.history_change_onclick ? "checked=true" : ""} onclick="window.sfu_settings.history_change_onclick = this.checked;"></input><label for="sfu_history_change_onclick">修改日期和物品的点击效果</label></div>
+						</div>
 						</div>`);
 		unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
 			setStorageValue("SFU_COMMUNITY_SETTINGS", unsafeWindow.sfu_settings);
