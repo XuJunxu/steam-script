@@ -29,19 +29,34 @@ function steamAccountHistory() {
 		return;
 	}
 
-	var settingBtn = document.createElement("div");
-	settingBtn.setAttribute("style", "cursor: pointer; position: absolute; background: #4c5564; right: 20px; top: 10px; padding: 3px 15px;");
-	settingBtn.innerHTML = "<div id='totalPurchase' style='line-height: 24px;'>计算额度</div>";
-	settingBtn.onclick = function() {
-		waitShowPurchase(0);
-	};
-	document.body.appendChild(settingBtn);
+	var settings = getSteamCommunitySettings();
+	addSteamCommunitySetting();
 
-	waitShowPurchase(0);
+	if (settings.history_append_filter || settings.history_change_onclick) {
+		var loading = document.querySelector("#wallet_history_loading");
+		var pageContent = document.querySelector(".page_header_ctn .page_content");
+		pageContent.insertBefore(loading, pageContent.querySelector(".pageheader"));
+		loading.style.float = "right";
+		waitLoadingAllHistory();
+	}
 
-	function waitShowPurchase(times) {
+	if (settings.history_change_onclick) {
+		var styleElem = document.createElement("style");
+		styleElem.innerHTML = `td.wht_items, td.wht_date {cursor: auto;}`;
+		document.body.appendChild(styleElem);
+
+		document.querySelector(".wallet_history_table tbody").addEventListener("click", function(event) {
+			var elem = event.target;
+			if (elem.classList.contains("wht_date") || elem.classList.contains("wht_items") || elem.parentNode.classList.contains("wht_date") || elem.parentNode.classList.contains("wht_items")) {
+				event.stopPropagation();
+			}
+		}, true);
+	}
+
+	function waitLoadingAllHistory(times=0) {
 		var loadButton = document.querySelector("#load_more_button");
-		if (times == 0 || loadButton.style.display != "none") {
+		if (loadButton.style.display != "none") {
+			times = 0;
 			loadButton.click();
 		}
 
@@ -49,22 +64,188 @@ function steamAccountHistory() {
 			var button = document.querySelector("#load_more_button");
 			var loading = document.querySelector("#wallet_history_loading");
 			if (button.style.display == "none" && loading.style.display == "none") {
-				showTotalPurchase();
+				ComputeAndModifyHistory();
+				//calculateTotalPurchase();
 				return;
 			}
 			
 			times++;
 			if (times < 150) {
-				waitShowPurchase(times);
+				waitLoadingAllHistory(times);
 			}
 		}, 200);
 	}
 
-	function showTotalPurchase() {
-		var [purchaseGames, purchaseGifts] = calculateTotalPurchase();
-		settingBtn.querySelector("#totalPurchase").innerHTML = `<div>购买游戏：${purchaseGames / 100.0}</div>
-																<div>购买礼物：${purchaseGifts / 100.0}</div>
-																<div>剩余额度：${(purchaseGames - purchaseGifts) / 100.0}</div>`;
+	function ComputeAndModifyHistory() {
+		var walletHistory = document.querySelectorAll("tr.wallet_table_row");
+		if (walletHistory.length > 0) {
+			var currencyInfo = getWalletInfo(settings.currency_code);
+			var currencySymbol = currencyInfo.strSymbol;
+
+			var transactionTypes = {};
+			var allMarketTransaction = {increase: 0, decrease: 0, typeName: new Set()};
+			var allPurchase = {
+				purchase: {total: 0, typeName: "", transid: []},
+				giftPurchase: {total: 0, typeName: "", transid: []},
+				inGamePurchase: {total: 0, typeName: "", transid: []},
+				refund: {total: 0, typeName: "", transid: []}
+			};
+
+			for (var index=walletHistory.length-1; index >= 0; index--) {
+				var row = walletHistory[index];
+				var wht_type = row.querySelector("td.wht_type > div:first-child")?.textContent.replace(/\d/g, "").trim();
+				var url = row.getAttribute("onclick")?.match(/location.href='(.+)'/)[1] || "";
+				var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total").textContent);
+
+				if (wht_total && row.querySelector("td.wht_total").textContent.includes(currencySymbol) && url) {
+					var wht_wallet_change = row.querySelector("td.wht_wallet_change").textContent.trim();
+
+					if (url.includes("steamcommunity.com/market/#myhistory")) {  //市场交易
+						if (wht_wallet_change[0] == "-") {
+							allMarketTransaction.decrease += wht_total;
+						} else if (wht_wallet_change[0] == "+") {
+							allMarketTransaction.increase += wht_total;
+						}
+						allMarketTransaction.typeName.add(wht_type);
+					} else if (url.includes("HelpWithItemPurchase")) {  //游戏内购买
+						var transid = url.match(/transid=(\d+)/)[1];
+						if (allPurchase.inGamePurchase.transid.includes(transid)) {
+							allPurchase.inGamePurchase.total -= wht_total;
+							allPurchase.refund.total += wht_total;
+							allPurchase.refund.typeName = wht_type;
+							allPurchase.refund.transid.push(transid);
+						} else {
+							allPurchase.inGamePurchase.total += wht_total;
+							allPurchase.inGamePurchase.typeName = wht_type;
+							allPurchase.inGamePurchase.transid.push(transid);
+						}												
+					} else if (url.includes("HelpWithTransaction")) {  //商店购买和礼物购买
+						var transid = url.match(/transid=(\d+)/)[1];
+						if (allPurchase.giftPurchase.transid.includes(transid)) {
+							allPurchase.giftPurchase.total -= wht_total;
+							allPurchase.refund.total += wht_total;
+							allPurchase.refund.typeName = wht_type;
+							allPurchase.refund.transid.push(transid);
+						} else if (allPurchase.purchase.transid.includes(transid)) {
+							allPurchase.purchase.total -= wht_total;
+							allPurchase.refund.total += wht_total;
+							allPurchase.refund.typeName = wht_type;
+							allPurchase.refund.transid.push(transid);
+						} else if (row.querySelector("td.wht_items .wth_payment a")?.hasAttribute("data-miniprofile")) {  //礼物购买
+							allPurchase.giftPurchase.total += wht_total;
+							allPurchase.giftPurchase.typeName = wht_type;
+							allPurchase.giftPurchase.transid.push(transid);
+						} else {
+							allPurchase.purchase.total += wht_total;
+							allPurchase.purchase.typeName = wht_type;
+							allPurchase.purchase.transid.push(transid);
+						}
+					}
+				}
+
+				transactionTypes[wht_type] = (transactionTypes[wht_type] || 0) + 1;
+				row.setAttribute("transaction-type", wht_type);
+				row.style.display = null;
+
+				if (settings.history_change_onclick && url) {
+					var wht_date = row.querySelector("td.wht_date");
+					wht_date.innerHTML = `<a href="${url}" target="_blank">${wht_date.innerHTML}</a>`;
+				}
+			}
+			if (settings.history_append_filter) {
+				showFilterAndStatistics(allPurchase, allMarketTransaction, transactionTypes, currencyInfo);
+			}
+		}
+	}
+
+	function showFilterAndStatistics(allPurchase, allMarketTransaction, transactionTypes, currencyInfo) {
+		var filtElem = document.createElement("style");
+		document.body.appendChild(filtElem);
+
+		var transactionCount = 0;
+		for (var name of allMarketTransaction.typeName) {
+			transactionCount += transactionTypes[name];
+			delete transactionTypes[name];
+		}
+		
+		var transactionTypesData = {};
+		for (var name in transactionTypes) {
+			transactionTypesData[name] = name;
+		}
+
+		var marketTransName = Array.from(allMarketTransaction.typeName);
+		marketTransName.sort((a, b) => { return a.localeCompare(b); });
+
+		var transTypeArray = Object.keys(transactionTypes);
+		transTypeArray.sort((a, b) => { return a.localeCompare(b); });
+
+		if (marketTransName.length > 0) {
+			transTypeArray.push(marketTransName[0]);
+			transactionTypes[marketTransName[0]] = transactionCount;
+			transactionTypesData[marketTransName[0]] = marketTransName.join(",");
+		}
+
+
+		var checkboxElems = "";
+		for (var i=0; i < transTypeArray.length; i++) {
+			var typeName = transTypeArray[i];
+			checkboxElems += `<span><input id="trans_type_${i}" type="checkbox" transaction-type="${transactionTypesData[typeName]}" class="trans_type_filter_box"></input>
+							  <label for="trans_type_${i}" class="trans_type_filter_label">${typeName} (${transactionTypes[typeName]})</label></span>`;
+		}
+
+		var symbol = currencyInfo.strSymbol;
+		if (currencyInfo.bSymbolIsPrefix) {
+			var statisticsContent = `<span>剩余额度：${symbol} ${(allPurchase.purchase.total - allPurchase.giftPurchase.total) / 100.0}</span>
+									 <span>商店购买：${symbol} ${allPurchase.purchase.total / 100.0}</span>
+									 <span>礼物购买：${symbol} ${allPurchase.giftPurchase.total / 100.0}</span>
+									 <span>游戏内购买：${symbol} ${allPurchase.inGamePurchase.total / 100.0}</span>
+									 <span>市场购买：${symbol} ${allMarketTransaction.decrease / 100.0}</span>
+									 <span>市场出售：${symbol} ${allMarketTransaction.increase / 100.0}</span>`;
+		} else {
+			var statisticsContent = `<span>剩余额度：${(allPurchase.purchase.total - allPurchase.giftPurchase.total) / 100.0} ${symbol} </span>
+									 <span>商店购买：${allPurchase.purchase.total / 100.0} ${symbol} </span>
+									 <span>礼物购买：${allPurchase.giftPurchase.total / 100.0} ${symbol} </span>
+									 <span>游戏内购买：${allPurchase.inGamePurchase.total / 100.0} ${symbol} </span>
+									 <span>市场购买：${allMarketTransaction.decrease / 100.0} ${symbol} </span>
+									 <span>市场出售：${allMarketTransaction.increase / 100.0} ${symbol} </span>`;
+		}
+
+		
+		var bar = document.createElement("div");
+		bar.id = "history_filter_bar";
+		bar.innerHTML = `<div id="purchase_statistics">${statisticsContent}</div>
+						 <div id="transaction_type_filter"><span class="filter_hint">交易类型：</span>${checkboxElems}</div>
+						 <style>
+						 #history_filter_bar {margin: 0 0 10px 5px; line-height: 24px;}
+						 #purchase_statistics span {margin-right: 20px; white-space: nowrap;}
+						 .wallet_history_click_hint {display: none;}
+						 #transaction_type_filter {line-height: 24px; user-select: none;}
+						 #transaction_type_filter span {white-space: nowrap;}
+						 .trans_type_filter_box {cursor: pointer; vertical-align: middle;}
+						 .trans_type_filter_label {cursor: pointer; margin-right: 20px; }
+						 </style>`;
+		document.querySelector("#main_content").insertBefore(bar, document.querySelector(".wallet_history_click_hint"));
+
+		document.querySelector("#transaction_type_filter").onclick = function(event) {
+			var checkboxList = document.querySelectorAll("#transaction_type_filter input");
+			var uncheckedTypes = [];
+			var checkedCount = 0;
+			for (var box of checkboxList) {
+				if (!box.checked) {
+					var transTypes = box.getAttribute("transaction-type");
+					for (var typeName of transTypes.split(",")) {
+						uncheckedTypes.push(`tr.wallet_table_row[transaction-type="${typeName}"]`);
+					}
+				} else {
+					checkedCount++;
+				}
+			}
+			if (uncheckedTypes.length > 0 && checkedCount > 0) {
+				filtElem.innerHTML = `${uncheckedTypes.join(",")} {display: none;}`;
+			} else {
+				filtElem.innerHTML = "";
+			}
+		};
 	}
 
 	//计算消费金额，只计算使用钱包余额的消费记录
@@ -74,6 +255,7 @@ function steamAccountHistory() {
 		var transidGames = [];
 		var transidGifts = [];
 		var refunded = [];
+		var n=0, m=0;
 		var walletHistory = document.querySelectorAll("tr.wallet_table_row.wallet_table_row_amt_change");
 		if (walletHistory) {
 			for (var row of walletHistory) {
@@ -87,10 +269,12 @@ function steamAccountHistory() {
 				if (transid && wht_wallet_change) {
 					if (wht_wallet_change[0] == "-") {
 						if (wht_type == "购买") {
+							m++
 							purchaseGames += wht_total;
 							transidGames.push(transid);
 							row.querySelector("td.wht_total").style.color = "#00A8FF";
 						} else if (wht_type == "礼物购买") {
+							n++;
 							purchaseGifts += wht_total;
 							transidGifts.push(transid);
 							row.querySelector("td.wht_total").style.color = "#FF0000";
@@ -108,7 +292,7 @@ function steamAccountHistory() {
 				}
 			}
 		}
-		return [purchaseGames, purchaseGifts];
+		console.log(purchaseGames, purchaseGifts, m, n);
 	}
 
 }
@@ -1397,7 +1581,7 @@ function steamMarketPage() {
 	}
 
 	function getListingAssetInfo(listing) {
-		var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(" ", "").split(",");
+		var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(/ /g, "").split(",");
 		return unsafeWindow.g_rgAssets[eval(args[2])][eval(args[3])][eval(args[4])];
 	}
 
@@ -1471,7 +1655,7 @@ function steamMarketPage() {
 		if (listings) {
 			var cells = document.querySelectorAll("#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span");
 			for (var el of cells) {
-				el.textContent = el.textContent.replace("▲", "").replace("▼", "").replace(" ", "");
+				el.textContent = el.textContent.replace(" ▲", "").replace(" ▼", "");
 			}
 			elem.textContent += symbol;
 			setListingsPage(listings, reverse);
@@ -2025,7 +2209,10 @@ function addSteamCommunitySetting() {
 						<div class="settings_option"><input id="sfu_gamecards_set_style" type="checkbox" ${settings.gamecards_set_style ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_set_style = this.checked;"></input><label for="sfu_gamecards_set_style" class="margin_right_20">修改页面布局</label></div>
 						<div class="settings_option"><input id="sfu_gamecards_append_linkbtn" type="checkbox" ${settings.gamecards_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_append_linkbtn = this.checked;"></input><label for="sfu_gamecards_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
 						<div class="settings_option"><input id="sfu_gamecards_show_priceoverview" type="checkbox" ${settings.gamecards_show_priceoverview ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_show_priceoverview = this.checked;"></input><label for="sfu_gamecards_show_priceoverview">自动显示市场价格信息</label></div>
-						</div></div>`);
+						</div>
+						
+						
+						</div>`);
 		unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
 			setStorageValue("SFU_COMMUNITY_SETTINGS", unsafeWindow.sfu_settings);
 			window.location.reload();
@@ -2052,6 +2239,8 @@ function getSteamCommunitySettings() {
 	typeof data.market_show_priceinfo === "undefined" && (data.market_show_priceinfo = false);
 	typeof data.market_page_size === "undefined" && (data.market_page_size = 100);
 	data.market_page_size = Math.max(data.market_page_size, 10);
+	typeof data.history_append_filter === "undefined" && (data.history_append_filter = true);
+	typeof data.history_change_onclick === "undefined" && (data.history_change_onclick = true);
 	return data;
 }
 
@@ -2348,7 +2537,7 @@ async function removeSelectedListings(listingsToRemove) {
 }
 
 function getListid(listing) {
-	var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(" ", "").split(",");
+	var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(/ /g, "").split(",");
 	return eval(args[1]);
 }
 
