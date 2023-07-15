@@ -7,14 +7,14 @@
 // @include      *://store.steampowered.com/search*
 // @include      *://store.steampowered.com/wishlist*
 // @include      *://store.steampowered.com/app/*
-// @include      *://store.steampowered.com/explore/
+// @include      *://store.steampowered.com/explore/*
 // @include      *://steamcommunity.com/tradeoffer/*
 // @include      *://steamcommunity.com/id/*/inventory*
 // @include      *://steamcommunity.com/profiles/*/inventory*
 // @include      *://steamcommunity.com/market/*
 // @include      *://steamcommunity.com/id/*/gamecards/*
 // @include      *://steamcommunity.com/profiles/*/gamecards/*
-// @include      *://store.steampowered.com/account/history/
+// @include      *://store.steampowered.com/account/history/*
 // @require      https://cdn.bootcdn.net/ajax/libs/localforage/1.7.1/localforage.min.js
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -29,8 +29,8 @@ function steamAccountHistory() {
 		return;
 	}
 
-	var settings = getSteamCommunitySettings();
-	addSteamCommunitySetting();
+	var settings = getStoreSettings();
+	addStoreSettings();
 
 	if (settings.history_append_filter || settings.history_change_onclick) {
 		var loading = document.querySelector("#wallet_history_loading");
@@ -79,7 +79,7 @@ function steamAccountHistory() {
 	function ComputeAndModifyHistory() {
 		var walletHistory = document.querySelectorAll("tr.wallet_table_row");
 		if (walletHistory.length > 0) {
-			var currencyInfo = getWalletInfo(settings.currency_code);
+			var currencyInfo = getCurrencyInfo(settings.history_currency_code);
 			var currencySymbol = currencyInfo.strSymbol;
 
 			var transactionTypes = {};
@@ -97,7 +97,7 @@ function steamAccountHistory() {
 				var url = row.getAttribute("onclick")?.match(/location.href='(.+)'/)[1] || "";
 				var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total").textContent);
 
-				if (wht_total && row.querySelector("td.wht_total").textContent.includes(currencySymbol) && url) {
+				if (wht_type && wht_total && row.querySelector("td.wht_total").textContent.includes(currencySymbol) && url) {
 					var wht_wallet_change = row.querySelector("td.wht_wallet_change").textContent.trim();
 
 					if (url.includes("steamcommunity.com/market/#myhistory")) {  //市场交易
@@ -189,7 +189,7 @@ function steamAccountHistory() {
 		var checkboxElems = "";
 		for (var i=0; i < transTypeArray.length; i++) {
 			var typeName = transTypeArray[i];
-			checkboxElems += `<span><input id="trans_type_${i}" type="checkbox" transaction-type="${transactionTypesData[typeName]}" class="trans_type_filter_box"></input>
+			checkboxElems += `<span><input id="trans_type_${i}" type="checkbox" transaction-type="${transactionTypesData[typeName]}" class="trans_type_filter_box">
 							  <label for="trans_type_${i}" class="trans_type_filter_label">${typeName} (${transactionTypes[typeName]})</label></span>`;
 		}
 
@@ -259,14 +259,12 @@ function steamAccountHistory() {
 		var walletHistory = document.querySelectorAll("tr.wallet_table_row.wallet_table_row_amt_change");
 		if (walletHistory) {
 			for (var row of walletHistory) {
-				var wht_type = row.querySelector("td.wht_type > div:first-child").textContent.trim();
+				var wht_type = row.querySelector("td.wht_type > div:first-child")?.textContent.trim();
 				var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total").textContent);
 				var wht_wallet_change = row.querySelector("td.wht_wallet_change").textContent.trim();
-
-				var res = row.getAttribute("onclick").match(/transid=(\d+)/);
-				var transid = res? res[1]: null; 
+				var transid = row.getAttribute("onclick").match(/transid=(\d+)/)[1];
 				
-				if (transid && wht_wallet_change) {
+				if (transid && wht_wallet_change && wht_type && wht_total) {
 					if (wht_wallet_change[0] == "-") {
 						if (wht_type == "购买") {
 							m++
@@ -523,6 +521,7 @@ function steamExplorePage() {
 	var exploreBtn = document.createElement('div');
 	exploreBtn.className = 'btnv6_blue_hoverfade btn_medium auto_explore_btn';
 	exploreBtn.innerHTML = '<span>自动探索队列</span>';
+	exploreBtn.id = "auto_explore_queue";
 	exploreBtn.style = 'float: right;';
 	exploreBtn.onclick = autoExploreQueue;
 
@@ -620,6 +619,8 @@ function steamTradeOfferPage() {
 		return;
 	}
 
+	appendPageControl();
+
 	var div = document.createElement("div");
 	div.id = "trade_offer_buttons";
 	div.innerHTML = `<style>#trade_offer_buttons{margin: 10px 0px 0px 10px;} .btn_move_items{padding: 5px 15px;}</style>
@@ -628,11 +629,18 @@ function steamTradeOfferPage() {
 					 <a id="btn_remove_all" class="btn_move_items btn_green_white_innerfade">移除全部物品</a>`;
 	document.querySelector("#trade_yours .offerheader").appendChild(div);
 
-	div.querySelector("#btn_add_cards").onclick = addAllCommonCards;
-	div.querySelector("#btn_add_all").onclick = addAllItems;
-	div.querySelector("#btn_remove_all").onclick = removeAllItems;
-
-	appendPageControl();
+	div.onclick = buttonClicked;
+	
+	function buttonClicked(event) {
+		var button = event.target;
+		if (button.id == "btn_add_cards") {
+			addAllCommonCards()
+		} else if (button.id == "btn_add_all") {
+			addAllItems();
+		} else if (button.id == "btn_remove_all") {
+			removeAllItems();
+		}
+	};
 
 	function addAllCommonCards() {
 		var event = new Event("dblclick");
@@ -653,14 +661,15 @@ function steamTradeOfferPage() {
 		var event = new Event("dblclick");
 		var g_rgAppContextData = unsafeWindow.g_rgAppContextData;
 		var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
-		var contextIds = g_ActiveInventory.rgContextIds ? g_ActiveInventory.rgContextIds : [g_ActiveInventory.contextid];
+		var contextIds = g_ActiveInventory.rgContextIds ?? [g_ActiveInventory.contextid];
 		for (var contextid of contextIds) {
 			for (var itemHolder of g_rgAppContextData[g_ActiveInventory.appid].rgContexts[contextid].inventory.rgItemElements) {
-				if (itemHolder && itemHolder.rgItem && itemHolder.rgItem.tradable) {
+				if (itemHolder?.rgItem?.tradable && (g_ActiveInventory.appid != "753" || itemHolder?.rgItem?.market_hash_name != "753-Gems") && itemHolder == itemHolder?.rgItem?.element?.parentNode) {
 					itemHolder.rgItem.element.dispatchEvent(event);
 				}
 			}
 		}
+		
 	}
 
 	function removeAllItems() {
@@ -681,7 +690,6 @@ function steamTradeOfferPage() {
 			for (var itemHolder of document.querySelectorAll("#trade_yours > div.trade_item_box > div.trade_slot")) {
 				itemHolder.parentNode.removeChild(itemHolder);
 			}
-			document.querySelectorAll("#trade_yours > div.trade_item_box").style = null;
 
 		}, 100);
 	}
@@ -707,14 +715,15 @@ function steamInventoryPage(){
 	var settings = getSteamCommunitySettings();
 	addSteamCommunitySetting();
 
-	var walletInfo = getWalletInfo(settings.currency_code);
+	if (document.querySelector("#no_inventories")) {
+		return;
+	}
+
+	var currencyInfo = getCurrencyInfo(settings.currency_code);
 	var sellTotalPriceReceive = 0;
 	var sellTotalPriceBuyerPay = 0;
 	var sellCount = 0;
-	if (typeof unsafeWindow.g_rgWalletInfo != "undefined" && unsafeWindow.g_rgWalletInfo !== null) {
-		var steamWalletInfo = unsafeWindow.g_rgWalletInfo;
-		steamWalletInfo.currencyData = unsafeWindow.g_rgCurrencyData[unsafeWindow.GetCurrencyCode(steamWalletInfo.wallet_currency)];
-	}
+
 	var priceGramLoaded = false;
 	var inventoryAppidForSell = 0;
 	var inventoryAppidForLink = 0;
@@ -752,17 +761,13 @@ function steamInventoryPage(){
 		document.body.appendChild(styleElem);
 	
 		var inventory_links = document.querySelector("div.inventory_links");
-		var context_selector = document.querySelector("div#context_selector");
-		if (inventory_links && context_selector) {
+		var inventory_rightnav = document.querySelector("div.inventory_rightnav");
+		var tabcontent_inventory = document.querySelector("#tabcontent_inventory");
+		if (inventory_links && inventory_rightnav && tabcontent_inventory) {
 			//调整交易报价按键的位置
 			inventory_links.style.margin = "0px";
-			var inventory_rightnav = document.querySelector("div.inventory_rightnav");
-			var context_selector_parent = context_selector.parentNode;
 			inventory_rightnav.style.marginRight = "12px";
-			context_selector_parent.style.display = "flex";
-			context_selector_parent.style.flexWrap = "wrap";
-			context_selector_parent.style.justifyContent = "center";
-			context_selector_parent.appendChild(inventory_rightnav);
+			tabcontent_inventory.insertBefore(inventory_rightnav, tabcontent_inventory.firstElementChild);
 
 			//添加重新加载库存按键
 			var reloadInventoryBtn = document.createElement("a");
@@ -774,14 +779,7 @@ function steamInventoryPage(){
 
 		//调整LOGO的位置
 		var inventory_logos = document.querySelector("div#inventory_logos");
-		document.querySelector("div#active_inventory_page>div.inventory_page_left").insertBefore(inventory_logos, document.querySelector("div#inventory_pagecontrols").nextElementSibling);
-	
-		/*
-		var targetElem = document.querySelector("#iteminfo0_market_content");
-		targetElem.parentNode.insertBefore(targetElem, targetElem.parentNode.firstElementChild);
-		var targetElem = document.querySelector("#iteminfo1_market_content");
-		targetElem.parentNode.insertBefore(targetElem, targetElem.parentNode.firstElementChild);
-		*/
+		document.querySelector("div#active_inventory_page>div.inventory_page_left")?.insertBefore(inventory_logos, document.querySelector("div#inventory_pagecontrols").nextElementSibling);
 	}
 	
 	//等待物品加载完设置过滤
@@ -796,7 +794,7 @@ function steamInventoryPage(){
 		if (isLoaded && !(unsafeWindow.g_ActiveInventory.m_$Inventory && unsafeWindow.g_ActiveInventory.m_$Inventory.length > 0)) {
 			isLoaded = false;
 		}
-		if (document.querySelectorAll("#filter_options .econ_tag_filter_category").length == 0) {
+		if (document.querySelectorAll("#filter_options .econ_tag_filter_category").length == 0) {  //使筛选条件可用
 			unsafeWindow.ShowTagFilters();
 			unsafeWindow.HideTagFilters();
 			isLoaded = false;
@@ -852,12 +850,12 @@ function steamInventoryPage(){
 			container0.innerHTML = "";
 			container1.innerHTML = "";
 			let selectedItem = unsafeWindow.g_ActiveInventory.selectedItem;
-			if (selectedItem && selectedItem.description.marketable) {
+			if (selectedItem && selectedItemMarketable(selectedItem)) {
 				priceGramLoaded = false;
 				container0.innerHTML = html;
 				container1.innerHTML = html;
 
-				if (settings.inventory_sell_btn) {
+				if (settings.inventory_sell_btn && selectedItem.description.marketable) {
 					document.querySelector("#price_gram_container0 .sell_price_input").oninput = event => showPriceReceive(event, selectedItem);
 					document.querySelector("#price_gram_container1 .sell_price_input").oninput = event => showPriceReceive(event, selectedItem);
 					document.querySelector("#price_gram_container0 .sell_comfirm").onclick = event => sellItemCustom(event, selectedItem);
@@ -887,7 +885,7 @@ function steamInventoryPage(){
 		});
 
 		//将logo替换成上架日志
-		var logHtml = `<style>#inventory_logos {height: auto;} #inventory_applogo {display: none;} #sell_log_text {font-size: 12px; max-height: 200px; overflow-y: auto;} 
+		var logHtml = `<style>#inventory_logos {height: auto;} #inventory_applogo {display: none;} #sell_log_text {font-size: 12px; max-height: 200px; overflow-y: auto; margin-top: 10px;} 
 						#sell_log_total {font-weight: bold; margin-top: 5px} .price_gram, .price_gram div{font-size: 12px; font-weight: normal;} </style>
 						<div id="sell_log_text"></div><div id="sell_log_total"></div><div><a id="clear_sell_log" style="display: none; margin-top: 10px" class="pagecontrol_element pagebtn">清空</a></div>`;
 		var logContainer = document.createElement("div");
@@ -908,7 +906,7 @@ function steamInventoryPage(){
 		document.querySelector("#price_gram_container0 .show_market_info").style.display = "none";
 		document.querySelector("#price_gram_container1 .show_market_info").style.display = "none";
 		let selectedItem = unsafeWindow.g_ActiveInventory.selectedItem;
-		if (selectedItem && selectedItem.description.marketable) {
+		if (selectedItem && selectedItemMarketable(selectedItem)) {
 			let appid = selectedItem.appid;
 			let hashName = getMarketHashName(selectedItem.description);
 			showPriceGram(appid, hashName, selectedItem);
@@ -920,7 +918,7 @@ function steamInventoryPage(){
 		var data0 = await getItemNameId(appid, hashName);
 		if (data0.success) {
 			var itemNameId = data0.nameid;
-			var data1 = await getItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, itemNameId);
+			var data1 = await getItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, itemNameId);
 			if (data1.success && item.assetid == unsafeWindow.g_ActiveInventory.selectedItem.assetid) {
 				priceGramLoaded = true;
 				var html1 = `<div><div class="table_title">出售</div>${data1.sell_order_table || data1.sell_order_summary}</div><div><div class="table_title">购买</div>${data1.buy_order_table || data1.buy_order_summary}</div>`;
@@ -928,7 +926,7 @@ function steamInventoryPage(){
 				document.querySelector("#price_gram_container1 .price_gram").innerHTML = html1;
 
 				//添加快速出售按键
-				if (settings.inventory_sell_btn) {
+				if (settings.inventory_sell_btn && item.description.marketable) {
 					var btnHtml = "";
 					if (data1.lowest_sell_order) {
 						document.querySelector("#price_gram_container0 .sell_price_input").value = (data1.lowest_sell_order / 100.0).toFixed(2);
@@ -964,7 +962,7 @@ function steamInventoryPage(){
 	}
 
 	async function showPriceOverview(appid, marketHashName, item) {
-		var data = await getPriceOverview(walletInfo.country, walletInfo.eCurrencyCode, appid, marketHashName);
+		var data = await getPriceOverview(currencyInfo.country, currencyInfo.eCurrencyCode, appid, marketHashName);
 		if (data.success && item.assetid == unsafeWindow.g_ActiveInventory.selectedItem.assetid) {
 			var html = "";
 			html += data.lowest_price ? `<span>${data.lowest_price}</span>` : "";
@@ -973,7 +971,7 @@ function steamInventoryPage(){
 			document.querySelector("#price_gram_container0 .price_overview").innerHTML = html;
 			document.querySelector("#price_gram_container1 .price_overview").innerHTML = html;
 			
-			if (settings.inventory_sell_btn && !priceGramLoaded && data.lowest_price) {
+			if (settings.inventory_sell_btn && !priceGramLoaded && data.lowest_price && item.description.marketable) {
 				document.querySelector("#price_gram_container0 .sell_price_input").value = (getPriceFromSymbolStr(data.lowest_price) / 100.0).toFixed(2);
 				document.querySelector("#price_gram_container1 .sell_price_input").value = (getPriceFromSymbolStr(data.lowest_price) / 100.0).toFixed(2);
 				document.querySelector("#price_gram_container0 .sell_price_input").dispatchEvent(new Event("input"));
@@ -987,10 +985,10 @@ function steamInventoryPage(){
 		var label = elem.parentNode.querySelector(".price_receive");
 		var amount = isNaN(parseFloat(elem.value)) ? 0 : Math.round(parseFloat(elem.value) * 100);
 		var price = calculatePriceYouReceive(amount, item);
-		if (steamWalletInfo.currencyData.bSymbolIsPrefix) {
-			label.innerHTML = steamWalletInfo.currencyData.strSymbol + " " + (price / 100.0).toFixed(2);
+		if (currencyInfo.bSymbolIsPrefix) {
+			label.innerHTML = currencyInfo.strSymbol + " " + (price / 100.0).toFixed(2);
 		} else {
-			label.innerHTML = (price / 100.0).toFixed(2) + " " + steamWalletInfo.currencyData.strSymbol;
+			label.innerHTML = (price / 100.0).toFixed(2) + " " + currencyInfo.strSymbol;
 		}
 	}
 
@@ -1038,16 +1036,17 @@ function steamInventoryPage(){
 				sellTotalPriceReceive += price;
 				sellCount ++;
 
-				if (steamWalletInfo.currencyData.bSymbolIsPrefix) {
-					var strPrice = steamWalletInfo.currencyData.strSymbol + " " + (price / 100.0).toFixed(2);
-					var strBuyerPay = steamWalletInfo.currencyData.strSymbol + " " + (buyerPay / 100.0).toFixed(2);
-					var strTotalReceive = steamWalletInfo.currencyData.strSymbol + " " + (sellTotalPriceReceive / 100.0).toFixed(2);
-					var strTotalBuyerPay = steamWalletInfo.currencyData.strSymbol + " " + (sellTotalPriceBuyerPay / 100.0).toFixed(2);
+				var symbol = currencyInfo.strSymbol;
+				if (currencyInfo.bSymbolIsPrefix) {
+					var strPrice = symbol + " " + (price / 100.0).toFixed(2);
+					var strBuyerPay = symbol + " " + (buyerPay / 100.0).toFixed(2);
+					var strTotalReceive = symbol + " " + (sellTotalPriceReceive / 100.0).toFixed(2);
+					var strTotalBuyerPay = symbol + " " + (sellTotalPriceBuyerPay / 100.0).toFixed(2);
 				} else {
-					var strPrice =  (price / 100.0).toFixed(2) + " " + steamWalletInfo.currencyData.strSymbol;
-					var strBuyerPay = (buyerPay / 100.0).toFixed(2) + " " + steamWalletInfo.currencyData.strSymbol;
-					var strTotalReceive = (sellTotalPriceReceive / 100.0).toFixed(2) + " " + steamWalletInfo.currencyData.strSymbol;
-					var strTotalBuyerPay = (sellTotalPriceBuyerPay / 100.0).toFixed(2) + " " + steamWalletInfo.currencyData.strSymbol;
+					var strPrice =  (price / 100.0).toFixed(2) + " " + symbol;
+					var strBuyerPay = (buyerPay / 100.0).toFixed(2) + " " + symbol;
+					var strTotalReceive = (sellTotalPriceReceive / 100.0).toFixed(2) + " " + symbol;
+					var strTotalBuyerPay = (sellTotalPriceBuyerPay / 100.0).toFixed(2) + " " + symbol;
 				}
 				var logText = `${sellCount} - ${item.description.name} 已在市场上架，售价为 ${strBuyerPay}，将收到 ${strPrice}` + (data.requires_confirmation ? " (需要确认)" : "") + "<br>";
 				var logTotal = `累计上架物品的总价为 ${strTotalBuyerPay}，将收到 ${strTotalReceive}`;
@@ -1150,7 +1149,7 @@ function steamMarketPage() {
 	var settings = getSteamCommunitySettings();
 	addSteamCommunitySetting();
 
-	var walletInfo = getWalletInfo(settings.currency_code);
+	var currencyInfo = getCurrencyInfo(settings.currency_code);
 	var marketMyListings = {};
 	var marketMyListingsPage = [];  //各页列表
 
@@ -1167,23 +1166,41 @@ function steamMarketPage() {
 	var numFoilCard = 0;
 	var numOther = 0;
 
+	if (settings.market_adjust_selllistings || settings.market_adjust_history) {
+		var styleElem = document.createElement("style");
+		styleElem.innerHTML = `.market_action_btn {padding: 0px 5px; margin-right: 8px; font-size: 12px;} 
+							   .control_action_container {padding-left: 6px; display: inline-block; position: relative;}
+							   .Listing_page_control {margin-top: 10px; user-select: none;}
+							   .Listing_page_control .market_paging_controls {margin-top: 2px;}`;
+		document.body.appendChild(styleElem);
+	}
+
 	if (settings.market_adjust_selllistings) {
 		adjustMySellListings();
 	}
 
+	if (settings.market_adjust_history) {
+		var styleElem = document.createElement("style");
+		styleElem.innerHTML = `.history_action_btn_container .history_page_number {width: 45px; height: 18px; border-radius: 3px; color: #fff; background-color: #324965; font-family: "Motiva Sans", Sans-serif; border-color: #45566A; margin: 1px 5px 0 -5px; text-align: center;}
+							   .history_action_btn_container .history_total_page {margin-right: 5px;}
+							   .wait_loading_history {position: absolute; height: 20px; top: 2px;}
+							   .history_page_number::-webkit-outer-spin-button, .history_page_number::-webkit-inner-spin-button{-webkit-appearance: none !important;}`;
+		document.body.appendChild(styleElem);
+		document.querySelector("#tabMyMarketHistory").addEventListener("click", showMarketHistory, true);
+	}
+
 	//调整出售物品列表
 	async function adjustMySellListings() {
-		document.querySelector("#tabMyMarketHistory").addEventListener("click", showMarketHistory, true);
-
 		var marketListings = document.querySelector("#tabContentsMyActiveMarketListingsRows");
+		if (!marketListings) {
+			return;
+		}
 		marketListings.innerHTML = "<div style='text-align: center;'><img src='https://community.steamstatic.com/public/images/login/throbber.gif' alt='载入中'></div>";
 		
 		var styleElem = document.createElement("style");
 		styleElem.innerHTML = `#tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
-								#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}
+							 	#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}
 								.market_listing_check {position: absolute; top: 6px; right: 20px; cursor: pointer;}
-								#market_page_control_before, #market_page_control_after, #history_page_control_before, #history_page_control_after {margin-top: 10px; user-select: none;}
-								.market_action_btn {padding: 0px 5px; margin-right: 5px; font-size: 12px;} .market_action_btn_container, .history_action_btn_container {padding-left: 6px; display: inline-block; position: relative;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header {display: flex; flex-direction: row-reverse;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
 								#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
@@ -1191,13 +1208,8 @@ function steamMarketPage() {
 								#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price {cursor: pointer; position: relative;}
 								.market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
 								.market_price_label {line-height: normal;}
-								.market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px;}
-								.market_show_filter > option {color: #ffffff; background-color: #333333;}
-								.history_action_btn_container .history_page_number {width: 45px; height: 18px; border-radius: 3px; color: #fff; background-color: #324965; font-family: "Motiva Sans", Sans-serif; border-color: #45566A; margin: 1px 5px 0 0; text-align: center;}
-								.history_action_btn_container .history_total_page {margin-right: 5px;}
-								#market_page_control_before .market_paging_controls, #market_page_control_after .market_paging_controls, #history_page_control_before .market_paging_controls, #history_page_control_after .market_paging_controls {margin-top: 2px;}
-								.wait_loading_history {position: absolute; height: 20px; top: 2px;}
-								.history_page_number::-webkit-outer-spin-button, .history_page_number::-webkit-inner-spin-button{-webkit-appearance: none !important;}`;
+								.market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px; margin-left: -5px;}
+								.market_show_filter > option {color: #ffffff; background-color: #333333;}`;
 		document.body.appendChild(styleElem);
 
 		//使表头可点击排序
@@ -1346,15 +1358,17 @@ function steamMarketPage() {
 	function addHistoryPageControl() {
 		document.querySelector("#tabContentsMyMarketHistory_ctn").style.display = "none";
 		var controlBefore = document.createElement("div");
+		controlBefore.className = "Listing_page_control";
 		controlBefore.id = "history_page_control_before";
 		var controlAfter = document.createElement("div");
+		controlAfter.className = "Listing_page_control";
 		controlAfter.id = "history_page_control_after";
 
-		var html = `<div class="history_action_btn_container"><a class="update_market_history market_action_btn pagebtn">刷新</a><a class="goto_history_page market_action_btn pagebtn">转到</a>
+		var html = `<div class="history_action_btn_container control_action_container"><a class="update_market_history market_action_btn pagebtn">刷新</a><a class="goto_history_page market_action_btn pagebtn">转到</a>
 					<input type="number" class="history_page_number" min="1"><span class="history_total_page"></span>
 					<img class="wait_loading_history" src="https://community.steamstatic.com/public/images/login/throbber.gif" alt="载入中" style="display: none;">
-					<span class="get_history_failed" style="display: none;">Failed<span></div>
-					<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span><div>`;
+					<span class="get_history_failed" style="display: none;">Failed</span></div>
+					<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span></div><div style="clear: both;"></div>`;
 		controlBefore.innerHTML = html;
 		controlAfter.innerHTML = html;
 		var marketTable = document.querySelector("#tabContentsMyMarketHistoryTable");
@@ -1418,13 +1432,16 @@ function steamMarketPage() {
 		document.body.appendChild(styleElem);
 
 		var controlBefore = document.createElement("div");
+		controlBefore.className = "Listing_page_control";
 		controlBefore.id = "market_page_control_before";
 		var controlAfter = document.createElement("div");
+		controlAfter.className = "Listing_page_control";
 		controlAfter.id = "market_page_control_after";
+
 		var numAll = numFoilCard + numOther + numTradingCard;
-		var html = `<div class="market_action_btn_container"><a class="market_select_all market_action_btn pagebtn">选中全部物品</a><a class="market_remove_listing market_action_btn pagebtn">下架选中物品</a></div>
+		var html = `<div class="market_action_btn_container control_action_container"><a class="market_select_all market_action_btn pagebtn">选中全部物品</a><a class="market_remove_listing market_action_btn pagebtn">下架选中物品</a></div>
 					<select class="market_show_filter pagebtn"><option value="All">全部物品 (${numAll})</option><option value="TradingCard">普通卡牌 (${numTradingCard})</option><option value="FoilCard">闪亮卡牌 (${numFoilCard})</option><option value="Other">其他物品 (${numOther})</option></select>
-					<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span><div>`;
+					<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span></div><div style="clear: both;"></div>`;
 		controlBefore.innerHTML = html;
 		controlAfter.innerHTML = html;
 		var marketTable = document.querySelector("#tabContentsMyActiveMarketListingsTable");
@@ -1667,7 +1684,7 @@ function steamMarketPage() {
 		var listing = event.currentTarget.parentNode;
 		var assetInfo = getListingAssetInfo(listing);
 		var marketHashName = getMarketHashName(assetInfo);
-		dialogPriceInfo.show(assetInfo.appid, marketHashName, walletInfo, function(data) {
+		dialogPriceInfo.show(assetInfo.appid, marketHashName, currencyInfo, function(data) {
 			addPriceLabel(listing, data);
 		});
 	}
@@ -1705,7 +1722,7 @@ function steamMarketPage() {
 		for (let listing of listings) {
 			var assetInfo = getListingAssetInfo(listing);
 			var hashName = getMarketHashName(assetInfo);
-			var data = await getCurrentItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, assetInfo.appid, hashName);
+			var data = await getCurrentItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, assetInfo.appid, hashName);
 			if (data) {
 				addPriceLabel(listing, data);
 				dialogPriceInfo.checkUpdateItemOrdersHistogram(assetInfo.appid, hashName, data);
@@ -1754,7 +1771,7 @@ function steamMarketListingPage() {
 								.market_listing_check {position: absolute; top: 6px; right: 20px; cursor: pointer;}
 								#market_page_control_before {margin-top: 10px; user-select: none;}
 								.market_action_btn_container {display: inline-block; padding-left: 6px;}
-								.market_action_btn {margin-right: 5px; font-size: 12px;}
+								.market_action_btn {margin-right: 10px; font-size: 12px;}
 								#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}`;
 		document.body.appendChild(styleElem);
 	
@@ -1851,9 +1868,9 @@ function steamMarketListingPage() {
 		var assetInfo = getAssetInfo();
 		var appid = assetInfo.appid;
 		var marketHashName = getMarketHashName(assetInfo);
-		var walletInfo = getWalletInfo(settings.currency_code);
+		var currencyInfo = getCurrencyInfo(settings.currency_code);
 	
-		var data = await getPriceOverview(walletInfo.country, walletInfo.eCurrencyCode, appid, marketHashName);
+		var data = await getPriceOverview(currencyInfo.country, currencyInfo.eCurrencyCode, appid, marketHashName);
 		if (data.success) {
 			var html = "";
 			html += data.lowest_price ? `<span>最低售价：${data.lowest_price}</span>` : "";
@@ -1903,7 +1920,7 @@ function steamGameCardsPage() {
 	var settings = getSteamCommunitySettings();
 	addSteamCommunitySetting();
 
-	var walletInfo = getWalletInfo(settings.currency_code);
+	var currencyInfo = getCurrencyInfo(settings.currency_code);
 
 	//修改页面布局
 	if (settings.gamecards_set_style) {
@@ -1982,7 +1999,7 @@ function steamGameCardsPage() {
 				var elem = event.target;
 				if (elem.classList.contains("show_market_info")) {
 					var marketHashName = elem.getAttribute("data-market-hash-name");
-					dialogPriceInfo.show(753, marketHashName, walletInfo, function(data) {
+					dialogPriceInfo.show(753, marketHashName, currencyInfo, function(data) {
 						showPirceUnderCard(marketHashName, data);
 					});
 				}
@@ -1994,7 +2011,7 @@ function steamGameCardsPage() {
 		var elems = document.querySelectorAll(".show_market_info");
 		for (let el of elems) {
 			var hashName = el.getAttribute("data-market-hash-name");
-			var data = await getCurrentItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, 753, hashName);
+			var data = await getCurrentItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, 753, hashName);
 			if (data) {
 				showPirceUnderCard(hashName, data);
 				dialogPriceInfo.checkUpdateItemOrdersHistogram(753, hashName, data);
@@ -2007,8 +2024,8 @@ function steamGameCardsPage() {
 			var elem2 = document.querySelector(`.show_market_info[data-market-hash-name="${hashName}"]`);
 			if (elem2) {  //在卡牌下方显示最低出售价和最高求购价
 				if (data1.success) {
-					var html2 = data1.sell_order_graph.length > 0 ? (walletInfo.bSymbolIsPrefix ? `${walletInfo.strSymbol} ${data1.sell_order_graph[0][0].toFixed(2)}` : `${data1.sell_order_graph[0][0].toFixed(2)} ${walletInfo.strSymbol}`) : "无";
-					html2 += data1.buy_order_graph.length > 0 ? (walletInfo.bSymbolIsPrefix ? ` | ${walletInfo.strSymbol} ${data1.buy_order_graph[0][0].toFixed(2)}` : ` | ${data1.buy_order_graph[0][0].toFixed(2)} ${walletInfo.strSymbol}`) : " | 无";
+					var html2 = data1.sell_order_graph.length > 0 ? (currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${data1.sell_order_graph[0][0].toFixed(2)}` : `${data1.sell_order_graph[0][0].toFixed(2)} ${currencyInfo.strSymbol}`) : "无";
+					html2 += data1.buy_order_graph.length > 0 ? (currencyInfo.bSymbolIsPrefix ? ` | ${currencyInfo.strSymbol} ${data1.buy_order_graph[0][0].toFixed(2)}` : ` | ${data1.buy_order_graph[0][0].toFixed(2)} ${currencyInfo.strSymbol}`) : " | 无";
 				} else {
 					var html2 = errorTranslator(data1);
 				}
@@ -2051,7 +2068,7 @@ function steamGameCardsPage() {
 
 //市场价格信息的弹窗
 var dialogPriceInfo = {
-	show: function(appid, marketHashName, walletInfo, func1, func2) {
+	show: function(appid, marketHashName, currencyInfo, func1, func2) {
 		this.appid = appid;
 		this.marketHashName = marketHashName;
 		var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
@@ -2062,11 +2079,11 @@ var dialogPriceInfo = {
 		unsafeWindow.ShowDialog(decodeURIComponent(marketHashName), html);
 		this.model = document.querySelector("#dialog_price_info");
 
-		this.showCurrentItemOrdersHistogram(appid, marketHashName, walletInfo, func1);
-		this.showCurrentPriceOverview(appid, marketHashName, walletInfo, func2);
+		this.showCurrentItemOrdersHistogram(appid, marketHashName, currencyInfo, func1);
+		this.showCurrentPriceOverview(appid, marketHashName, currencyInfo, func2);
 	},
-	showCurrentItemOrdersHistogram: async function(appid, hashName, walletInfo, func) {
-		var data = await getCurrentItemOrdersHistogram(walletInfo.country, walletInfo.eCurrencyCode, appid, hashName);
+	showCurrentItemOrdersHistogram: async function(appid, hashName, currencyInfo, func) {
+		var data = await getCurrentItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, appid, hashName);
 		if (data) {
 			this.checkUpdateItemOrdersHistogram(appid, hashName, data);
 			if (typeof func === "function") {
@@ -2092,8 +2109,8 @@ var dialogPriceInfo = {
 			}
 		}
 	},
-	showCurrentPriceOverview: async function(appid, hashName, walletInfo, func) {
-		var data = await getCurrentPriceOverview(walletInfo.country, walletInfo.eCurrencyCode, appid, hashName);
+	showCurrentPriceOverview: async function(appid, hashName, currencyInfo, func) {
+		var data = await getCurrentPriceOverview(currencyInfo.country, currencyInfo.eCurrencyCode, appid, hashName);
 		if (data) {
 			this.checkUpdatePriceOverview(appid, hashName, data);
 			if (typeof func === "function") {
@@ -2127,13 +2144,27 @@ var dialogPriceInfo = {
 //添加商店设置
 function addStoreSettings() {
 	var settingBtn = document.createElement("div");
-	settingBtn.className = "store_header_btn_gray store_header_btn";
-	settingBtn.innerHTML = "<a class='store_header_btn_content' style='cursor: pointer;'>设置</a>";
+	var cartElem = document.querySelector("div#cart_status_data");
+
+	if (cartElem) {
+		settingBtn.className = "store_header_btn_gray store_header_btn";
+		settingBtn.innerHTML = "<a class='store_header_btn_content' style='cursor: pointer;'>设置</a>";
+		cartElem.insertBefore(settingBtn, cartElem.firstElementChild);
+	} else {
+		settingBtn.setAttribute("style", "position: absolute; color: #EBEBEB; background: #4c5564; right: 20px; top: 10px; border: 1px solid #eeeeee;");
+		settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px;'>设置</a>";
+		document.body.appendChild(settingBtn);
+	}
+
 	settingBtn.onclick = function() {
 		var settings = getStoreSettings();
 		unsafeWindow.sfu_settings = settings;
-		var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_row input[type="checkbox"], .settings_row label {cursor: pointer;}
-						.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="checkbox"] {margin: 3px 3px 3px 4px;}</style>
+		var selectOptions = "";
+		for (var code in currencyData) {
+			selectOptions += `<option value="${code}" ${code == settings.history_currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
+		}
+		var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_row input[type="checkbox"], .settings_row label, .settings_select {cursor: pointer;}
+						.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="checkbox"] {margin: 0 2px; vertical-align: middle;} .settings_select {color: #EBEBEB; background: #1F1F1F;} </style>
 						<div class="settings_container">
 						<div class="settings_page_title">商店搜索页面设置：</div>
 						<div class="settings_row">
@@ -2147,32 +2178,40 @@ function addStoreSettings() {
 						<div class="settings_option"><input id="sfu_wishlist_click_picture" type="checkbox" onclick="window.sfu_settings.wishlist_click_picture = this.checked;" ${settings.wishlist_click_picture ? "checked=true" : ""}></input><label for="sfu_wishlist_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
 						<div class="settings_option"><input id="sfu_wishlist_click_title" type="checkbox" onclick="window.sfu_settings.wishlist_click_title = this.checked;" ${settings.wishlist_click_title ? "checked=true" : ""}></input><label for="sfu_wishlist_click_title" class="margin_right_20">点击游戏名时选中并复制</label></div>
 						<div class="settings_option"><input id="sfu_wishlist_click_price" type="checkbox" onclick="window.sfu_settings.wishlist_click_price = this.checked;" ${settings.wishlist_click_price ? "checked=true" : ""}></input><label for="sfu_wishlist_click_price">点击游戏价格时打开商店页面</label></div>
-						</div></div>`);
+						</div>
+						<div class="settings_page_title">消费历史记录页面设置：</div>
+						<div class="settings_row">
+						<div class="settings_option"><input id="sfu_history_append_filter" type="checkbox" onclick="window.sfu_settings.history_append_filter = this.checked;" ${settings.history_append_filter ? "checked=true" : ""}></input><label for="sfu_history_append_filter" class="margin_right_20">添加筛选栏和统计栏</label></div>
+						<div class="settings_option"><input id="sfu_history_change_onclick" type="checkbox" onclick="window.sfu_settings.history_change_onclick = this.checked;" ${settings.history_change_onclick ? "checked=true" : ""}></input><label for="sfu_history_change_onclick">修改日期和物品的点击效果</label></div>
+						<div class="settings_option"><span>货币：</span><select class="settings_select"; onchange="window.sfu_settings.history_currency_code = this.value;" title>${selectOptions}</select></div>
+						</div>
+						</div>`);
 		unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
 			settings = unsafeWindow.sfu_settings;
 			setStorageValue("SFU_STORE_SETTINGS", settings);
 		});
 	};
-	var cartElem = document.querySelector("div#cart_status_data");
-	cartElem.insertBefore(settingBtn, cartElem.firstElementChild);
 }
 
 function getStoreSettings() {
 	var data = getStorageValue("SFU_STORE_SETTINGS") || {};
-	typeof data.search_click_picture === "undefined" && (data.search_click_picture = true);
-	typeof data.search_click_title === "undefined" && (data.search_click_title = true);
-	typeof data.search_click_price === "undefined" && (data.search_click_price = true);
-	typeof data.search_set_filter === "undefined" && (data.search_set_filter = true);
-	typeof data.wishlist_click_picture === "undefined" && (data.wishlist_click_picture = true);
-	typeof data.wishlist_click_title === "undefined" && (data.wishlist_click_title = true);
-	typeof data.wishlist_click_price === "undefined" && (data.wishlist_click_price = true);
+	data.search_click_picture ??= true;
+	data.search_click_title ??= true;
+	data.search_click_price ??= true;
+	data.search_set_filter ??= true;
+	data.wishlist_click_picture ??= true;
+	data.wishlist_click_title ??= true;
+	data.wishlist_click_price ??= true;
+	data.history_append_filter ??= true;
+	data.history_change_onclick ??= true;
+	data.history_currency_code ??= "ARS";
 	return data;
 }
 
 //添加设置按键和设置页面
 function addSteamCommunitySetting() {
 	var settingBtn = document.createElement("div");
-	settingBtn.setAttribute("style", "position: absolute; color: #EBEBEB; background: #4c5564; right: 20px; top: 10px;");
+	settingBtn.setAttribute("style", "position: absolute; color: #EBEBEB; background: #4c5564; right: 20px; top: 10px; border: 1px solid #eeeeee;");
 	settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px;'>设置</a>";
 	settingBtn.onclick = function() {
 		var settings = getSteamCommunitySettings();
@@ -2181,9 +2220,10 @@ function addSteamCommunitySetting() {
 		for (var code in currencyData) {
 			selectOptions += `<option value="${code}" ${code == settings.currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 		}
-		var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_select, .settings_row input[type="checkbox"], .settings_row label {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} 
+		var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_select, .settings_row input[type="checkbox"], .settings_row label {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} .settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;}
 						.settings_row input[type="number"] {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} .margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="number"]::-webkit-outer-spin-button, .settings_row input[type="number"]::-webkit-inner-spin-button{-webkit-appearance: none !important;}</style>
-						<div class="settings_container"><div><span>货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;">${selectOptions}</select></div><br>
+						<div class="settings_container">
+						<div><span>货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;" title="用于无法获取货币信息的页面，包括徽章页面和消费历史页面">${selectOptions}</select></div><br>
 						<div class="settings_page_title">库存页面设置：</div>
 						<div class="settings_row">
 						<div class="settings_option"><input id="sfu_inventory_set_style" type="checkbox" ${settings.inventory_set_style ? "checked=true" : ""} onclick="window.sfu_settings.inventory_set_style = this.checked;"></input><label for="sfu_inventory_set_style" class="margin_right_20">修改页面布局</label></div>
@@ -2195,8 +2235,9 @@ function addSteamCommunitySetting() {
 						<div class="settings_page_title">市场页面设置：</div>
 						<div class="settings_row">
 						<div class="settings_option"><input id="sfu_market_adjust_selllistings" type="checkbox" ${settings.market_adjust_selllistings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_selllistings = this.checked;"></input><label for="sfu_market_adjust_selllistings" class="margin_right_20">调整出售物品表格</label></div>
-						<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">自动显示最低出售和最高求购</label></div>
-						<div class="settings_option"><label for="sfu_market_page_size">每页物品数量</label><input id="sfu_market_page_size" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
+						<div class="settings_option"><input id="sfu_market_adjust_history" type="checkbox" ${settings.market_adjust_history ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_history = this.checked;"></input><label for="sfu_market_adjust_history" class="margin_right_20">调整市场历史记录表格</label></div>
+						<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">出售物品表格自动显示最低出售和最高求购</label></div>
+						<div class="settings_option"><label for="sfu_market_page_size">出售物品表格每页物品数量</label><input id="sfu_market_page_size" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
 						</div>
 						<div class="settings_page_title">市场物品页面设置：</div>
 						<div class="settings_row">
@@ -2210,11 +2251,6 @@ function addSteamCommunitySetting() {
 						<div class="settings_option"><input id="sfu_gamecards_append_linkbtn" type="checkbox" ${settings.gamecards_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_append_linkbtn = this.checked;"></input><label for="sfu_gamecards_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
 						<div class="settings_option"><input id="sfu_gamecards_show_priceoverview" type="checkbox" ${settings.gamecards_show_priceoverview ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_show_priceoverview = this.checked;"></input><label for="sfu_gamecards_show_priceoverview">自动显示市场价格信息</label></div>
 						</div>
-						<div class="settings_page_title">消费历史记录页面设置：</div>
-						<div class="settings_row">
-						<div class="settings_option"><input id="sfu_history_append_filter" type="checkbox" ${settings.history_append_filter ? "checked=true" : ""} onclick="window.sfu_settings.history_append_filter = this.checked;"></input><label for="sfu_history_append_filter" class="margin_right_20">添加筛选栏和统计栏</label></div>
-						<div class="settings_option"><input id="sfu_history_change_onclick" type="checkbox" ${settings.history_change_onclick ? "checked=true" : ""} onclick="window.sfu_settings.history_change_onclick = this.checked;"></input><label for="sfu_history_change_onclick">修改日期和物品的点击效果</label></div>
-						</div>
 						</div>`);
 		unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
 			setStorageValue("SFU_COMMUNITY_SETTINGS", unsafeWindow.sfu_settings);
@@ -2226,24 +2262,23 @@ function addSteamCommunitySetting() {
 
 function getSteamCommunitySettings() {
 	var data = getStorageValue("SFU_COMMUNITY_SETTINGS") || {};
-	typeof data.currency_code === "undefined" && (data.currency_code = "ARS");
-	typeof data.inventory_set_style === "undefined" && (data.inventory_set_style = true);
-	typeof data.inventory_set_filter === "undefined" && (data.inventory_set_filter = true);
-	typeof data.inventory_append_linkbtn === "undefined" && (data.inventory_append_linkbtn = true);
-	typeof data.inventory_sell_btn === "undefined" && (data.inventory_sell_btn = true);
-	typeof data.inventory_market_info === "undefined" && (data.inventory_market_info = true);
-	typeof data.marketlisting_set_style === "undefined" && (data.marketlisting_set_style = true);
-	typeof data.marketlisting_show_priceoverview === "undefined" && (data.marketlisting_show_priceoverview = true);
-	typeof data.marketlisting_append_linkbtn === "undefined" && (data.marketlisting_append_linkbtn = true);
-	typeof data.gamecards_set_style === "undefined" && (data.gamecards_set_style = true);
-	typeof data.gamecards_show_priceoverview === "undefined" && (data.gamecards_show_priceoverview = true);
-	typeof data.gamecards_append_linkbtn === "undefined" && (data.gamecards_append_linkbtn = true);
-	typeof data.market_adjust_selllistings === "undefined" && (data.market_adjust_selllistings = true);
-	typeof data.market_show_priceinfo === "undefined" && (data.market_show_priceinfo = false);
-	typeof data.market_page_size === "undefined" && (data.market_page_size = 100);
+	data.currency_code ??= "ARS";
+	data.inventory_set_style ??= true;
+	data.inventory_set_filter ??= true;
+	data.inventory_append_linkbtn ??= true;
+	data.inventory_sell_btn ??= true;
+	data.inventory_market_info ??= true;
+	data.marketlisting_set_style ??= true;
+	data.marketlisting_show_priceoverview ??= true;
+	data.marketlisting_append_linkbtn ??= true;
+	data.gamecards_set_style ??= true;
+	data.gamecards_show_priceoverview ??= true;
+	data.gamecards_append_linkbtn ??= true;
+	data.market_adjust_selllistings ??= true;
+	data.market_adjust_history ??= true;
+	data.market_show_priceinfo ??= false;
+	data.market_page_size ??= 100;
 	data.market_page_size = Math.max(data.market_page_size, 10);
-	typeof data.history_append_filter === "undefined" && (data.history_append_filter = true);
-	typeof data.history_change_onclick === "undefined" && (data.history_change_onclick = true);
 	return data;
 }
 
@@ -2258,13 +2293,16 @@ function appendPageControl() {
 					  	   .pagecontrol_pagelink.active { color: #747474; cursor: default; }`;
 	document.body.appendChild(styleElem);
 
+	var inventory_pagecontrols = document.querySelector('#inventory_pagecontrols');
+	if (!inventory_pagecontrols) {
+		return;
+	}
 	var pageControl = document.createElement('div');
 	pageControl.id = 'SFU_pagecontrols';
 	var html = `<a class="pagebtn" href="javascript:InventoryPreviousPage();"> < </a>
 				<span id="pagecontrol_links"></span>
 				<a class="pagebtn" href="javascript:InventoryNextPage();"> > </a>`;
 	pageControl.innerHTML = html;
-	var inventory_pagecontrols = document.querySelector('#inventory_pagecontrols');
 	inventory_pagecontrols.parentNode.insertBefore(pageControl, inventory_pagecontrols);
 
 	var pageLinks = pageControl.querySelector('#pagecontrol_links');
@@ -2272,8 +2310,8 @@ function appendPageControl() {
 		var elem = event.target;
 		var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
 		if (elem.classList.contains("pagecontrol_pagelink")) {
-			var iCurPage = typeof(g_ActiveInventory.m_iCurrentPage) !== 'undefined' ? g_ActiveInventory.m_iCurrentPage : g_ActiveInventory.pageCurrent;
-			var iMaxPage = typeof(g_ActiveInventory.m_cPages) !== 'undefined' ? g_ActiveInventory.m_cPages : g_ActiveInventory.pageTotal;
+			var iCurPage = g_ActiveInventory.m_iCurrentPage ?? g_ActiveInventory.pageCurrent;
+			var iMaxPage = g_ActiveInventory.m_cPages ?? g_ActiveInventory.pageTotal;
 			var iNextPage = parseInt(elem.getAttribute("data-page-num"));
 			if (iNextPage == -1) {  //向前跳转5页
 				iNextPage = Math.max(0, iCurPage - 5);
@@ -2299,8 +2337,9 @@ function appendPageControl() {
 			return;
 		}
 
-		var iCurPage = (typeof(g_ActiveInventory.m_iCurrentPage) !== 'undefined' ? g_ActiveInventory.m_iCurrentPage : g_ActiveInventory.pageCurrent) + 1;
-		var iMaxPage = typeof(g_ActiveInventory.m_cPages) !== 'undefined' ? g_ActiveInventory.m_cPages : g_ActiveInventory.pageTotal;
+		document.querySelector('#inventory_pagecontrols').style.display = "none";
+		var iCurPage = (g_ActiveInventory.m_iCurrentPage ?? g_ActiveInventory.pageCurrent) + 1;
+		var iMaxPage = g_ActiveInventory.m_cPages ?? g_ActiveInventory.pageTotal;
 		var html = `<span class="pagecontrol_pagelink" data-page-num="1"> 1 </span>`;
 		var begin = 2;
 		var end = iMaxPage - 1;
@@ -2428,7 +2467,7 @@ function getAppid(elem, stopElem, className, attrName) {
 //由买家支付的金额计算卖家收到的金额
 function calculatePriceYouReceive(amount, item) {
 	if (amount > 0 && amount == parseInt(amount)) {
-		var publisherFee = (item && item.description && typeof item.description.market_fee != 'undefined' && item.description.market_fee !== null) ? item.description.market_fee : unsafeWindow.g_rgWalletInfo['wallet_publisher_fee_percent_default'];
+		var publisherFee = item?.description?.market_fee ?? unsafeWindow.g_rgWalletInfo['wallet_publisher_fee_percent_default'];
 		var feeInfo = unsafeWindow.CalculateFeeAmount(amount, publisherFee);
 		return amount - feeInfo.fees;
 	} else {
@@ -2439,7 +2478,7 @@ function calculatePriceYouReceive(amount, item) {
 //由卖家收到的金额计算买家支付的金额
 function calculatePriceBuyerPay(amount, item) {
 	if (amount > 0 && amount == parseInt(amount)) {
-		var publisherFee = (item && item.description && typeof item.description.market_fee != 'undefined' && item.description.market_fee !== null) ? item.description.market_fee : unsafeWindow.g_rgWalletInfo['wallet_publisher_fee_percent_default'];
+		var publisherFee = item?.description?.market_fee ?? unsafeWindow.g_rgWalletInfo['wallet_publisher_fee_percent_default'];
 		var info = unsafeWindow.CalculateAmountToSendForDesiredReceivedAmount(amount, publisherFee);
 		return info.amount;
 	} else {
@@ -2790,59 +2829,48 @@ function errorTranslator(err) {
 
 //货币信息
 var currencyData = {
-    "USD": {
-		"country": "US",
-        "strCode": "USD",
-        "eCurrencyCode": 1,
-        "strSymbol": "$",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "GBP": {
-		"country": "GB",
-        "strCode": "GBP",
-        "eCurrencyCode": 2,
-        "strSymbol": "£",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "EUR": {
-		"country": "EU",
-        "strCode": "EUR",
-        "eCurrencyCode": 3,
-        "strSymbol": "€",
+	"AED": {
+		"country": "AE",
+        "strCode": "AED",
+        "eCurrencyCode": 32,
+        "strSymbol": "AED",
         "bSymbolIsPrefix": false,
         "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": " ",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "CHF": {
-		"country": "CH",
-        "strCode": "CHF",
-        "eCurrencyCode": 4,
-        "strSymbol": "CHF",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
         "strDecimalSymbol": ".",
-        "strThousandsSeparator": " ",
+        "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": " "
     },
-    "RUB": {
-		"country": "RU",
-        "strCode": "RUB",
-        "eCurrencyCode": 5,
-        "strSymbol": "pуб.",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": true,
+	"ARS": {
+		"country": "AR",
+        "strCode": "ARS",
+        "eCurrencyCode": 34,
+        "strSymbol": "ARS$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
         "strDecimalSymbol": ",",
-        "strThousandsSeparator": "",
+        "strThousandsSeparator": ".",
+        "strSymbolAndNumberSeparator": " "
+    },
+	"AUD": {
+		"country": "AU",
+        "strCode": "AUD",
+        "eCurrencyCode": 21,
+        "strSymbol": "A$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "BGN": {
+		"country": "BG",
+        "strCode": "BGN",
+        "eCurrencyCode": 42,
+        "strSymbol": "лв",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": " "
     },
     "BRL": {
@@ -2856,137 +2884,16 @@ var currencyData = {
         "strThousandsSeparator": ".",
         "strSymbolAndNumberSeparator": " "
     },
-    "JPY": {
-		"country": "JP",
-        "strCode": "JPY",
-        "eCurrencyCode": 8,
-        "strSymbol": "¥",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "NOK": {
-		"country": "NO",
-        "strCode": "NOK",
-        "eCurrencyCode": 9,
-        "strSymbol": "kr",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": ".",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "IDR": {
-		"country": "ID",
-        "strCode": "IDR",
-        "eCurrencyCode": 10,
-        "strSymbol": "Rp",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": " ",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "MYR": {
-		"country": "MY",
-        "strCode": "MYR",
-        "eCurrencyCode": 11,
-        "strSymbol": "RM",
+    "BYN": {
+		"country": "BY",
+        "strCode": "BYN",
+        "eCurrencyCode": 36,
+        "strSymbol": "Br",
         "bSymbolIsPrefix": true,
         "bWholeUnitsOnly": false,
         "strDecimalSymbol": ".",
         "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": ""
-    },
-    "PHP": {
-		"country": "PH",
-        "strCode": "PHP",
-        "eCurrencyCode": 12,
-        "strSymbol": "P",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "SGD": {
-		"country": "SG",
-        "strCode": "SGD",
-        "eCurrencyCode": 13,
-        "strSymbol": "S$",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "THB": {
-		"country": "TH",
-        "strCode": "THB",
-        "eCurrencyCode": 14,
-        "strSymbol": "฿",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "VND": {
-		"country": "VN",
-        "strCode": "VND",
-        "eCurrencyCode": 15,
-        "strSymbol": "₫",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": ".",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "KRW": {
-		"country": "KR",
-        "strCode": "KRW",
-        "eCurrencyCode": 16,
-        "strSymbol": "₩",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "TRY": {
-		"country": "TR",
-        "strCode": "TRY",
-        "eCurrencyCode": 17,
-        "strSymbol": "TL",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": ".",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "UAH": {
-		"country": "UA",
-        "strCode": "UAH",
-        "eCurrencyCode": 18,
-        "strSymbol": "₴",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": " ",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "MXN": {
-		"country": "MX",
-        "strCode": "MXN",
-        "eCurrencyCode": 19,
-        "strSymbol": "Mex$",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
     },
     "CAD": {
 		"country": "CA",
@@ -2999,59 +2906,15 @@ var currencyData = {
         "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": " "
     },
-    "AUD": {
-		"country": "AU",
-        "strCode": "AUD",
-        "eCurrencyCode": 21,
-        "strSymbol": "A$",
+    "CHF": {
+		"country": "CH",
+        "strCode": "CHF",
+        "eCurrencyCode": 4,
+        "strSymbol": "CHF",
         "bSymbolIsPrefix": true,
         "bWholeUnitsOnly": false,
         "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "NZD": {
-		"country": "NZ",
-        "strCode": "NZD",
-        "eCurrencyCode": 22,
-        "strSymbol": "NZ$",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "PLN": {
-		"country": "PL",
-        "strCode": "PLN",
-        "eCurrencyCode": 6,
-        "strSymbol": "zł",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ",",
         "strThousandsSeparator": " ",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "CNY": {
-		"country": "CN",
-        "strCode": "CNY",
-        "eCurrencyCode": 23,
-        "strSymbol": "¥",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "INR": {
-		"country": "IN",
-        "strCode": "INR",
-        "eCurrencyCode": 24,
-        "strSymbol": "₹",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": " "
     },
     "CLP": {
@@ -3065,16 +2928,16 @@ var currencyData = {
         "strThousandsSeparator": ".",
         "strSymbolAndNumberSeparator": " "
     },
-    "PEN": {
-		"country": "PE",
-        "strCode": "PEN",
-        "eCurrencyCode": 26,
-        "strSymbol": "S/.",
+    "CNY": {
+		"country": "CN",
+        "strCode": "CNY",
+        "eCurrencyCode": 23,
+        "strSymbol": "¥",
         "bSymbolIsPrefix": true,
         "bWholeUnitsOnly": false,
         "strDecimalSymbol": ".",
         "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
+        "strSymbolAndNumberSeparator": " "
     },
     "COP": {
 		"country": "CO",
@@ -3087,138 +2950,6 @@ var currencyData = {
         "strThousandsSeparator": ".",
         "strSymbolAndNumberSeparator": " "
     },
-    "ZAR": {
-		"country": "ZA",
-        "strCode": "ZAR",
-        "eCurrencyCode": 28,
-        "strSymbol": "R",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": " ",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "HKD": {
-		"country": "HK",
-        "strCode": "HKD",
-        "eCurrencyCode": 29,
-        "strSymbol": "HK$",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "TWD": {
-		"country": "TW",
-        "strCode": "TWD",
-        "eCurrencyCode": 30,
-        "strSymbol": "NT$",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "SAR": {
-		"country": "SA",
-        "strCode": "SAR",
-        "eCurrencyCode": 31,
-        "strSymbol": "SR",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "AED": {
-		"country": "AE",
-        "strCode": "AED",
-        "eCurrencyCode": 32,
-        "strSymbol": "AED",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "SEK": {
-		"country": "SE",
-        "strCode": "SEK",
-        "eCurrencyCode": 33,
-        "strSymbol": "kr",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "ARS": {
-		"country": "AR",
-        "strCode": "ARS",
-        "eCurrencyCode": 34,
-        "strSymbol": "ARS$",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": ".",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "ILS": {
-		"country": "IL",
-        "strCode": "ILS",
-        "eCurrencyCode": 35,
-        "strSymbol": "₪",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "BYN": {
-		"country": "BY",
-        "strCode": "BYN",
-        "eCurrencyCode": 36,
-        "strSymbol": "Br",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "KZT": {
-		"country": "KZ",
-        "strCode": "KZT",
-        "eCurrencyCode": 37,
-        "strSymbol": "₸",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": " ",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "KWD": {
-		"country": "KW",
-        "strCode": "KWD",
-        "eCurrencyCode": 38,
-        "strSymbol": "KD",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "QAR": {
-		"country": "QA",
-        "strCode": "QAR",
-        "eCurrencyCode": 39,
-        "strSymbol": "QR",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
     "CRC": {
 		"country": "CR",
         "strCode": "CRC",
@@ -3229,39 +2960,6 @@ var currencyData = {
         "strDecimalSymbol": ",",
         "strThousandsSeparator": ".",
         "strSymbolAndNumberSeparator": ""
-    },
-    "UYU": {
-		"country": "UY",
-        "strCode": "UYU",
-        "eCurrencyCode": 41,
-        "strSymbol": "$U",
-        "bSymbolIsPrefix": true,
-        "bWholeUnitsOnly": true,
-        "strDecimalSymbol": ",",
-        "strThousandsSeparator": ".",
-        "strSymbolAndNumberSeparator": ""
-    },
-    "BGN": {
-		"country": "BG",
-        "strCode": "BGN",
-        "eCurrencyCode": 42,
-        "strSymbol": "лв",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
-    },
-    "HRK": {
-		"country": "HR",
-        "strCode": "HRK",
-        "eCurrencyCode": 43,
-        "strSymbol": "kn",
-        "bSymbolIsPrefix": false,
-        "bWholeUnitsOnly": false,
-        "strDecimalSymbol": ".",
-        "strThousandsSeparator": ",",
-        "strSymbolAndNumberSeparator": " "
     },
     "CZK": {
 		"country": "CZ",
@@ -3285,6 +2983,50 @@ var currencyData = {
         "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": " "
     },
+    "EUR": {
+		"country": "EU",
+        "strCode": "EUR",
+        "eCurrencyCode": 3,
+        "strSymbol": "€",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": " ",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "GBP": {
+		"country": "GB",
+        "strCode": "GBP",
+        "eCurrencyCode": 2,
+        "strSymbol": "£",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+	"HKD": {
+		"country": "HK",
+        "strCode": "HKD",
+        "eCurrencyCode": 29,
+        "strSymbol": "HK$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "HRK": {
+		"country": "HR",
+        "strCode": "HRK",
+        "eCurrencyCode": 43,
+        "strSymbol": "kn",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
     "HUF": {
 		"country": "HU",
         "strCode": "HUF",
@@ -3296,11 +3038,176 @@ var currencyData = {
         "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": " "
     },
-    "RON": {
-		"country": "RO",
-        "strCode": "RON",
-        "eCurrencyCode": 47,
-        "strSymbol": "lei",
+    "IDR": {
+		"country": "ID",
+        "strCode": "IDR",
+        "eCurrencyCode": 10,
+        "strSymbol": "Rp",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": " ",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "ILS": {
+		"country": "IL",
+        "strCode": "ILS",
+        "eCurrencyCode": 35,
+        "strSymbol": "₪",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "INR": {
+		"country": "IN",
+        "strCode": "INR",
+        "eCurrencyCode": 24,
+        "strSymbol": "₹",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "JPY": {
+		"country": "JP",
+        "strCode": "JPY",
+        "eCurrencyCode": 8,
+        "strSymbol": "¥",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "KRW": {
+		"country": "KR",
+        "strCode": "KRW",
+        "eCurrencyCode": 16,
+        "strSymbol": "₩",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+	"KWD": {
+		"country": "KW",
+        "strCode": "KWD",
+        "eCurrencyCode": 38,
+        "strSymbol": "KD",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "KZT": {
+		"country": "KZ",
+        "strCode": "KZT",
+        "eCurrencyCode": 37,
+        "strSymbol": "₸",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": " ",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "MXN": {
+		"country": "MX",
+        "strCode": "MXN",
+        "eCurrencyCode": 19,
+        "strSymbol": "Mex$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "MYR": {
+		"country": "MY",
+        "strCode": "MYR",
+        "eCurrencyCode": 11,
+        "strSymbol": "RM",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "NOK": {
+		"country": "NO",
+        "strCode": "NOK",
+        "eCurrencyCode": 9,
+        "strSymbol": "kr",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": ".",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "NXP": {
+		"country": "NX",
+        "strCode": "NXP",
+        "eCurrencyCode": 9001,
+        "strSymbol": "원",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "NZD": {
+		"country": "NZ",
+        "strCode": "NZD",
+        "eCurrencyCode": 22,
+        "strSymbol": "NZ$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "PEN": {
+		"country": "PE",
+        "strCode": "PEN",
+        "eCurrencyCode": 26,
+        "strSymbol": "S/.",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "PHP": {
+		"country": "PH",
+        "strCode": "PHP",
+        "eCurrencyCode": 12,
+        "strSymbol": "P",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "PLN": {
+		"country": "PL",
+        "strCode": "PLN",
+        "eCurrencyCode": 6,
+        "strSymbol": "zł",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": " ",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "QAR": {
+		"country": "QA",
+        "strCode": "QAR",
+        "eCurrencyCode": 39,
+        "strSymbol": "QR",
         "bSymbolIsPrefix": false,
         "bWholeUnitsOnly": false,
         "strDecimalSymbol": ".",
@@ -3318,22 +3225,172 @@ var currencyData = {
         "strThousandsSeparator": "",
         "strSymbolAndNumberSeparator": " "
     },
-    "NXP": {
-		"country": "NX",
-        "strCode": "NXP",
-        "eCurrencyCode": 9001,
-        "strSymbol": "원",
+    "RON": {
+		"country": "RO",
+        "strCode": "RON",
+        "eCurrencyCode": 47,
+        "strSymbol": "lei",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "RUB": {
+		"country": "RU",
+        "strCode": "RUB",
+        "eCurrencyCode": 5,
+        "strSymbol": "pуб.",
         "bSymbolIsPrefix": false,
         "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": "",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "SAR": {
+		"country": "SA",
+        "strCode": "SAR",
+        "eCurrencyCode": 31,
+        "strSymbol": "SR",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "SEK": {
+		"country": "SE",
+        "strCode": "SEK",
+        "eCurrencyCode": 33,
+        "strSymbol": "kr",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "SGD": {
+		"country": "SG",
+        "strCode": "SGD",
+        "eCurrencyCode": 13,
+        "strSymbol": "S$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
         "strDecimalSymbol": ".",
         "strThousandsSeparator": ",",
         "strSymbolAndNumberSeparator": ""
+    },
+    "THB": {
+		"country": "TH",
+        "strCode": "THB",
+        "eCurrencyCode": 14,
+        "strSymbol": "฿",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "TRY": {
+		"country": "TR",
+        "strCode": "TRY",
+        "eCurrencyCode": 17,
+        "strSymbol": "TL",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": ".",
+        "strSymbolAndNumberSeparator": " "
+    },
+    "TWD": {
+		"country": "TW",
+        "strCode": "TWD",
+        "eCurrencyCode": 30,
+        "strSymbol": "NT$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": " "
+    },
+	"UAH": {
+		"country": "UA",
+        "strCode": "UAH",
+        "eCurrencyCode": 18,
+        "strSymbol": "₴",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": " ",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "USD": {
+		"country": "US",
+        "strCode": "USD",
+        "eCurrencyCode": 1,
+        "strSymbol": "$",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": ",",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "UYU": {
+		"country": "UY",
+        "strCode": "UYU",
+        "eCurrencyCode": 41,
+        "strSymbol": "$U",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": ".",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "VND": {
+		"country": "VN",
+        "strCode": "VND",
+        "eCurrencyCode": 15,
+        "strSymbol": "₫",
+        "bSymbolIsPrefix": false,
+        "bWholeUnitsOnly": true,
+        "strDecimalSymbol": ",",
+        "strThousandsSeparator": ".",
+        "strSymbolAndNumberSeparator": ""
+    },
+    "ZAR": {
+		"country": "ZA",
+        "strCode": "ZAR",
+        "eCurrencyCode": 28,
+        "strSymbol": "R",
+        "bSymbolIsPrefix": true,
+        "bWholeUnitsOnly": false,
+        "strDecimalSymbol": ".",
+        "strThousandsSeparator": " ",
+        "strSymbolAndNumberSeparator": " "
     }
 }
 
+function getCurrencyCode(currencyId) {
+	for (var code in currencyData)
+	{
+		if (currencyData[code].eCurrencyCode == currencyId )
+			return code;
+	}
+	return 'Unknown';
+}
+
+function getCurrencyCodeByCountry(country) {
+	for (var code in currencyData)
+	{
+		if (currencyData[code].country == country )
+			return code;
+	}
+	return 'Unknown';
+}
+
 //获取钱包货币信息
-function getWalletInfo(code) {
-	var walletDefault = {
+function getCurrencyInfo(code, set=false) {
+	var currencyDefault = {
 		"country": "AR",
         "strCode": "ARS",
         "eCurrencyCode": 34,
@@ -3344,7 +3401,24 @@ function getWalletInfo(code) {
         "strThousandsSeparator": ".",
         "strSymbolAndNumberSeparator": " "
 	};
-	return currencyData[code] || walletDefault;
+
+	if (!set) {
+		if (unsafeWindow.g_rgWalletInfo) {
+			var code1 = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency)
+			if (currencyData[code1]) {
+				return currencyData[code1];
+			}
+		}
+
+		if (unsafeWindow.g_strCountryCode) {
+			var code2 = getCurrencyCodeByCountry(unsafeWindow.g_strCountryCode)
+			if (currencyData[code2]) {
+				return currencyData[code2];
+			}
+		}
+	}
+
+	return currencyData[code] || currencyDefault;
 }
 
 (function() {
