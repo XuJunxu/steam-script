@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SteamCard
 // @namespace    SteamCard
-// @version      2.0.5
+// @version      2.0.6
 // @description  Steam Card
 // @author       Nin9
 // @include      https://store.steampowered.com/search*
@@ -9,6 +9,7 @@
 // @require      https://cdn.bootcdn.net/ajax/libs/localforage/1.7.1/localforage.min.js
 // @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
+// @connect      steamcardexchange.net
 // ==/UserScript==
 
 const TIMEOUT = 20000;
