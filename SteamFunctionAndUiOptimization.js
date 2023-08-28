@@ -15,13 +15,15 @@
 // @match        http*://steamcommunity.com/id/*/gamecards/*
 // @match        http*://steamcommunity.com/profiles/*/gamecards/*
 // @match        http*://store.steampowered.com/account/history/*
+// @match        http*://steamcommunity.com/sharedfiles/filedetails/*
+// @match        http*://steamcommunity.com/workshop/filedetails/*
 // @require      https://cdn.bootcdn.net/ajax/libs/localforage/1.7.1/localforage.min.js
 // @grant        unsafeWindow
 // ==/UserScript==
 
-'use strict';
-
 (function() {
+	'use strict';
+	
 	if (typeof unsafeWindow.sfu_inited !== "undefined") {
 		return;
 	}
@@ -29,9 +31,20 @@
 		
 	const TIMEOUT = 20000;
 
+	//修复创意工坊预览大图无法显示的问题
+	function steamWorkshopImageRepair() {
+		if (location.href.search(/steamcommunity\.com\/(sharedfiles|workshop)\/filedetails/) < 0) {
+			return;
+		}
+
+		if(typeof onYouTubeIframeAPIReady == 'function') {
+			onYouTubeIframeAPIReady();
+		}
+	}
+
 	//消费记录页面
 	function steamAccountHistory() {
-		if(location.href.search(/store\.steampowered\.com\/account\/history/) < 0) {
+		if (location.href.search(/store\.steampowered\.com\/account\/history/) < 0) {
 			return;
 		}
 
@@ -406,7 +419,7 @@
 					var url = `https://steamcommunity.com/my/gamecards/${aid}/`; 
 					var win = window.open(url);
 				}
-			} else if (settings.search_click_price && (elem.classList.contains("search_price") || elem.parentNode.classList.contains("search_price") || elem.parentNode.parentNode.classList.contains("search_price"))) {  //点击游戏价格时添加到购物车
+			} else if (settings.search_click_price && (elem.classList.contains("search_discount_block") || elem.parentNode.classList.contains("search_discount_block") || elem.parentNode.parentNode.classList.contains("search_discount_block"))) {  //点击游戏价格时添加到购物车
 				event.preventDefault();
 				appid = getAppid(elem, event.currentTarget, "search_result_row", "data-ds-appid");
 				title = getTitle(elem, event.currentTarget);
@@ -430,7 +443,7 @@
 			var el = elem;
 			while(el != stopElem && el != document.body) {
 				if(el.classList.contains("search_result_row")) {
-					return getPriceFromSymbolStr(el.querySelector("div.search_price").lastChild.textContent);
+					return getPriceFromSymbolStr(el.querySelector("div.discount_final_price").textContent);
 				}
 				el = el.parentNode;
 			}
@@ -1205,8 +1218,7 @@
 			
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `#tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
-									#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}
-									.market_listing_check {position: absolute; top: 6px; right: 20px; cursor: pointer;}
+									.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header {display: flex; flex-direction: row-reverse;}
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
@@ -1507,6 +1519,7 @@
 					selectBtn1.classList.remove("checked");
 					selectBtn0.textContent = "选中全部物品";
 					selectBtn1.textContent = "选中全部物品";
+
 					for (var item of marketMyListings.timeSort) {
 						item[3].querySelector(".market_listing_check").checked = false;
 					}
@@ -1515,20 +1528,24 @@
 					selectBtn1.classList.add("checked");
 					selectBtn0.textContent = "取消选中物品";
 					selectBtn1.textContent = "取消选中物品";
-					for (var item of marketMyListings.timeSort) {
-						item[3].querySelector(".market_listing_check").checked = true;
+
+					var showType = document.querySelector("select.market_show_filter").value;
+					for (var item of document.querySelectorAll(`#tabContentsMyActiveMarketListingsRows > .market_listing_row${showType != "All"? `[market_item_type=${showType}]`: ""}`)) {
+						item.querySelector(".market_listing_check").checked = true;
 					}
 				}
 			} else if (elem.classList.contains("market_remove_listing")) {
-				var listingsToRemove = [];
-				for (var item of marketMyListings.timeSort) {
-					var listing = item[3];
-					var checkbox = listing.querySelector(".market_listing_check");
-					if (checkbox.checked && !checkbox.hasAttribute("data-removed")) {
-						listingsToRemove.push(listing);
+				unsafeWindow.ShowConfirmDialog("批量下架", "确定下架所有选中的物品？").done(function() {
+					var listingsToRemove = [];
+					for (var item of marketMyListings.timeSort) {
+						var listing = item[3];
+						var checkbox = listing.querySelector(".market_listing_check");
+						if (checkbox.checked && !checkbox.hasAttribute("data-removed")) {
+							listingsToRemove.push(listing);
+						}
 					}
-				}
-				removeSelectedListings(listingsToRemove);
+					removeSelectedListings(listingsToRemove);
+				});
 			}
 		}
 
@@ -1774,11 +1791,10 @@
 									div#largeiteminfo_item_descriptors {overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0px;}
 									div#largeiteminfo_warning {margin: 0px 18px;}
 									div#largeiteminfo_item_actions > a {margin-bottom: 0px;}
-									.market_listing_check {position: absolute; top: 6px; right: 20px; cursor: pointer;}
+									.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
 									#market_page_control_before {margin-top: 10px; user-select: none;}
 									.market_action_btn_container {display: inline-block; padding-left: 6px;}
-									.market_action_btn {margin-right: 10px; font-size: 12px;}
-									#tabContentsMyActiveMarketListingsRows .market_listing_cancel_button {position: relative;}`;
+									.market_action_btn {margin-right: 10px; font-size: 12px;}`;
 			document.body.appendChild(styleElem);
 		
 			//最新动态移到页面最后
@@ -1842,14 +1858,16 @@
 					}
 				}
 			} else if (elem.classList.contains("market_remove_listing")) {
-				var listingsToRemove = [];
-				for (var item of rows) {
-					var checkbox = item.querySelector(".market_listing_check");
-					if (checkbox.checked && !checkbox.hasAttribute("data-removed")) {
-						listingsToRemove.push(item);
+				unsafeWindow.ShowConfirmDialog("批量下架", "确定下架所有选中的物品？").done(function() {
+					var listingsToRemove = [];
+					for (var item of rows) {
+						var checkbox = item.querySelector(".market_listing_check");
+						if (checkbox.checked && !checkbox.hasAttribute("data-removed")) {
+							listingsToRemove.push(item);
+						}
 					}
-				}
-				removeSelectedListings(listingsToRemove);
+					removeSelectedListings(listingsToRemove);
+				});
 			}
 		}
 
@@ -2150,17 +2168,9 @@
 	//添加商店设置
 	function addStoreSettings() {
 		var settingBtn = document.createElement("div");
-		var cartElem = document.querySelector("div#cart_status_data");
-
-		if (cartElem) {
-			settingBtn.className = "store_header_btn_gray store_header_btn";
-			settingBtn.innerHTML = "<a class='store_header_btn_content' style='cursor: pointer;'>设置</a>";
-			cartElem.insertBefore(settingBtn, cartElem.firstElementChild);
-		} else {
-			settingBtn.setAttribute("style", "position: absolute; color: #EBEBEB; background: #4c5564; right: 20px; top: 10px; border: 1px solid #eeeeee;");
-			settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px;'>设置</a>";
-			document.body.appendChild(settingBtn);
-		}
+		settingBtn.setAttribute("style", "position: absolute; background-color: #3b4b5f; right: 10px; top: 10px; border-radius: 2px; box-shadow: 0px 0px 2px 0px #00000099");
+		settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px; font-size: 12px; color: #b8b6b4;'>设置</a>";
+		document.body.appendChild(settingBtn);
 
 		settingBtn.onclick = function() {
 			var settings = getStoreSettings();
@@ -2217,8 +2227,8 @@
 	//添加设置按键和设置页面
 	function addSteamCommunitySetting() {
 		var settingBtn = document.createElement("div");
-		settingBtn.setAttribute("style", "position: absolute; color: #EBEBEB; background: #4c5564; right: 20px; top: 10px; border: 1px solid #eeeeee;");
-		settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px;'>设置</a>";
+		settingBtn.setAttribute("style", "position: absolute; background-color: #3b4b5f; right: 10px; top: 10px; border-radius: 2px; box-shadow: 0px 0px 2px 0px #00000099");
+		settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px; font-size: 12px; color: #b8b6b4;'>设置</a>";
 		settingBtn.onclick = function() {
 			var settings = getSteamCommunitySettings();
 			unsafeWindow.sfu_settings = settings;
@@ -3437,5 +3447,7 @@
 	steamGameCardsPage();
 	steamMarketPage();
 	steamAccountHistory();
+	steamWorkshopImageRepair();
+
 })();
 
