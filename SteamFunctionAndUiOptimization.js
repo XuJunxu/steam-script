@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.2
+// @version      2.1.3
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -2022,6 +2022,9 @@
 			}
 
 			var response = await searchMarketGameItems(gameid, 2, cardborder);
+			if (response.success && response.results.length == 0) {
+				var response = await searchMarketGameItems(gameid, 2, cardborder);
+			}
 			if (response.success) {
 				var results = response.results;
 				var cardElems = document.querySelectorAll("div.badge_card_set_card");
