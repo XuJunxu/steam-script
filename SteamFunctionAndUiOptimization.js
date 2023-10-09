@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.1
+// @version      2.1.2
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -1955,11 +1955,6 @@
 			appendItemPriceInfoBtn();
 		}
 
-		//显示市场价格信息
-		if (settings.gamecards_show_priceoverview) {
-			getAllCardsPrice();
-		}
-
 		//添加链接按键
 		if (settings.gamecards_append_linkbtn) {
 			appendCardsPageLinkBtn();
@@ -2007,27 +2002,56 @@
 			elem.appendChild(exchangeInventoryBtn);
 		}
 
-		function appendItemPriceInfoBtn() {
+		async function appendItemPriceInfoBtn() {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = ".market_link {display: block; color: #EBEBEB; font-size: 12px; background: #00000066; padding: 3px; text-align: center;}";
 			document.body.appendChild(styleElem);
 
-			var nameList = getGameCardsHashName();
-			var cardElems = document.querySelectorAll("div.badge_card_set_card");
+			var res = location.href.match(/\/gamecards\/(\d+)/);
+			if (res && res.length > 1) {
+				var gameid = res[1];
+			} else {
+				return;
+			}
 
-			for (let i = 0; i < nameList.length; i++) {
-				var html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${nameList[i]}" target="_blank">打开市场页面</a>
-							<a class="market_link show_market_info" data-market-hash-name="${nameList[i]}" style="margin-top: 5px;">查看市场价格信息</a>`;
-				cardElems[i].lastElementChild.innerHTML = html;
-				cardElems[i].lastElementChild.onclick = function(event) { 
-					var elem = event.target;
-					if (elem.classList.contains("show_market_info")) {
-						var marketHashName = elem.getAttribute("data-market-hash-name");
-						dialogPriceInfo.show(753, marketHashName, currencyInfo, function(data) {
-							showPirceUnderCard(marketHashName, data);
-						});
+			var res1 = location.href.match(/\/gamecards\/\d+\/?\?border=(\d)/);
+			if (res1 && res1.length > 1) {
+				var cardborder = res1[1];
+			} else {
+				var cardborder = 0;
+			}
+
+			var response = await searchMarketGameItems(gameid, 2, cardborder);
+			if (response.success) {
+				var results = response.results;
+				var cardElems = document.querySelectorAll("div.badge_card_set_card");
+				for (let cardElem of cardElems) {
+					let image = cardElem.querySelector("img.gamecard").src;
+					for (let card of results) {
+						if (image.includes(card.asset_description.icon_url)) {
+							let hashName = card.asset_description.market_hash_name || card.hash_name;
+							let html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">打开市场页面</a>
+									    <a class="market_link show_market_info" data-market-hash-name="${hashName}" style="margin-top: 5px;">起价：${card.sell_price_text}</a>`;
+
+							cardElem.lastElementChild.innerHTML = html;
+							cardElem.lastElementChild.onclick = function(event) { 
+								var elem = event.target;
+								if (elem.classList.contains("show_market_info")) {
+									var marketHashName = elem.getAttribute("data-market-hash-name");
+									dialogPriceInfo.show(753, marketHashName, currencyInfo, function(data) {
+										showPirceUnderCard(marketHashName, data);
+									});
+								}
+							};
+						}
 					}
-				};
+				}
+
+				//显示市场价格信息
+				if (settings.gamecards_show_priceoverview) {
+					getAllCardsPrice();
+				}
+
 			}
 		}
 
@@ -2057,35 +2081,6 @@
 					elem2.title = html2;
 				}
 			}
-		}
-		
-		function getGameCardsHashName() {
-			var linkElems = document.querySelectorAll("div.gamecards_inventorylink>a");
-			if (linkElems && linkElems.length > 0) {
-				var url = "/market/multisell?appid=753&contextid=6";
-				var url2 = "/market/multibuy?appid=753";
-				for (var elem of linkElems) {
-					var index = elem.getAttribute("href").indexOf(url);
-					var index2 = elem.getAttribute("href").indexOf(url2);
-					if (index > -1) {
-						var tempList = elem.getAttribute("href").substring(index + url.length).split("&");
-						break;
-					} else if (index2 > -1) {
-						var tempList = elem.getAttribute("href").substring(index2 + url2.length).split("&");
-						break;
-					}
-				}
-			}
-			var nameList = [];
-			if (tempList && tempList.length > 0) {
-				var key = "items[]=";
-				for (var str of tempList) {
-					if (str.indexOf(key) == 0) {
-						nameList.push(str.substring(key.length));
-					}
-				}
-			}
-			return nameList;
 		}
 
 	}
@@ -2777,6 +2772,38 @@
 			};
 			xhr.ontimeout = function() {
 				console.log("getItemOrdersHistogram timeout");
+				resolve({status: 408});
+			};
+			xhr.send();
+		});
+	}
+
+	function searchMarketGameItems(gameid, itemclass=-1, cardborder=-1, query="") {
+		return new Promise(function (resolve, reject) {
+			var url = `https://steamcommunity.com/market/search/render/?norender=1&query=${query}&start=0&count=100&search_descriptions=0&sort_column=name&sort_dir=desc&appid=753&category_753_Event%5B%5D=any&category_753_Game%5B%5D=tag_app_${gameid}`;
+			if (itemclass > -1) {
+				url += `&category_753_item_class%5B%5D=tag_item_class_${itemclass}`;
+			}
+			if (cardborder > -1) {
+				url += `&category_753_cardborder%5B%5D=tag_cardborder_${cardborder}`;
+			}
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("GET", url, true);
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve(JSON.parse(e.target.response));
+				} else {
+					console.log("searchMarketGameItems failed");
+					resolve(e.target);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("searchMarketGameItems error");
+				resolve(error);
+			};
+			xhr.ontimeout = function() {
+				console.log("searchMarketGameItems timeout");
 				resolve({status: 408});
 			};
 			xhr.send();
