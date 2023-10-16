@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.3
+// @version      2.1.4
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -2030,8 +2030,10 @@
 				var cardElems = document.querySelectorAll("div.badge_card_set_card");
 				for (let cardElem of cardElems) {
 					let image = cardElem.querySelector("img.gamecard").src;
+					let title = cardElem.querySelector(".badge_card_set_title").textContent.replace("(集换式卡牌)", "").replace("(Trading Card)", "").trim();
 					for (let card of results) {
-						if (image.includes(card.asset_description.icon_url)) {
+						let cardTitle = card.name.replace("(集换式卡牌)", "").replace("(Trading Card)", "").trim();
+						if (image.includes(card.asset_description.icon_url) || title == cardTitle) {
 							let hashName = card.asset_description.market_hash_name || card.hash_name;
 							let html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">打开市场页面</a>
 									    <a class="market_link show_market_info" data-market-hash-name="${hashName}" style="margin-top: 5px;">起价：${card.sell_price_text}</a>`;
