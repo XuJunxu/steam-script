@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.4
+// @version      2.1.5
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -2030,7 +2030,7 @@
 				var cardElems = document.querySelectorAll("div.badge_card_set_card");
 				for (let cardElem of cardElems) {
 					let image = cardElem.querySelector("img.gamecard").src;
-					let title = cardElem.querySelector(".badge_card_set_title").textContent.replace("(集换式卡牌)", "").replace("(Trading Card)", "").trim();
+					let title = cardElem.querySelector(".badge_card_set_title").textContent.replace(/\(\d+\)/, "").replace("(集换式卡牌)", "").replace("(Trading Card)", "").trim();
 					for (let card of results) {
 						let cardTitle = card.name.replace("(集换式卡牌)", "").replace("(Trading Card)", "").trim();
 						if (image.includes(card.asset_description.icon_url) || title == cardTitle) {
