@@ -1172,6 +1172,9 @@
 		var marketMyListings = {};
 		var marketMyListingsPage = [];  //各页列表
 
+		var buyOrderRowsTimeSort = [];
+		var buyOrderRowsNameSort = [];
+
 		var TIME_ASC = 0;
 		var TIME_DSC = 1;
 		var NAME_ASC = 2;
@@ -1190,12 +1193,15 @@
 			styleElem.innerHTML = `.market_action_btn {padding: 0px 5px; margin-right: 8px; font-size: 12px;} 
 								.control_action_container {padding-left: 6px; display: inline-block; position: relative;}
 								.Listing_page_control {margin-top: 10px; user-select: none;}
-								.Listing_page_control .market_paging_controls {margin-top: 2px;}`;
+								.Listing_page_control .market_paging_controls {margin-top: 2px;}
+								.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
+								.market_listing_table_header {text-align: center;}`;
 			document.body.appendChild(styleElem);
 		}
 
 		if (settings.market_adjust_selllistings) {
 			adjustMySellListings();
+			adjustMyBuyOrder();
 		}
 
 		if (settings.market_adjust_history) {
@@ -1218,7 +1224,6 @@
 			
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `#tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
-									.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header {display: flex; flex-direction: row-reverse;}
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
@@ -1323,6 +1328,73 @@
 			if (settings.market_show_priceinfo) {
 				autoShowPriceInfo(listings);
 			}
+		}
+
+		//调整求购列表
+		function adjustMyBuyOrder() {
+			var listingSection = document.querySelectorAll(".my_listing_section");
+			var buyOrderListing;
+			for (var section of listingSection) {
+				var row = section.querySelector(".market_listing_row");
+				if (row && row.id.match(/mybuyorder_\d+/)) {
+					buyOrderListing = section;
+					buyOrderListing.classList.add("sfu_my_buy_order");
+					break;
+				}
+			}
+
+			if (!buyOrderListing) {
+				return;
+			}
+
+			var buyOrderRows = buyOrderListing.querySelectorAll(".market_listing_row");
+			
+			var buyOrderTable = document.createElement("div");
+			for (var row of buyOrderRows) {
+				addRowCheckbox(row);
+				buyOrderTable.appendChild(row);
+				buyOrderRowsTimeSort.push(row);
+			}
+			buyOrderListing.appendChild(buyOrderTable);
+
+			buyOrderRowsNameSort = buyOrderRowsTimeSort.slice();
+			buyOrderRowsNameSort.sort(function(a, b) {
+				var gameName1 = a.querySelector(".market_listing_game_name").textContent.toLowerCase();
+				var itemName1 = a.querySelector(".market_listing_item_name_link").textContent.toLowerCase();
+				var gameName2 = b.querySelector(".market_listing_game_name").textContent.toLowerCase();
+				var itemName2 = b.querySelector(".market_listing_item_name_link").textContent.toLowerCase();
+				if (gameName1.localeCompare(gameName2) == 0) {
+					return itemName1.localeCompare(itemName2);
+				}
+				return gameName1.localeCompare(gameName2);
+			});
+
+			//使表头可点击排序
+			var tableHeader = buyOrderListing.querySelector(".market_listing_table_header > span:last-child");
+			tableHeader.innerHTML = tableHeader.textContent;
+			tableHeader.setAttribute("style", "cursor: pointer; ");
+			tableHeader.onclick = function(event) {
+				var elem = event.currentTarget;
+				var textContent = elem.textContent;
+				var rowsToShow = buyOrderRowsTimeSort;
+				if (textContent.endsWith("▲")) {
+					elem.textContent = textContent.replace("▲", "▼");
+					rowsToShow = buyOrderRowsNameSort.slice();
+					rowsToShow.reverse();
+				} else if (textContent.endsWith("▼")) {
+					elem.textContent = textContent.replace(" ▼", "");
+				} else {
+					elem.textContent = textContent + " ▲";
+					rowsToShow = buyOrderRowsNameSort;
+				}
+
+				buyOrderTable.innerHTML = "";
+				for (var row of rowsToShow) {
+					buyOrderTable.appendChild(row);
+				}
+			};
+
+			addBuyOrderActions();
 		}
 
 		//显示市场历史记录
@@ -1443,6 +1515,65 @@
 			document.querySelector("#history_page_control_after .history_total_page").textContent = content;
 		}
 
+		function addBuyOrderActions() {
+			var controlBefore = document.createElement("div");
+			controlBefore.className = "Listing_page_control";
+			controlBefore.id = "buy_order_control_before";
+			var controlAfter = document.createElement("div");
+			controlAfter.className = "Listing_page_control";
+			controlAfter.id = "buy_order_control_after";
+
+			var html = `<div class="control_action_container"><a class="buy_order_select_all market_action_btn pagebtn">全部选中</a><a class="cancel_buy_order market_action_btn pagebtn">取消选中的求购</a></div>`;
+			controlBefore.innerHTML = html;
+			controlAfter.innerHTML = html;
+			var buyOrderListing = document.querySelector(".sfu_my_buy_order");
+			buyOrderListing.insertBefore(controlBefore, buyOrderListing.querySelector(".market_listing_table_header"));
+			buyOrderListing.appendChild(controlAfter);
+
+			controlBefore.onclick = buyOrderActionsClick;
+			controlAfter.onclick = buyOrderActionsClick;
+		}
+
+		function buyOrderActionsClick(event) {
+			var elem = event.target;
+			if (elem.classList.contains("buy_order_select_all")) {
+				var selectBtn0 = document.querySelector("#buy_order_control_before .buy_order_select_all");
+				var selectBtn1 = document.querySelector("#buy_order_control_after .buy_order_select_all");
+
+				if (elem.classList.contains("checked")) {  //取消选中
+					selectBtn0.classList.remove("checked");
+					selectBtn1.classList.remove("checked");
+					selectBtn0.textContent = "全部选中";
+					selectBtn1.textContent = "全部选中";
+
+					for (var row of buyOrderRowsTimeSort) {
+						row.querySelector(".market_listing_check").checked = false;
+					}
+				} else {
+					selectBtn0.classList.add("checked");
+					selectBtn1.classList.add("checked");
+					selectBtn0.textContent = "取消选中";
+					selectBtn1.textContent = "取消选中";
+
+					for (var row of buyOrderRowsTimeSort) {
+						row.querySelector(".market_listing_check").checked = true;
+					}
+				}
+
+			} else if (elem.classList.contains("cancel_buy_order")) {
+				unsafeWindow.ShowConfirmDialog("取消求购", "确定取消所有选中的求购？").done(function() {
+					var rowsToCancel = [];
+					for (var row of buyOrderRowsTimeSort) {
+						var checkbox = row.querySelector(".market_listing_check");
+						if (checkbox.checked && !checkbox.hasAttribute("data-removed")) {
+							rowsToCancel.push(row);
+						}
+					}
+					cancelSelectedBuyOrder(rowsToCancel);
+				});
+			}
+		}
+
 		//列表上下添加操作按键和页面导航
 		function addMarketPageControl() {
 			var styleElem = document.createElement("style");
@@ -1513,7 +1644,7 @@
 			var elem = event.target;
 			if (elem.classList.contains("market_select_all")) {
 				var selectBtn0 = document.querySelector("#market_page_control_before .market_select_all");
-				var selectBtn1 = document.querySelector("#market_page_control_after .market_select_all")
+				var selectBtn1 = document.querySelector("#market_page_control_after .market_select_all");
 				if (elem.classList.contains("checked")) {  //取消选中
 					selectBtn0.classList.remove("checked");
 					selectBtn1.classList.remove("checked");
@@ -2600,6 +2731,20 @@
 		return eval(args[1]);
 	}
 
+	async function cancelSelectedBuyOrder(rowsToCancel) {
+		for (var row of rowsToCancel) {
+			var btn = row.querySelector("a.item_market_action_button_edit");
+			var buyOrderId = eval(btn.href.match(/CancelMarketBuyOrder\((.+)\)/)[1]);
+
+			var data = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
+			if (data.success) {
+				row.querySelector(".market_listing_check").setAttribute("data-removed", "true");
+				btn.querySelector(".item_market_action_button_contents").textContent = "已取消";
+				btn.style.color = "red";
+			}
+		}
+	}
+
 	//下架物品
 	function marketRemoveListing(listingid, sessionid) {
 		return new Promise(function(resolve, reject) {
@@ -2682,6 +2827,34 @@
 				resolve({status: 408});
 			};
 			xhr.send();
+		});
+	}
+
+	//取消求购
+	function cancelBuyOrder(buyOrderId, sessionid) {
+		return new Promise(function(resolve, reject) {
+			var url = "https://steamcommunity.com/market/cancelbuyorder/";
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("POST", url, true);
+			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve({success: true});
+				} else {
+					console.log("cancelBuyOrder failed");
+					resolve(e.target);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("cancelBuyOrder error");
+				resolve(error);
+			};
+			xhr.ontimeout = function() {
+				console.log("cancelBuyOrder timeout");
+				resolve({status: 408});
+			};
+			xhr.send(`sessionid=${sessionid}&buy_orderid=${buyOrderId}`);
 		});
 	}
 
