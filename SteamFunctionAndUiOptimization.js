@@ -841,15 +841,15 @@
 			styleElem.innerHTML = `.price_gram {display: flex; margin: 5px 10px;} .price_gram>div:first-child {margin-right: 5px;} .price_gram>div {border: 1px solid #000000;} 
 									.table_title {text-align: center; font-size: 12px;} th, td {background: #00000066; width: 80px; text-align: center; font-size: 12px; line-height: 18px;} .price_overview {margin-left: 15px;} 
 									.price_overview>span {margin-right: 20px;} .sell_price_input {text-align: center; margin-right: 2px; width: 80px;} .sell_btn_container {margin: 5px 10px;} 
-									.quick_sell_btn {margin: 5px 5px 0px 0px;} .quick_sell_btn > span {padding: 0px 5px; pointer-events: none;} .price_receive {margin-left: 10px; font-size: 12px;}
+									.quick_sell_btn {margin: 5px 5px 0px 0px;} .quick_sell_btn > span {padding: 0px 5px; pointer-events: none;} .price_receive, .price_receive_2 {margin-left: 10px; font-size: 12px;}
 									.show_market_info {border-radius: 2px; background: #000000; color: #FFFFFF; margin: 10px 0px 0px 10px; cursor: pointer; padding: 2px 15px; display: inline-block;} .show_market_info:hover {background: rgba(102, 192, 244, 0.4)}`;
 			document.body.appendChild(styleElem);
 
 			var html = `<div><a class="show_market_info">显示市场价格信息</a></div><div class="market_info"><div class="price_gram"></div><div class="price_overview"></div></div>
-						<div class="sell_btn_container"><div><input class="sell_price_input" type="number" step="0.01" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
+						<div class="sell_btn_container"><div><input class="sell_price_input" type="number" step="0.01" min="0.03" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
 						<a class="btn_small btn_green_white_innerfade sell_comfirm"><span>确认出售</span></a>
 						<a class="btn_small btn_green_white_innerfade sell_all_same" title="出售全部相同的物品"><span>批量出售</span></a><br>
-						<label class="price_receive" title="收到的金额"><label></div><div class="sell_btns"></div></div>`;
+						<label class="price_receive" style="margin-right: 10px;"></label><label class="price_receive_2"></label></div><div class="sell_btns"></div></div>`;
 			var container0 = document.createElement("div");
 			container0.id = "price_gram_container0";
 			var container1 = document.createElement("div");
@@ -999,12 +999,26 @@
 		function showPriceReceive(event, item) {
 			var elem = event.target;
 			var label = elem.parentNode.querySelector(".price_receive");
+			var label2 = elem.parentNode.querySelector(".price_receive_2");
 			var amount = isNaN(parseFloat(elem.value)) ? 0 : Math.round(parseFloat(elem.value) * 100);
 			var price = calculatePriceYouReceive(amount, item);
+			var pay = calculatePriceBuyerPay(price, item);
 			if (currencyInfo.bSymbolIsPrefix) {
-				label.innerHTML = currencyInfo.strSymbol + " " + (price / 100.0).toFixed(2);
+				label.innerHTML = `${currencyInfo.strSymbol} ${(pay / 100.0).toFixed(2)} (${currencyInfo.strSymbol} ${(price / 100.0).toFixed(2)})`;
 			} else {
-				label.innerHTML = (price / 100.0).toFixed(2) + " " + currencyInfo.strSymbol;
+				label.innerHTML = `${(pay / 100.0).toFixed(2)} ${currencyInfo.strSymbol} (${(price / 100.0).toFixed(2)} ${currencyInfo.strSymbol})`;
+			}
+			if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
+				var price2 = Math.max(Math.ceil(price * globalCurrencyRate.wallet_second_rate), 1);
+				var pay2 = calculatePriceBuyerPay(price2, item);
+				var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
+				if (currencyInfo2.bSymbolIsPrefix) {
+					label2.innerHTML = `${currencyInfo2.strSymbol} ${(pay2 / 100.0).toFixed(2)} (${currencyInfo2.strSymbol} ${(price2 / 100.0).toFixed(2)})`;
+				} else {
+					label2.innerHTML = `${(pay2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol} (${(price2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol})`;
+				}
+			} else {
+				label2.innerHTML = "";
 			}
 		}
 
