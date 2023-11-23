@@ -838,18 +838,21 @@
 		//在右侧大图片上方添加市场价格信息和出售按键
 		function appendPriceGramAndSellBtn() {
 			var styleElem = document.createElement("style");
-			styleElem.innerHTML = `.price_gram {display: flex; margin: 5px 10px;} .price_gram>div:first-child {margin-right: 5px;} .price_gram>div {border: 1px solid #000000;} 
+			styleElem.innerHTML = `.price_gram_table {display: flex; margin: 5px 10px; cursor: pointer;} .price_gram_table>div:first-child {margin-right: 5px;} .price_gram_table>div {border: 1px solid #000000;} 
 									.table_title {text-align: center; font-size: 12px;} th, td {background: #00000066; width: 80px; text-align: center; font-size: 12px; line-height: 18px;} .price_overview {margin-left: 15px;} 
 									.price_overview>span {margin-right: 20px;} .sell_price_input {text-align: center; margin-right: 2px; width: 80px;} .sell_btn_container {margin: 5px 10px;} 
 									.quick_sell_btn {margin: 5px 5px 0px 0px;} .quick_sell_btn > span {padding: 0px 5px; pointer-events: none;} .price_receive, .price_receive_2 {margin-left: 10px; font-size: 12px;}
-									.show_market_info {border-radius: 2px; background: #000000; color: #FFFFFF; margin: 10px 0px 0px 10px; cursor: pointer; padding: 2px 15px; display: inline-block;} .show_market_info:hover {background: rgba(102, 192, 244, 0.4)}`;
+									.show_market_info {border-radius: 2px; background: #000000; color: #FFFFFF; margin: 10px 0px 0px 10px; cursor: pointer; padding: 2px 15px; display: inline-block;} 
+									.show_market_info:hover {background: rgba(102, 192, 244, 0.4)} .price_gram, .price_gram div{font-size: 12px; font-weight: normal;}`;
 			document.body.appendChild(styleElem);
 
 			var html = `<div><a class="show_market_info">显示市场价格信息</a></div><div class="market_info"><div class="price_gram"></div><div class="price_overview"></div></div>
-						<div class="sell_btn_container"><div><input class="sell_price_input" type="number" step="0.01" min="0.03" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
+						<div class="sell_btn_container">
+						<div><input class="sell_price_input" type="number" step="0.01" min="0.03" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
 						<a class="btn_small btn_green_white_innerfade sell_comfirm"><span>确认出售</span></a>
-						<a class="btn_small btn_green_white_innerfade sell_all_same" title="出售全部相同的物品"><span>批量出售</span></a><br>
-						<label class="price_receive" style="margin-right: 10px;"></label><label class="price_receive_2"></label></div><div class="sell_btns"></div></div>`;
+						<a class="btn_small btn_green_white_innerfade sell_all_same" title="出售全部相同的物品"><span>批量出售</span></a></div>
+						<div><label class="price_receive" style="margin-right: 10px;"></label><label class="price_receive_2"></label></div>
+						<div class="sell_btns"></div></div>`;
 			var container0 = document.createElement("div");
 			container0.id = "price_gram_container0";
 			var container1 = document.createElement("div");
@@ -902,7 +905,7 @@
 
 			//将logo替换成上架日志
 			var logHtml = `<style>#inventory_logos {height: auto;} #inventory_applogo {display: none;} #sell_log_text {font-size: 12px; max-height: 200px; overflow-y: auto; margin-top: 10px;} 
-							#sell_log_total {font-weight: bold; margin-top: 5px} .price_gram, .price_gram div{font-size: 12px; font-weight: normal;} </style>
+							#sell_log_total {font-weight: bold; margin-top: 5px}</style>
 							<div id="sell_log_text"></div><div id="sell_log_total"></div><div><a id="clear_sell_log" style="display: none; margin-top: 10px" class="pagecontrol_element pagebtn">清空</a></div>`;
 			var logContainer = document.createElement("div");
 			logContainer.innerHTML = logHtml;
@@ -937,9 +940,15 @@
 				var data1 = await getItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, itemNameId);
 				if (data1.success && item.assetid == unsafeWindow.g_ActiveInventory.selectedItem.assetid) {
 					priceGramLoaded = true;
-					var html1 = `<div><div class="table_title">出售</div>${data1.sell_order_table || data1.sell_order_summary}</div><div><div class="table_title">购买</div>${data1.buy_order_table || data1.buy_order_summary}</div>`;
+					var html1 = `<div class="price_gram_table"><div><div class="table_title">出售</div>${data1.sell_order_table || data1.sell_order_summary}</div><div><div class="table_title">购买</div>${data1.buy_order_table || data1.buy_order_summary}</div></div>`;
 					document.querySelector("#price_gram_container0 .price_gram").innerHTML = html1;
 					document.querySelector("#price_gram_container1 .price_gram").innerHTML = html1;
+					document.querySelector("#price_gram_container0 .price_gram_table").onclick = function() {
+						dialogPriceInfo.showTable(decodeURIComponent(hashName), data1, currencyInfo);
+					};
+					document.querySelector("#price_gram_container1 .price_gram_table").onclick = function() {
+						dialogPriceInfo.showTable(decodeURIComponent(hashName), data1, currencyInfo);
+					};
 
 					//添加快速出售按键
 					if (globalSettings.inventory_sell_btn && item.description.marketable) {
@@ -998,8 +1007,8 @@
 
 		function showPriceReceive(event, item) {
 			var elem = event.target;
-			var label = elem.parentNode.querySelector(".price_receive");
-			var label2 = elem.parentNode.querySelector(".price_receive_2");
+			var label = elem.parentNode.parentNode.querySelector(".price_receive");
+			var label2 = elem.parentNode.parentNode.querySelector(".price_receive_2");
 			var amount = isNaN(parseFloat(elem.value)) ? 0 : Math.round(parseFloat(elem.value) * 100);
 			var price = calculatePriceYouReceive(amount, item);
 			var pay = calculatePriceBuyerPay(price, item);
@@ -1009,8 +1018,7 @@
 				label.innerHTML = `${(pay / 100.0).toFixed(2)} ${currencyInfo.strSymbol} (${(price / 100.0).toFixed(2)} ${currencyInfo.strSymbol})`;
 			}
 			if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
-				var price2 = Math.max(Math.ceil(price * globalCurrencyRate.wallet_second_rate), 1);
-				var pay2 = calculatePriceBuyerPay(price2, item);
+				var [pay2, price2] = calculateSecondPrice(price, item);
 				var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
 				if (currencyInfo2.bSymbolIsPrefix) {
 					label2.innerHTML = `${currencyInfo2.strSymbol} ${(pay2 / 100.0).toFixed(2)} (${currencyInfo2.strSymbol} ${(price2 / 100.0).toFixed(2)})`;
@@ -1890,7 +1898,7 @@
 				var data = await getCurrentItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, assetInfo.appid, hashName);
 				if (data) {
 					addPriceLabel(listing, data);
-					dialogPriceInfo.checkUpdateItemOrdersHistogram(assetInfo.appid, hashName, data);
+					dialogPriceInfo.checkUpdateItemOrdersHistogram(assetInfo.appid, hashName, data, currencyInfo);
 				}
 			}
 		}
@@ -2087,6 +2095,17 @@
 
 		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
 
+		if (!unsafeWindow.g_rgWalletInfo) {
+			unsafeWindow.g_rgWalletInfo = {
+				wallet_fee: "1",
+				wallet_fee_base: "0",
+				wallet_fee_minimum: "1",
+				wallet_fee_percent: "0.05",
+				wallet_max_balance: "12500000",
+				wallet_publisher_fee_percent_default: "0.10",
+			}
+		}
+
 		//修改页面布局
 		if (globalSettings.gamecards_set_style) {
 			changeGameCardsPage();
@@ -2209,7 +2228,7 @@
 				var data = await getCurrentItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, 753, hashName);
 				if (data) {
 					showPirceUnderCard(hashName, data);
-					dialogPriceInfo.checkUpdateItemOrdersHistogram(753, hashName, data);
+					dialogPriceInfo.checkUpdateItemOrdersHistogram(753, hashName, data, currencyInfo);
 				}
 			}
 		}
@@ -2234,45 +2253,100 @@
 
 	//市场价格信息的弹窗
 	var dialogPriceInfo = {
+		init: function(title) {
+			var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
+						#market_info_group .table_title, #market_info_group th, #market_info_group td {text-align: center; font-size: 14px;} 
+						#market_info_group th, #market_info_group td {min-width: 100px; background: transparent; width: auto; line-height: normal;} 
+						#card_price_overview>span {margin-right: 40px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
+						#market_info_group .market_commodity_orders_table tr:nth-child(even) {background: #00000033;} #market_info_group .market_commodity_orders_table tr:nth-child(odd) {background: #00000066;}
+						.orders_price_receive {font-size: 80%; color: #7f7f7f;} #card_price_overview {margin-bottom: 20px;}</style>
+						<div style="min-height: 230px;" id="dialog_price_info"><div id="card_price_overview">Loading...</div><div id="market_info_group">Loading...</div></div>`;
+			this.cmodel = unsafeWindow.ShowDialog(title, html);
+			this.model = this.cmodel.GetContent()[0];
+		},
 		show: function(appid, marketHashName, currencyInfo, func1, func2) {
+			this.init(decodeURIComponent(marketHashName));
+
 			this.appid = appid;
 			this.marketHashName = marketHashName;
-			var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
-						#market_info_group .table_title, #market_info_group th, #market_info_group td {text-align: center;} #market_info_group th, #market_info_group td {min-width: 100px;} 
-						#card_price_overview>span {margin-right: 40px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
-						#market_info_group .market_commodity_orders_table tr:nth-child(even) {background: #00000033;} #market_info_group .market_commodity_orders_table tr:nth-child(odd) {background: #00000066;}</style>
-						<div style="min-height: 230px;" id="dialog_price_info"><div id="card_price_overview">Loading...</div><br><div id="market_info_group">Loading...</div></div>`;
-			unsafeWindow.ShowDialog(decodeURIComponent(marketHashName), html);
-			this.model = document.querySelector("#dialog_price_info");
 
 			this.showCurrentItemOrdersHistogram(appid, marketHashName, currencyInfo, func1);
 			this.showCurrentPriceOverview(appid, marketHashName, currencyInfo, func2);
 		},
+		showTable: function(title, data, currencyInfo) {
+			this.init(title);
+			this.model.querySelector("#card_price_overview").innerHTML = "";
+			this.updateItemOrdersHistogram(data, currencyInfo);
+		},
 		showCurrentItemOrdersHistogram: async function(appid, hashName, currencyInfo, func) {
 			var data = await getCurrentItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, appid, hashName);
 			if (data) {
-				this.checkUpdateItemOrdersHistogram(appid, hashName, data);
+				this.checkUpdateItemOrdersHistogram(appid, hashName, data, currencyInfo);
 				if (typeof func === "function") {
 					func(data);
 				}
 			}
 		},
-		checkUpdateItemOrdersHistogram: function(appid, hashName, data) {
+		checkUpdateItemOrdersHistogram: function(appid, hashName, data, currencyInfo) {
 			if  (appid == this.appid && hashName == this.marketHashName) {
-				this.updateItemOrdersHistogram(data);
+				this.updateItemOrdersHistogram(data, currencyInfo);
 			}
 		},
-		updateItemOrdersHistogram: function(data) {
+		updateItemOrdersHistogram: function(data, currencyInfo) {
 			if (this.model) {
 				var elem1 = this.model.querySelector("#market_info_group");
 				if (elem1) {  //在弹出窗口上显示表格
 					if (data.success) {
-						var html1 = `<div><div class="table_title">出售</div>${data.sell_order_table || data.sell_order_summary}</div><div><div class="table_title">购买</div>${data.buy_order_table || data.buy_order_summary}</div>`;
+						var html1 = `<div class="table_title sell_order_table"><div>出售</div>${data.sell_order_table || data.sell_order_summary}</div><div class="table_title buy_order_table"><div>购买</div>${data.buy_order_table || data.buy_order_summary}</div>`;
 					} else {
 						var html1 = `<div>${errorTranslator(data)}</div>`
 					}
 					elem1.innerHTML = html1;
+					if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
+						var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
+						if (data.sell_order_table) {
+							var rows = elem1.querySelectorAll(".sell_order_table tr");
+							var th = document.createElement("th");
+							th.textContent = rows[0].firstElementChild.textContent + "-2";
+							rows[0].insertBefore(th, rows[0].lastElementChild);
+							for (var i = 1; i < rows.length; i++) {
+								var text = rows[i].firstElementChild.textContent;
+								var pay = getPriceFromSymbolStr(text);
+								var price = calculatePriceYouReceive(pay);
+								var [pay2, price2] = calculateSecondPrice(price);
+								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${(data.price_prefix + " " + (price / 100.0).toFixed(2) + " " + data.price_suffix).trim()})</div>`;
+								var td = document.createElement("td");
+								if (currencyInfo2.bSymbolIsPrefix) {
+									td.innerHTML = `<div class="orders_price_pay">${currencyInfo2.strSymbol} ${(pay2 / 100.0).toFixed(2)}</div><div class="orders_price_receive">(${currencyInfo2.strSymbol} ${(price2 / 100.0).toFixed(2)})</div>`;
+								} else {
+									td.innerHTML = `<div class="orders_price_pay">${(pay2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol}</div><div class="orders_price_receive">(${(price2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol})</div>`;
+								}
+								rows[i].insertBefore(td, rows[i].lastElementChild);
+							}
+						}
+						if (data.buy_order_table) {
+							var rows = elem1.querySelectorAll(".buy_order_table tr");
+							var th = document.createElement("th");
+							th.textContent = rows[0].firstElementChild.textContent + "-2";
+							rows[0].insertBefore(th, rows[0].lastElementChild);
+							for (var i = 1; i < rows.length; i++) {
+								var text = rows[i].firstElementChild.textContent;
+								var pay = getPriceFromSymbolStr(text);
+								var price = calculatePriceYouReceive(pay);
+								var [pay2, price2] = calculateSecondPrice(price);
+								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${(data.price_prefix + " " + (price / 100.0).toFixed(2) + " " + data.price_suffix).trim()})</div>`;
+								var td = document.createElement("td");
+								if (currencyInfo2.bSymbolIsPrefix) {
+									td.innerHTML = `<div class="orders_price_pay">${currencyInfo2.strSymbol} ${(pay2 / 100.0).toFixed(2)}</div><div class="orders_price_receive">(${currencyInfo2.strSymbol} ${(price2 / 100.0).toFixed(2)})</div>`;
+								} else {
+									td.innerHTML = `<div class="orders_price_pay">${(pay2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol}</div><div class="orders_price_receive">(${(price2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol})</div>`;
+								}
+								rows[i].insertBefore(td, rows[i].lastElementChild);
+							}
+						}
+					}
 				}
+				this.cmodel.AdjustSizing();
 			}
 		},
 		showCurrentPriceOverview: async function(appid, hashName, currencyInfo, func) {
@@ -2303,6 +2377,7 @@
 					}
 					elem.innerHTML = html2;	
 				}
+				this.cmodel.AdjustSizing();
 			}
 		}
 	};
@@ -2722,6 +2797,13 @@
 		}
 	}
 
+	//根据汇率计算第二货币的价格
+	function calculateSecondPrice(price, item) {
+		var price2 = Math.max(Math.ceil(price * globalCurrencyRate.wallet_second_rate), 1);
+		var pay2 = calculatePriceBuyerPay(price2, item);
+		return [pay2, price2];
+	}
+
 	var itemPriceGramInfo = {};
 	async function getCurrentItemOrdersHistogram(country, currency, appid, hashName) {
 		var key = appid + "/" + hashName;
@@ -2737,7 +2819,7 @@
 			if (res.success) {
 				var itemNameId = res.nameid;
 				var data1 = await getItemOrdersHistogram(country, currency, itemNameId);
-				if (data1.success) {
+				if (data1.success && (data1.buy_order_table || data1.buy_order_summary) && (data1.sell_order_table || data1.sell_order_summary)) {
 					itemPriceGramInfo[key] = data1;
 					itemPriceGramInfo[key].loaded = true;
 				} else {
@@ -2979,6 +3061,7 @@
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
 			xhr.onload = function(e) {
 				if (e.target.status == 200) {
 					resolve(JSON.parse(e.target.response));
@@ -3727,7 +3810,7 @@
 	//获取钱包货币信息
 	function getCurrencyInfo(code, set=false, defaultCode="CNY") {
 		if (!set) {
-			if (unsafeWindow.g_rgWalletInfo) {
+			if (unsafeWindow.g_rgWalletInfo?.wallet_currency) {
 				var code1 = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency)
 				if (currencyData[code1]) {
 					return currencyData[code1];
