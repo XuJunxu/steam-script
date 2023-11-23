@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.6
+// @version      2.1.7
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -30,10 +30,11 @@
 	unsafeWindow.sfu_inited = true;
 		
 	const TIMEOUT = 20000;
+	var globalSettings, globalCurrencyRate;
 
 	//修复创意工坊预览大图无法显示的问题
 	function steamWorkshopImageRepair() {
-		if (location.href.search(/steamcommunity\.com\/(sharedfiles|workshop)\/filedetails/) < 0) {
+		if (!location.href.match(/^https?\:\/\/steamcommunity\.com\/(sharedfiles|workshop)\/filedetails/)) {
 			return;
 		}
 
@@ -44,14 +45,13 @@
 
 	//消费记录页面
 	function steamAccountHistory() {
-		if (location.href.search(/store\.steampowered\.com\/account\/history/) < 0) {
+		if (!location.href.match(/^https?\:\/\/store\.steampowered\.com\/account\/history/)) {
 			return;
 		}
 
-		var settings = getStoreSettings();
 		addStoreSettings();
 
-		if (settings.history_append_filter || settings.history_change_onclick) {
+		if (globalSettings.history_append_filter || globalSettings.history_change_onclick) {
 			var loading = document.querySelector("#wallet_history_loading");
 			var pageContent = document.querySelector(".page_header_ctn .page_content");
 			pageContent.insertBefore(loading, pageContent.querySelector(".pageheader"));
@@ -59,7 +59,7 @@
 			waitLoadingAllHistory();
 		}
 
-		if (settings.history_change_onclick) {
+		if (globalSettings.history_change_onclick) {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `td.wht_items, td.wht_date {cursor: auto;}`;
 			document.body.appendChild(styleElem);
@@ -98,7 +98,7 @@
 		function ComputeAndModifyHistory() {
 			var walletHistory = document.querySelectorAll("tr.wallet_table_row");
 			if (walletHistory.length > 0) {
-				var currencyInfo = getCurrencyInfo(settings.history_currency_code);
+				var currencyInfo = getCurrencyInfo(globalSettings.history_currency_code);
 				var currencySymbol = currencyInfo.strSymbol;
 
 				var transactionTypes = {};
@@ -166,12 +166,12 @@
 					row.setAttribute("transaction-type", wht_type);
 					row.style.display = null;
 
-					if (settings.history_change_onclick && url) {
+					if (globalSettings.history_change_onclick && url) {
 						var wht_date = row.querySelector("td.wht_date");
 						wht_date.innerHTML = `<a href="${url}" target="_blank">${wht_date.innerHTML}</a>`;
 					}
 				}
-				if (settings.history_append_filter) {
+				if (globalSettings.history_append_filter) {
 					showFilterAndStatistics(allPurchase, allMarketTransaction, transactionTypes, currencyInfo);
 				}
 			}
@@ -316,25 +316,24 @@
 
 	//steam商店搜索页面
 	function steamStorePage() {  
-		if(location.href.search(/store\.steampowered\.com\/search/) < 0) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/search/)) {
 			return;
 		}
 
 		var appid, title, price;
-		var settings = getStoreSettings();
 		addStoreSettings();
 
-		if (settings.search_click_picture || settings.search_click_price || settings.search_click_title) {
+		if (globalSettings.search_click_picture || globalSettings.search_click_price || globalSettings.search_click_title) {
 			handleSearchResult();
 		}
 		
 		//搜索结果排序和过滤
-		if (settings.search_set_filter) {
+		if (globalSettings.search_set_filter) {
 			filterSearchResult();
 		}
 
 		function handleSearchResult() {
-			if (settings.search_click_title) {
+			if (globalSettings.search_click_title) {
 				var styleElem = document.createElement("style");
 				styleElem.innerHTML = "span.title { user-select:all; cursor:text; }";
 				document.body.appendChild(styleElem);
@@ -409,17 +408,17 @@
 
 		function searchResultClicked(event) {
 			var elem = event.target;
-			if (settings.search_click_title && elem.classList.contains("title")) {  //点击游戏名时选中并自动复制
+			if (globalSettings.search_click_title && elem.classList.contains("title")) {  //点击游戏名时选中并自动复制
 				event.preventDefault();
 				document.execCommand("Copy"); 
-			} else if (settings.search_click_picture && (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule"))) {  //点击游戏图片时打开徽章页
+			} else if (globalSettings.search_click_picture && (elem.classList.contains("search_capsule") || elem.parentNode.classList.contains("search_capsule"))) {  //点击游戏图片时打开徽章页
 				event.preventDefault();
 				var aid = getAppid(elem, event.currentTarget, "search_result_row", "data-ds-appid");
 				if (aid) {
 					var url = `https://steamcommunity.com/my/gamecards/${aid}/`; 
 					var win = window.open(url);
 				}
-			} else if (settings.search_click_price && (elem.classList.contains("search_discount_block") || elem.parentNode.classList.contains("search_discount_block") || elem.parentNode.parentNode.classList.contains("search_discount_block"))) {  //点击游戏价格时添加到购物车
+			} else if (globalSettings.search_click_price && (elem.classList.contains("search_discount_block") || elem.parentNode.classList.contains("search_discount_block") || elem.parentNode.parentNode.classList.contains("search_discount_block"))) {  //点击游戏价格时添加到购物车
 				event.preventDefault();
 				appid = getAppid(elem, event.currentTarget, "search_result_row", "data-ds-appid");
 				title = getTitle(elem, event.currentTarget);
@@ -474,24 +473,23 @@
 
 	//愿望单页面
 	function steamWishlistPage() {
-		if(location.href.search(/store\.steampowered\.com\/wishlist/) < 0) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/wishlist/)) {
 			return;
 		}
 
-		var settings = getStoreSettings();
 		addStoreSettings();
 
-		if (settings.wishlist_click_picture || settings.wishlist_click_price || settings.wishlist_click_title) {
+		if (globalSettings.wishlist_click_picture || globalSettings.wishlist_click_price || globalSettings.wishlist_click_title) {
 			handleWishlist();
 		}
 
 		function handleWishlist() {
 			var styleElem = document.createElement("style");
 			var html = "";
-			if (settings.wishlist_click_title) {
+			if (globalSettings.wishlist_click_title) {
 				html += "a.title {user-select:all; cursor:text; }";
 			}
-			if (settings.wishlist_click_price) {
+			if (globalSettings.wishlist_click_price) {
 				html += "div.discount_prices{ cursor:pointer; }";
 			}
 			styleElem.innerHTML = html;
@@ -502,12 +500,12 @@
 		function wishlistClicked(event) {
 			var elem = event.target;
 			var aid = getAppid(elem, event.currentTarget, "wishlist_row", "data-app-id");
-			if (settings.wishlist_click_title && elem.classList.contains("title")) {
+			if (globalSettings.wishlist_click_title && elem.classList.contains("title")) {
 				event.preventDefault();
 				document.execCommand("Copy"); 
-			} else if (settings.wishlist_click_price && (elem.classList.contains("discount_prices") || elem.parentNode.classList.contains("discount_prices"))) {
+			} else if (globalSettings.wishlist_click_price && (elem.classList.contains("discount_prices") || elem.parentNode.classList.contains("discount_prices"))) {
 				window.open(`https://store.steampowered.com/app/${aid}/`);
-			} else if (settings.wishlist_click_picture && elem.parentNode.classList.contains("screenshots")) {
+			} else if (globalSettings.wishlist_click_picture && elem.parentNode.classList.contains("screenshots")) {
 				event.preventDefault();
 				window.open(`https://steamcommunity.com/my/gamecards/${aid}/`);
 			}
@@ -516,7 +514,7 @@
 
 	//app页面
 	function steamAppStorePage() {
-		if(location.href.search(/store\.steampowered\.com\/app/) < 0) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/app/)) {
 			return;
 		}
 
@@ -533,7 +531,7 @@
 
 	//探索队列界面
 	function steamExplorePage() {
-		if(location.href.search(/store\.steampowered\.com\/explore/) < 0) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/explore/)) {
 			return;
 		}
 
@@ -634,7 +632,7 @@
 
 	//交易报价页面
 	function steamTradeOfferPage() {
-		if(location.href.search(/steamcommunity\.com\/tradeoffer/) < 0) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/tradeoffer/)) {
 			return;
 		}
 
@@ -727,18 +725,17 @@
 
 	//库存界面
 	function steamInventoryPage(){  
-		if(location.href.search(/steamcommunity\.com\/(id|profiles)\/.+\/inventory/) < 0) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/.+\/inventory/)) {
 			return;
 		}
 
-		var settings = getSteamCommunitySettings();
 		addSteamCommunitySetting();
 
 		if (document.querySelector("#no_inventories")) {
 			return;
 		}
 
-		var currencyInfo = getCurrencyInfo(settings.currency_code);
+		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
 		var sellTotalPriceReceive = 0;
 		var sellTotalPriceBuyerPay = 0;
 		var sellCount = 0;
@@ -748,21 +745,21 @@
 		var inventoryAppidForLink = 0;
 
 		//修改页面布局
-		if (settings.inventory_set_style) {
+		if (globalSettings.inventory_set_style) {
 			changeInventoryPage();
 			appendPageControl();
 		}
 
 		//只显示普通卡牌
-		if (settings.inventory_set_filter) {
+		if (globalSettings.inventory_set_filter) {
 			waitLoadInventory();
 		}
 
-		if (settings.inventory_append_linkbtn) {
+		if (globalSettings.inventory_append_linkbtn) {
 			appendInventoryPageLinkBtn();
 		}
 
-		if (settings.inventory_sell_btn || settings.inventory_market_info) {
+		if (globalSettings.inventory_sell_btn || globalSettings.inventory_market_info) {
 			appendPriceGramAndSellBtn();
 		}
 
@@ -874,7 +871,7 @@
 					container0.innerHTML = html;
 					container1.innerHTML = html;
 
-					if (settings.inventory_sell_btn && selectedItem.description.marketable) {
+					if (globalSettings.inventory_sell_btn && selectedItem.description.marketable) {
 						document.querySelector("#price_gram_container0 .sell_price_input").oninput = event => showPriceReceive(event, selectedItem);
 						document.querySelector("#price_gram_container1 .sell_price_input").oninput = event => showPriceReceive(event, selectedItem);
 						document.querySelector("#price_gram_container0 .sell_comfirm").onclick = event => sellItemCustom(event, selectedItem);
@@ -886,7 +883,7 @@
 						document.querySelector("#price_gram_container1 .sell_btn_container").style.display = "none";
 					}
 
-					if (settings.inventory_market_info) {
+					if (globalSettings.inventory_market_info) {
 						showMarketInfo();
 					} else {
 						document.querySelector("#price_gram_container0 .show_market_info").onclick = showMarketInfo;
@@ -945,7 +942,7 @@
 					document.querySelector("#price_gram_container1 .price_gram").innerHTML = html1;
 
 					//添加快速出售按键
-					if (settings.inventory_sell_btn && item.description.marketable) {
+					if (globalSettings.inventory_sell_btn && item.description.marketable) {
 						var btnHtml = "";
 						if (data1.lowest_sell_order) {
 							document.querySelector("#price_gram_container0 .sell_price_input").value = (data1.lowest_sell_order / 100.0).toFixed(2);
@@ -990,7 +987,7 @@
 				document.querySelector("#price_gram_container0 .price_overview").innerHTML = html;
 				document.querySelector("#price_gram_container1 .price_overview").innerHTML = html;
 				
-				if (settings.inventory_sell_btn && !priceGramLoaded && data.lowest_price && item.description.marketable) {
+				if (globalSettings.inventory_sell_btn && !priceGramLoaded && data.lowest_price && item.description.marketable) {
 					document.querySelector("#price_gram_container0 .sell_price_input").value = (getPriceFromSymbolStr(data.lowest_price) / 100.0).toFixed(2);
 					document.querySelector("#price_gram_container1 .sell_price_input").value = (getPriceFromSymbolStr(data.lowest_price) / 100.0).toFixed(2);
 					document.querySelector("#price_gram_container0 .sell_price_input").dispatchEvent(new Event("input"));
@@ -1162,13 +1159,13 @@
 
 	//steam市场界面
 	function steamMarketPage() {  
-		if(location.href.search(/steamcommunity\.com\/market\//) < 0 || location.href.search(/steamcommunity\.com\/market\/listings\//) >= 0) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/market\/(?!listings|search)/)) {
 			return;
 		}
-		var settings = getSteamCommunitySettings();
+
 		addSteamCommunitySetting();
 
-		var currencyInfo = getCurrencyInfo(settings.currency_code);
+		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
 		var marketMyListings = {};
 		var marketMyListingsPage = [];  //各页列表
 
@@ -1188,7 +1185,7 @@
 		var numFoilCard = 0;
 		var numOther = 0;
 
-		if (settings.market_adjust_selllistings || settings.market_adjust_history) {
+		if (globalSettings.market_adjust_selllistings || globalSettings.market_adjust_history) {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `.market_action_btn {padding: 0px 5px; margin-right: 8px; font-size: 12px;} 
 								.control_action_container {padding-left: 6px; display: inline-block; position: relative;}
@@ -1199,12 +1196,12 @@
 			document.body.appendChild(styleElem);
 		}
 
-		if (settings.market_adjust_selllistings) {
+		if (globalSettings.market_adjust_selllistings) {
 			adjustMySellListings();
 			adjustMyBuyOrder();
 		}
 
-		if (settings.market_adjust_history) {
+		if (globalSettings.market_adjust_history) {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `.history_action_btn_container .history_page_number {width: 45px; height: 18px; border-radius: 3px; color: #fff; background-color: #324965; font-family: "Motiva Sans", Sans-serif; border-color: #45566A; margin: 1px 5px 0 -5px; text-align: center;}
 								.history_action_btn_container .history_total_page {margin-right: 5px;}
@@ -1325,7 +1322,7 @@
 				return a[2] - b[2];
 			});
 
-			if (settings.market_show_priceinfo) {
+			if (globalSettings.market_show_priceinfo) {
 				autoShowPriceInfo(listings);
 			}
 		}
@@ -1852,8 +1849,8 @@
 			marketMyListingsPage = [];
 			var start = 0;
 			while (start < listings.length) {
-				marketMyListingsPage.push(listings.slice(start, start + settings.market_page_size));
-				start += settings.market_page_size;
+				marketMyListingsPage.push(listings.slice(start, start + globalSettings.market_page_size));
+				start += globalSettings.market_page_size;
 			}
 			showMarketPage(1);
 			updateMarketPageControl(1);
@@ -1887,24 +1884,24 @@
 
 	//steam物品市场界面
 	function steamMarketListingPage() {  
-		if(location.href.search(/steamcommunity\.com\/market\/listings\//) < 0) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/market\/listings\//)) {
 			return;
 		}
-		var settings = getSteamCommunitySettings();
+
 		addSteamCommunitySetting();
 
 		//修改页面布局
-		if (settings.marketlisting_set_style) {
+		if (globalSettings.marketlisting_set_style) {
 			changeMarketListingPage();
 		}
 
 		//添加销量信息
-		if (settings.marketlisting_show_priceoverview) {
+		if (globalSettings.marketlisting_show_priceoverview) {
 			showPriceOverview();
 		}
 
 		//添加商店页面链接按键
-		if (settings.marketlisting_append_linkbtn) {
+		if (globalSettings.marketlisting_append_linkbtn) {
 			appendMarketlistingPageLinkBtn();
 		}
 
@@ -2023,7 +2020,7 @@
 			var assetInfo = getAssetInfo();
 			var appid = assetInfo.appid;
 			var marketHashName = getMarketHashName(assetInfo);
-			var currencyInfo = getCurrencyInfo(settings.currency_code);
+			var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
 		
 			var data = await getPriceOverview(currencyInfo.country, currencyInfo.eCurrencyCode, appid, marketHashName);
 			if (data.success) {
@@ -2068,26 +2065,25 @@
 
 	//steam徽章界面
 	function steamGameCardsPage() {  
-		if(location.href.search(/steamcommunity\.com\/(id|profiles)\/.+\/gamecards/) < 0) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/.+\/gamecards/)) {
 			return;
 		}
 
-		var settings = getSteamCommunitySettings();
 		addSteamCommunitySetting();
 
-		var currencyInfo = getCurrencyInfo(settings.currency_code);
+		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
 
 		//修改页面布局
-		if (settings.gamecards_set_style) {
+		if (globalSettings.gamecards_set_style) {
 			changeGameCardsPage();
 		}
 
-		if (settings.gamecards_show_priceoverview || settings.gamecards_append_linkbtn) {
+		if (globalSettings.gamecards_show_priceoverview || globalSettings.gamecards_append_linkbtn) {
 			appendItemPriceInfoBtn();
 		}
 
 		//添加链接按键
-		if (settings.gamecards_append_linkbtn) {
+		if (globalSettings.gamecards_append_linkbtn) {
 			appendCardsPageLinkBtn();
 		}
 
@@ -2185,7 +2181,7 @@
 				}
 
 				//显示市场价格信息
-				if (settings.gamecards_show_priceoverview) {
+				if (globalSettings.gamecards_show_priceoverview) {
 					getAllCardsPrice();
 				}
 
@@ -2352,7 +2348,7 @@
 		data.wishlist_click_price ??= true;
 		data.history_append_filter ??= true;
 		data.history_change_onclick ??= true;
-		data.history_currency_code ??= "ARS";
+		data.history_currency_code ??= "CNY";
 		return data;
 	}
 
@@ -2363,15 +2359,34 @@
 		settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px; font-size: 12px; color: #b8b6b4;'>设置</a>";
 		settingBtn.onclick = function() {
 			var settings = getSteamCommunitySettings();
+			var exchangeRate = readCurrencyRate();
 			unsafeWindow.sfu_settings = settings;
+			unsafeWindow.sfu_update_currency_rate = function() {
+				getCurrencyRate(settings.currency_code, settings.second_currency_code, exchangeRate.listings_start);
+			};
 			var selectOptions = "";
+			var selectOptions2 = "";
 			for (var code in currencyData) {
 				selectOptions += `<option value="${code}" ${code == settings.currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
+				selectOptions2 += `<option value="${code}" ${code == settings.second_currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 			}
-			var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_select, .settings_row input[type="checkbox"], .settings_row label {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} .settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;}
-							.settings_row input[type="number"] {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} .margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="number"]::-webkit-outer-spin-button, .settings_row input[type="number"]::-webkit-inner-spin-button{-webkit-appearance: none !important;}</style>
+			var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_select, .settings_row input[type="checkbox"], .settings_row label, input[type="button"] {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} .settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;}
+							.settings_row input[type="number"] {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} .margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="number"]::-webkit-outer-spin-button, .settings_row input[type="number"]::-webkit-inner-spin-button{-webkit-appearance: none !important;}
+							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
 							<div class="settings_container">
-							<div><span>货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;" title="用于无法获取货币信息的页面，包括徽章页面和消费历史页面">${selectOptions}</select></div><br>
+							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min)：</span><input type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = parseInt(this.value);" style="width: 60px;">
+							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
+							<span id="show_update_time" style="margin-left: 20px;">${new Date(exchangeRate.last_update).toLocaleString()}</span></div>
+							<div style="margin-bottom: 10px; display: flex;">
+							<div class="settings_currency" style="margin-right: 40px;">
+							<div><span>钱包货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;" title="用于无法获取货币信息的页面，包括徽章页面和消费历史页面">${selectOptions}</select></div>
+							<div id="show_wallet_rate">USD 1 = ${exchangeRate.wallet_code} ${exchangeRate.wallet_rate > 0? exchangeRate.wallet_rate: "??"}</div>
+							<div>${exchangeRate.wallet_code} 1 = ${exchangeRate.second_code} ${exchangeRate.wallet_second_rate > 0? exchangeRate.wallet_second_rate: "??"}</div></div>
+							<div class="settings_currency">
+							<div><span>第二货币：</span><select class="settings_select"; onchange="window.sfu_settings.second_currency_code = this.value;" title="">${selectOptions2}</select></div>
+							<div id="show_second_rate">USD 1 = ${exchangeRate.second_code} ${exchangeRate.second_rate > 0? exchangeRate.second_rate: "??"}</div>
+							<div>${exchangeRate.second_code} 1 = ${exchangeRate.wallet_code} ${exchangeRate.wallet_second_rate > 0? (1.0 / exchangeRate.wallet_second_rate).toFixed(6): "??"}</div></div>
+							</div>
 							<div class="settings_page_title">库存页面设置：</div>
 							<div class="settings_row">
 							<div class="settings_option"><input id="sfu_inventory_set_style" type="checkbox" ${settings.inventory_set_style ? "checked=true" : ""} onclick="window.sfu_settings.inventory_set_style = this.checked;"></input><label for="sfu_inventory_set_style" class="margin_right_20">修改页面布局</label></div>
@@ -2410,7 +2425,9 @@
 
 	function getSteamCommunitySettings() {
 		var data = getStorageValue("SFU_COMMUNITY_SETTINGS") || {};
-		data.currency_code ??= "ARS";
+		data.currency_code ??= "CNY";
+		data.second_currency_code ??= "USD";
+		data.rate_update_interval ??= 360;
 		data.inventory_set_style ??= true;
 		data.inventory_set_filter ??= true;
 		data.inventory_append_linkbtn ??= true;
@@ -2420,7 +2437,7 @@
 		data.marketlisting_show_priceoverview ??= true;
 		data.marketlisting_append_linkbtn ??= true;
 		data.gamecards_set_style ??= true;
-		data.gamecards_show_priceoverview ??= true;
+		data.gamecards_show_priceoverview ??= false;
 		data.gamecards_append_linkbtn ??= true;
 		data.market_adjust_selllistings ??= true;
 		data.market_adjust_history ??= true;
@@ -2428,6 +2445,62 @@
 		data.market_page_size ??= 100;
 		data.market_page_size = Math.max(data.market_page_size, 10);
 		return data;
+	}
+
+	//检查是否更新汇率
+	function checkUpdateCurrencyRate(settings, currencyRate) {
+		if (settings.currency_code != currencyRate.wallet_code || settings.second_currency_code != currencyRate.second_code || 
+			currencyRate.wallet_rate <= 0 || currencyRate.second_rate <= 0 || (Date.now() - currencyRate.last_update) > settings.rate_update_interval * 60000) {
+			getCurrencyRate(settings.currency_code, settings.second_currency_code, currencyRate.listings_start);
+		}
+	}
+
+	//获取并计算汇率
+	async function getCurrencyRate(wallet_code, second_code, start) {
+		var flag = false;
+		var wallet_currency = getCurrencyInfo(wallet_code, true);
+		var second_currency = getCurrencyInfo(second_code, true);
+		var data = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, wallet_currency.eCurrencyCode);
+		if (data.success && data.listinginfo["4524490729968947472"]) {
+			await sleep(1000);
+			var data2 = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, second_currency.eCurrencyCode);
+			if (data2.success && data2.listinginfo["4524490729968947472"]) {
+				var rate = {
+					listings_start: Math.max((data2.total_count - 50), 0),
+					wallet_code: wallet_code,
+					second_code: second_code,
+					wallet_rate: (data.listinginfo["4524490729968947472"].converted_price / data.listinginfo["4524490729968947472"].price).toFixed(6),
+					second_rate: (data2.listinginfo["4524490729968947472"].converted_price / data2.listinginfo["4524490729968947472"].price).toFixed(6),
+					wallet_second_rate: (data2.listinginfo["4524490729968947472"].converted_price / data.listinginfo["4524490729968947472"].converted_price).toFixed(6),
+					last_update: Date.now()
+				};
+				globalCurrencyRate = rate;
+				saveCurrencyRate(rate);
+				flag = true;
+			}
+		}
+		if (!flag && data.success && data.total_count > 0) {
+			globalCurrencyRate.listings_start = Math.max((data.total_count - 50), 0);
+			saveCurrencyRate(globalCurrencyRate);
+		}
+	}
+
+	//获取本地的汇率数据
+	function readCurrencyRate() {
+		var data = getStorageValue("SFU_CURRENCY_RATE") || {};
+		data.listings_start = Math.max((data.listings_start ?? 40), 0);
+		data.wallet_code ??= "??";
+		data.second_code ??= "??";
+		data.wallet_rate ??= "-1";
+		data.second_rate ??= "-1";
+		data.wallet_second_rate ??= "-1";
+		data.last_update ??= 0;
+		return data;
+	}
+
+	//保存汇率数据在本地
+	function saveCurrencyRate(data) {
+		setStorageValue("SFU_CURRENCY_RATE", data);
 	}
 
 	//添加库存页面导航
@@ -2595,6 +2668,7 @@
 
 	function getPriceFromSymbolStr(str) {
 		str = str.trim().replace('--', '00');
+		str = str.replace(/(\D\.|\.\D)/g, '');
 		if (str.indexOf('.') === -1 && str.indexOf(',') === -1) {
 			str = str + ',00';
 		}
@@ -2879,6 +2953,32 @@
 			};
 			xhr.ontimeout = function() {
 				console.log("getPriceOverview timeout");
+				resolve({status: 408});
+			};
+			xhr.send();
+		});
+	}
+
+	function getMarketListings(appid, hashName, start, count, currency) {
+		return new Promise(function(resolve, reject) {
+			var url = `https://steamcommunity.com/market/listings/${appid}/${hashName}/render/?query=&start=${start}&count=${count}&currency=${currency}`;
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("GET", url, true);
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve(JSON.parse(e.target.response));
+				} else {
+					console.log("getMarketListings failed");
+					resolve(e.target);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("getMarketListings error");
+				resolve(error);
+			};
+			xhr.ontimeout = function() {
+				console.log("getMarketListings timeout");
 				resolve({status: 408});
 			};
 			xhr.send();
@@ -3611,19 +3711,7 @@
 	}
 
 	//获取钱包货币信息
-	function getCurrencyInfo(code, set=false) {
-		var currencyDefault = {
-			"country": "AR",
-			"strCode": "ARS",
-			"eCurrencyCode": 34,
-			"strSymbol": "ARS$",
-			"bSymbolIsPrefix": true,
-			"bWholeUnitsOnly": false,
-			"strDecimalSymbol": ",",
-			"strThousandsSeparator": ".",
-			"strSymbolAndNumberSeparator": " "
-		};
-
+	function getCurrencyInfo(code, set=false, defaultCode="CNY") {
 		if (!set) {
 			if (unsafeWindow.g_rgWalletInfo) {
 				var code1 = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency)
@@ -3640,7 +3728,15 @@
 			}
 		}
 
-		return currencyData[code] || currencyDefault;
+		return currencyData[code] || currencyData[defaultCode];
+	}
+
+	if (location.href.match(/^https?\:\/\/store\.steampowered\.com/)) {
+		globalSettings = getStoreSettings();
+	} else if (location.href.match(/^https?\:\/\/steamcommunity\.com/)) {
+		globalSettings = getSteamCommunitySettings();
+		globalCurrencyRate = readCurrencyRate();
+		checkUpdateCurrencyRate(globalSettings, globalCurrencyRate);
 	}
 
 	steamStorePage();
