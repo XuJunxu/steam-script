@@ -638,77 +638,109 @@
 
 		appendPageControl();
 
-		var div = document.createElement("div");
-		div.id = "trade_offer_buttons";
-		div.innerHTML = `<style>#trade_offer_buttons{margin: 10px 0px 0px 10px;} .btn_move_items{padding: 5px 15px;}</style>
-						<a id="btn_add_cards" class="btn_move_items btn_green_white_innerfade">添加全部普通卡牌</a>
-						<a id="btn_add_all" class="btn_move_items btn_green_white_innerfade">添加全部物品</a>
-						<a id="btn_remove_all" class="btn_move_items btn_green_white_innerfade">移除全部物品</a>`;
-		document.querySelector("#trade_yours .offerheader").appendChild(div);
+		var html = `<style>#trade_offer_buttons{margin: 10px 0px 0px 10px;} .btn_move_items{padding: 5px 15px;}</style>
+				<a class="btn_add_cards btn_move_items btn_green_white_innerfade">添加全部普通卡牌</a>
+				<a class="btn_add_all btn_move_items btn_green_white_innerfade">添加全部物品</a>
+				<a class="btn_remove_all btn_move_items btn_green_white_innerfade">移除全部物品</a>`;
+		var trade_yours = document.createElement("div");
+		trade_yours.innerHTML = html;
+		trade_yours.className = "trade_offer_buttons trade_yours_bottons";
+		document.querySelector("#trade_yours .offerheader").appendChild(trade_yours);
 
-		div.onclick = buttonClicked;
+		var trade_theirs = document.createElement("div");
+		trade_theirs.innerHTML = html;
+		trade_theirs.className = "trade_offer_buttons trade_theirs_bottons";
+		document.querySelector("#trade_theirs .offerheader").appendChild(trade_theirs);
 		
-		function buttonClicked(event) {
-			var button = event.target;
-			if (button.id == "btn_add_cards") {
-				addAllCommonCards()
-			} else if (button.id == "btn_add_all") {
-				addAllItems();
-			} else if (button.id == "btn_remove_all") {
-				removeAllItems();
+		trade_yours.querySelector(".btn_add_cards").onclick = addAllCommonCards;
+		trade_yours.querySelector(".btn_add_all").onclick = addAllItems;
+		trade_yours.querySelector(".btn_remove_all").onclick = removeAllItems;
+		trade_theirs.querySelector(".btn_add_cards").onclick = addAllCommonCards;
+		trade_theirs.querySelector(".btn_add_all").onclick = addAllItems;
+		trade_theirs.querySelector(".btn_remove_all").onclick = removeAllItems;
+
+		var obs = new MutationObserver(removeSlots);
+		obs.observe(document.querySelector("#trade_yours > div.trade_item_box"), { childList: true }); 
+
+		var obs2 = new MutationObserver(removeSlots);
+		obs2.observe(document.querySelector("#trade_theirs > div.trade_item_box"), { childList: true }); 
+
+		document.querySelector("#inventories").onclick = itemClicked;
+		document.querySelector("#your_slots").onclick = itemClicked;
+		document.querySelector("#their_slots").onclick = itemClicked;
+
+		function itemClicked(event) {
+			var elem = event.target;
+			if (elem.parentNode.id.match(/^item.+/) && elem.parentNode.classList.contains("item")) {
+				elem = elem.parentNode;
 			}
-		};
+			if (elem.id.match(/^item.+/) && elem.classList.contains("item")) {
+				unsafeWindow.OnDoubleClickItem(event, elem);
+			}
+		}
 
-		function addAllCommonCards() {
-			var event = new Event("dblclick");
-			var g_rgAppContextData = unsafeWindow.g_rgAppContextData;
-			if (g_rgAppContextData && g_rgAppContextData[753] && g_rgAppContextData[753].rgContexts && 
-				g_rgAppContextData[753].rgContexts[6] && g_rgAppContextData[753].rgContexts[6].inventory) {
+		function removeSlots(records, observer) {
+			if (records[0].removedNodes.length > 0) {
+				var itemBox = records[0].target;
+				for (var node of itemBox.querySelectorAll("div.trade_item_box > div.trade_slot")) {
+					itemBox.removeChild(node);
+				}
+			}
+		}
 
-				var rgItemElements = g_rgAppContextData[753].rgContexts[6].inventory.rgItemElements;
-				for (var itemHolder of rgItemElements) {
-					if (itemHolder && itemHolder.rgItem && itemHolder.rgItem.tradable && checkCommonCard(itemHolder.rgItem.tags)) {
-						itemHolder.rgItem.element.dispatchEvent(event);
+		function addAllCommonCards(event) {
+			if (event.target.parentNode.classList.contains("trade_yours_bottons")) {
+				var contextData = unsafeWindow.g_rgAppContextData;
+			} else if (event.target.parentNode.classList.contains("trade_theirs_bottons")) {
+				var contextData = unsafeWindow.g_rgPartnerAppContextData;
+			} else {
+				return;
+			}
+
+			if (contextData && contextData[753] && contextData[753].rgContexts && contextData[753].rgContexts[6] && contextData[753].rgContexts[6].inventory) {
+				for (var itemHolder of contextData[753].rgContexts[6].inventory.rgItemElements) {
+					if (itemHolder?.rgItem?.tradable && checkCommonCard(itemHolder.rgItem.tags) && itemHolder == itemHolder.rgItem.element?.parentNode) {
+						unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
 					}
 				}
 			}
 		}
 
-		function addAllItems() {
-			var event = new Event("dblclick");
-			var g_rgAppContextData = unsafeWindow.g_rgAppContextData;
+		function addAllItems(event) {
+			if (event.target.parentNode.classList.contains("trade_yours_bottons")) {
+				var contextData = unsafeWindow.g_rgAppContextData;
+			} else if (event.target.parentNode.classList.contains("trade_theirs_bottons")) {
+				var contextData = unsafeWindow.g_rgPartnerAppContextData;
+			} else {
+				return;
+			}
+
 			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
 			var contextIds = g_ActiveInventory.rgContextIds ?? [g_ActiveInventory.contextid];
 			for (var contextid of contextIds) {
-				for (var itemHolder of g_rgAppContextData[g_ActiveInventory.appid].rgContexts[contextid].inventory.rgItemElements) {
-					if (itemHolder?.rgItem?.tradable && (g_ActiveInventory.appid != "753" || itemHolder?.rgItem?.market_hash_name != "753-Gems") && itemHolder == itemHolder?.rgItem?.element?.parentNode) {
-						itemHolder.rgItem.element.dispatchEvent(event);
+				if (contextData && contextData[g_ActiveInventory.appid] && contextData[g_ActiveInventory.appid].rgContexts && 
+					contextData[g_ActiveInventory.appid].rgContexts[contextid] && contextData[g_ActiveInventory.appid].rgContexts[contextid].inventory) {
+					for (var itemHolder of contextData[g_ActiveInventory.appid].rgContexts[contextid].inventory.rgItemElements) {
+						if (itemHolder?.rgItem?.tradable && (!itemHolder.rgItem.is_stackable) && itemHolder == itemHolder.rgItem.element?.parentNode) {
+							unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+						}
 					}
 				}
 			}
-			
 		}
 
-		function removeAllItems() {
-			var event = new Event("dblclick");
-			var itemElements = document.querySelectorAll("#your_slots div.item");
-
-			for (var element of itemElements) {
-				element.dispatchEvent(event);
+		function removeAllItems(event) {
+			if (event.target.parentNode.classList.contains("trade_yours_bottons")) {
+				var select = "#your_slots div.item";
+			} else if (event.target.parentNode.classList.contains("trade_theirs_bottons")) {
+				var select = "#their_slots div.item";
+			} else {
+				return;
 			}
 
-			var waitId = setInterval(function() {
-				if (document.querySelectorAll("#your_slots div.item").count > 0) {
-					return;
-				}
-
-				clearInterval(waitId);
-
-				for (var itemHolder of document.querySelectorAll("#trade_yours > div.trade_item_box > div.trade_slot")) {
-					itemHolder.parentNode.removeChild(itemHolder);
-				}
-
-			}, 100);
+			for (var item of document.querySelectorAll(select)) {
+				unsafeWindow.MoveItemToInventory(item);
+			}
 		}
 
 		function checkCommonCard(tags) {
@@ -2549,10 +2581,10 @@
 		var flag = false;
 		var wallet_currency = getCurrencyInfo(wallet_code, true);
 		var second_currency = getCurrencyInfo(second_code, true);
-		var data = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, wallet_currency.eCurrencyCode);
+		var data = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, wallet_currency.country, "english", wallet_currency.eCurrencyCode);
 		if (data.success && data.listinginfo["4524490729968947472"]) {
-			await sleep(1000);
-			var data2 = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, second_currency.eCurrencyCode);
+			await sleep(5000);
+			var data2 = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, second_currency.country, "english", second_currency.eCurrencyCode);
 			if (data2.success && data2.listinginfo["4524490729968947472"]) {
 				var rate = {
 					listings_start: Math.max((data2.total_count - 50), 0),
@@ -3055,9 +3087,9 @@
 		});
 	}
 
-	function getMarketListings(appid, hashName, start, count, currency) {
+	function getMarketListings(appid, hashName, start, count, country, language, currency) {
 		return new Promise(function(resolve, reject) {
-			var url = `https://steamcommunity.com/market/listings/${appid}/${hashName}/render/?query=&start=${start}&count=${count}&currency=${currency}`;
+			var url = `https://steamcommunity.com/market/listings/${appid}/${hashName}/render/?query=&start=${start}&count=${count}&country=${country}&language=${language}&currency=${currency}`;
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
