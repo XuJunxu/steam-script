@@ -2291,8 +2291,9 @@
 						#market_info_group th, #market_info_group td {min-width: 100px; background: transparent; width: auto; line-height: normal;} 
 						#card_price_overview>span {margin-right: 40px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
 						#market_info_group .market_commodity_orders_table tr:nth-child(even) {background: #00000033;} #market_info_group .market_commodity_orders_table tr:nth-child(odd) {background: #00000066;}
-						.orders_price_receive {font-size: 80%; color: #7f7f7f;} #card_price_overview {margin-bottom: 20px;}</style>
-						<div style="min-height: 230px;" id="dialog_price_info"><div id="card_price_overview">Loading...</div><div id="market_info_group">Loading...</div></div>`;
+						.orders_price_receive {font-size: 80%; color: #7f7f7f;} #card_price_overview {margin-bottom: 15px;} 
+						#update_button {float: right; cursor: pointer; padding: 0px 5px; background: #404040;} #update_button:hover {background: #464646;} </style>
+						<div style="min-height: 230px;" id="dialog_price_info"><div id="update_button">更新</div><div id="card_price_overview">Loading...</div><div id="market_info_group">Loading...</div></div>`;
 			this.cmodel = unsafeWindow.ShowDialog(title, html);
 			this.model = this.cmodel.GetContent()[0];
 		},
@@ -2302,12 +2303,21 @@
 			this.appid = appid;
 			this.marketHashName = marketHashName;
 
+			this.model.querySelector("#update_button").onclick = function() {
+				var key = appid + "/" + marketHashName;
+				delete itemPriceOverviewInfo[key];
+				delete itemPriceGramInfo[key];
+				dialogPriceInfo.showCurrentItemOrdersHistogram(appid, marketHashName, currencyInfo, func1);
+				dialogPriceInfo.showCurrentPriceOverview(appid, marketHashName, currencyInfo, func2);
+			};
+
 			this.showCurrentItemOrdersHistogram(appid, marketHashName, currencyInfo, func1);
 			this.showCurrentPriceOverview(appid, marketHashName, currencyInfo, func2);
 		},
 		showTable: function(title, data, currencyInfo) {
 			this.init(title);
-			this.model.querySelector("#card_price_overview").innerHTML = "";
+			this.model.querySelector("#card_price_overview").style.display = "none";
+			this.model.querySelector("#update_button").style.display = "none";
 			this.updateItemOrdersHistogram(data, currencyInfo);
 		},
 		showCurrentItemOrdersHistogram: async function(appid, hashName, currencyInfo, func) {
@@ -2982,6 +2992,7 @@
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
 			xhr.onload = function(e) {
 				if (e.target.status == 200) {
 					resolve(JSON.parse(e.target.response));
@@ -3012,6 +3023,7 @@
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
 			xhr.onload = function(e) {
 				if (e.target.status == 200) {
 					resolve(JSON.parse(e.target.response));
@@ -3067,6 +3079,7 @@
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
 			xhr.onload = function(e) {
 				if (e.target.status == 200) {
 					resolve(JSON.parse(e.target.response));
@@ -3131,6 +3144,7 @@
 				var xhr = new XMLHttpRequest();
 				xhr.timeout = TIMEOUT;
 				xhr.open("GET", url, true);
+				xhr.setRequestHeader("Cache-Control", "no-cache");
 				xhr.onload = function(e) {
 					if (e.target.status == 200) {
 						var html = e.target.responseText;
@@ -3166,6 +3180,7 @@
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
 			xhr.onload = function(e) {
 				if (e.target.status == 200) {
 					resolve(JSON.parse(e.target.response));
@@ -3198,6 +3213,7 @@
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
 			xhr.onload = function(e) {
 				if (e.target.status == 200) {
 					resolve(JSON.parse(e.target.response));
