@@ -1398,6 +1398,10 @@
 				return;
 			}
 
+			var styleElem = document.createElement("style");
+			styleElem.innerHTML = ".market_listing_my_price:not(.market_listing_buyorder_qty) {cursor: pointer;}";
+			buyOrderListing.appendChild(styleElem);
+
 			var buyOrderRows = buyOrderListing.querySelectorAll(".market_listing_row");
 			
 			var buyOrderTable = document.createElement("div");
@@ -1405,6 +1409,7 @@
 				addRowCheckbox(row);
 				buyOrderTable.appendChild(row);
 				buyOrderRowsTimeSort.push(row);
+				row.querySelector(".market_listing_my_price").onclick = showListingPriceInfo2;
 			}
 			buyOrderListing.appendChild(buyOrderTable);
 
@@ -1890,6 +1895,16 @@
 			var assetInfo = getListingAssetInfo(listing);
 			var marketHashName = getMarketHashName(assetInfo);
 			dialogPriceInfo.show(assetInfo.appid, marketHashName, currencyInfo, function(data) {
+				addPriceLabel(listing, data);
+			});
+		}
+
+		function showListingPriceInfo2(event) {
+			var listing = event.currentTarget.parentNode;
+			var res = listing.querySelector("a.market_listing_item_name_link").href.match(/steamcommunity\.com\/market\/listings\/(\d+)\/(.+)/);
+			var appid = res[1];
+			var marketHashName = res[2];
+			dialogPriceInfo.show(appid, marketHashName, currencyInfo, function(data) {
 				addPriceLabel(listing, data);
 			});
 		}
