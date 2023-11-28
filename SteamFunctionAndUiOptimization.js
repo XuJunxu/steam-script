@@ -976,10 +976,10 @@
 					document.querySelector("#price_gram_container0 .price_gram").innerHTML = html1;
 					document.querySelector("#price_gram_container1 .price_gram").innerHTML = html1;
 					document.querySelector("#price_gram_container0 .price_gram_table").onclick = function() {
-						dialogPriceInfo.showTable(decodeURIComponent(hashName), data1, currencyInfo);
+						dialogPriceInfo.showTable(appid, hashName, data1, currencyInfo);
 					};
 					document.querySelector("#price_gram_container1 .price_gram_table").onclick = function() {
-						dialogPriceInfo.showTable(decodeURIComponent(hashName), data1, currencyInfo);
+						dialogPriceInfo.showTable(appid, hashName, data1, currencyInfo);
 					};
 
 					//添加快速出售按键
@@ -2285,37 +2285,47 @@
 
 	//市场价格信息的弹窗
 	var dialogPriceInfo = {
-		init: function(title) {
+		init: function(appid, marketHashName, currencyInfo) {
 			var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
-						#market_info_group .table_title, #market_info_group th, #market_info_group td {text-align: center; font-size: 14px;} 
+						#market_info_group .table_action_button, #market_info_group th, #market_info_group td {text-align: center; font-size: 14px;} 
 						#market_info_group th, #market_info_group td {min-width: 100px; background: transparent; width: auto; line-height: normal;} 
-						#card_price_overview>span {margin-right: 40px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
+						#card_price_overview>span {margin-right: 30px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
 						#market_info_group .market_commodity_orders_table tr:nth-child(even) {background: #00000033;} #market_info_group .market_commodity_orders_table tr:nth-child(odd) {background: #00000066;}
-						.orders_price_receive {font-size: 80%; color: #7f7f7f;} #card_price_overview {margin-bottom: 15px;} 
-						#update_button {float: right; cursor: pointer; padding: 0px 5px; background: #404040;} #update_button:hover {background: #464646;} </style>
-						<div style="min-height: 230px;" id="dialog_price_info"><div id="update_button">更新</div><div id="card_price_overview">Loading...</div><div id="market_info_group">Loading...</div></div>`;
-			this.cmodel = unsafeWindow.ShowDialog(title, html);
+						.orders_price_receive {font-size: 80%; color: #7f7f7f;} #card_price_overview {margin: 0 30px 15px 0; text-wrap: nowrap;} .market_listings_table {min-width: 200px;}
+						#update_button {float: right; cursor: pointer; padding: 0px 5px; background: #404040;} #update_button:hover {background: #464646;} 
+						.table_action_button>a {padding: 0px 30px; display: inline-block; margin: 3px 0px; background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px;} .table_action_button>a:hover {background: #79b92b;}</style>
+						<div style="min-height: 230px;" id="dialog_price_info">
+						<div id="update_button">更新</div><div id="card_price_overview">Loading...</div>
+						<div id="market_info_group">
+						<div class="sell_order_table market_listings_table"><div class="table_action_button"><a id="market_buy_button">购买</a></div><div class="table_content"></div></div>
+						<div class="buy_order_table market_listings_table"><div class="table_action_button"><a id="market_sell_button">出售</a></div><div class="table_content"></div></div></div></div>`;
+			this.cmodel = unsafeWindow.ShowDialog(decodeURIComponent(marketHashName), html);
 			this.model = this.cmodel.GetContent()[0];
-		},
-		show: function(appid, marketHashName, currencyInfo, func1, func2) {
-			this.init(decodeURIComponent(marketHashName));
 
 			this.appid = appid;
 			this.marketHashName = marketHashName;
+			this.currencyInfo = currencyInfo;
 
-			this.model.querySelector("#update_button").onclick = function() {
+			this.model.querySelector("#market_buy_button").onclick = event => {
+				dialogCreateBuyOrder(appid, marketHashName, currencyInfo);
+			}
+		},
+		show: function(appid, marketHashName, currencyInfo, func1, func2) {
+			this.init(appid, marketHashName, currencyInfo);
+
+			this.model.querySelector("#update_button").onclick = event => {
 				var key = appid + "/" + marketHashName;
 				delete itemPriceOverviewInfo[key];
 				delete itemPriceGramInfo[key];
-				dialogPriceInfo.showCurrentItemOrdersHistogram(appid, marketHashName, currencyInfo, func1);
-				dialogPriceInfo.showCurrentPriceOverview(appid, marketHashName, currencyInfo, func2);
+				this.showCurrentItemOrdersHistogram(appid, marketHashName, currencyInfo, func1);
+				this.showCurrentPriceOverview(appid, marketHashName, currencyInfo, func2);
 			};
 
 			this.showCurrentItemOrdersHistogram(appid, marketHashName, currencyInfo, func1);
 			this.showCurrentPriceOverview(appid, marketHashName, currencyInfo, func2);
 		},
-		showTable: function(title, data, currencyInfo) {
-			this.init(title);
+		showTable: function(appid, marketHashName, data, currencyInfo) {
+			this.init(appid, marketHashName, currencyInfo);
 			this.model.querySelector("#card_price_overview").style.display = "none";
 			this.model.querySelector("#update_button").style.display = "none";
 			this.updateItemOrdersHistogram(data, currencyInfo);
@@ -2339,11 +2349,11 @@
 				var elem1 = this.model.querySelector("#market_info_group");
 				if (elem1) {  //在弹出窗口上显示表格
 					if (data.success) {
-						var html1 = `<div class="table_title sell_order_table"><div>出售</div>${data.sell_order_table || data.sell_order_summary}</div><div class="table_title buy_order_table"><div>购买</div>${data.buy_order_table || data.buy_order_summary}</div>`;
+						elem1.querySelector(".sell_order_table .table_content").innerHTML = data.sell_order_table || data.sell_order_summary;
+						elem1.querySelector(".buy_order_table .table_content").innerHTML = data.buy_order_table || data.buy_order_summary;
 					} else {
-						var html1 = `<div>${errorTranslator(data)}</div>`
+						elem1.querySelector(".sell_order_table .table_content").innerHTML = `${errorTranslator(data)}`
 					}
-					elem1.innerHTML = html1;
 					if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
 						var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
 						if (data.sell_order_table) {
@@ -2423,6 +2433,54 @@
 			}
 		}
 	};
+
+	//创建订购单的弹窗
+	function dialogCreateBuyOrder(appid, marketHashName, currencyInfo) {
+		var html = `<style>.buy_order_row {font-size: 14px; margin-bottom: 12px;} #buy_order_price_total {color: #FFFFFF; font-size: 16px;}
+					#buy_order_purchase {float: right; background: #588a1b; box-shadow: 2px 2px 2px #00000099; border-radius: 2px; padding: 2px 10px; cursor: pointer; color: #FFFFFF}
+					#buy_order_purchase:hover {background: #79b92b;} #buy_order_message {margin-top: 12px; color: #FFFFFF; max-width: 430px;}</style>
+					<div><div class="buy_order_row"><span>每件出价的金额：</span><input id="buy_order_price" type="number" step="0.01" min="0.03"></div>
+					<div class="buy_order_row"><span>想要购买的数量：</span><input id="buy_order_quantity" type="number" step="1" min="1"></div>
+					<div class="buy_order_row"><span>订购单的总价：</span><span id="buy_order_price_total"><span></div>
+					<div id="buy_order_purchase">提交订单</div><div style="clear:both;"></div>
+					<div id="buy_order_message" style="display: none;"></div></div>`;
+		var cmodel = unsafeWindow.ShowDialog("购买 " + decodeURIComponent(marketHashName), html);
+		var model = cmodel.GetContent()[0];
+
+		model.querySelector("#buy_order_price").oninput = updatePriceTotal;
+		model.querySelector("#buy_order_quantity").oninput = updatePriceTotal;
+		model.querySelector("#buy_order_purchase").onclick = async function() {
+			var priceTotal = calculatePriceTotal();
+			if (!isNaN(priceTotal)) {
+				var quantity = parseInt(model.querySelector("#buy_order_quantity").value);
+				var result = await createBuyOrder(unsafeWindow.g_sessionID, currencyInfo.eCurrencyCode, appid, marketHashName, priceTotal, quantity);
+				if (result.success == "1") {
+					model.querySelector("#buy_order_message").textContent = "您已成功提交订购单！";
+				} else if (result.message) {
+					model.querySelector("#buy_order_message").textContent = result.message;
+				} else {
+					model.querySelector("#buy_order_message").textContent = "抱歉！我们无法从 Steam 服务器获得关于您订单的信息。请再次检查您的订单是否确已创建或填写。如没有，请稍后再试。";
+				}
+				model.querySelector("#buy_order_message").style.display = null;
+			}
+		}
+
+		function updatePriceTotal() {
+			var total = calculatePriceTotal();
+			if (isNaN(total)) {
+				model.querySelector("#buy_order_price_total").textContent = "--";
+			} else {
+				total = (total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
+				model.querySelector("#buy_order_price_total").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${total}`: `${total} ${currencyInfo.strSymbol}`;
+			}
+		}
+
+		function calculatePriceTotal() {
+			var price = Math.round(parseFloat(model.querySelector("#buy_order_price").value) * 100);
+			var quantity = parseInt(model.querySelector("#buy_order_quantity").value);
+			return price * quantity;
+		}
+	}
 
 	//添加商店设置
 	function addStoreSettings() {
@@ -3038,6 +3096,61 @@
 			};
 			xhr.ontimeout = function() {
 				console.log("getMarketMyHistory timeout");
+				resolve({status: 408});
+			};
+			xhr.send();
+		});
+	}
+
+	//提交订购单
+	function createBuyOrder(sessionid, currency, appid, market_hash_name, price_total, quantity, billing_state="", save_my_address=0) {
+		return new Promise(function(resolve, reject) {
+			var url = "https://steamcommunity.com/market/createbuyorder/";
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("POST", url, true);
+			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve(JSON.parse(e.target.response));
+				} else {
+					console.log("createBuyOrder failed");
+					resolve(e.target);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("createBuyOrder error");
+				resolve(error);
+			};
+			xhr.ontimeout = function() {
+				console.log("createBuyOrder timeout");
+				resolve({status: 408});
+			};
+			xhr.send(`sessionid=${sessionid}&currency=${currency}&appid=${appid}&market_hash_name=${market_hash_name}&price_total=${price_total}&quantity=${quantity}&billing_state=${billing_state}&save_my_address=${save_my_address}`);
+		});
+	}
+
+	function getBuyOrderStatus(sessionid, buyOrderId) {
+		return new Promise(function(resolve, reject) {
+			var url = `https://steamcommunity.com/market/getbuyorderstatus/?sessionid=${sessionid}&buy_orderid=${buyOrderId}`;
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve(JSON.parse(e.target.response));
+				} else {
+					console.log("getBuyOrderStatus failed");
+					resolve(e.target);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("getBuyOrderStatus error");
+				resolve(error);
+			};
+			xhr.ontimeout = function() {
+				console.log("getBuyOrderStatus timeout");
 				resolve({status: 408});
 			};
 			xhr.send();
