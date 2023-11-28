@@ -675,6 +675,7 @@
 				elem = elem.parentNode;
 			}
 			if (elem.id.match(/^item.+/) && elem.classList.contains("item")) {
+				elem.firstElementChild.addEventListener("dblclick", e => {e.stopPropagation();});  //消除单击过快触发双击事件
 				unsafeWindow.OnDoubleClickItem(event, elem);
 			}
 		}
