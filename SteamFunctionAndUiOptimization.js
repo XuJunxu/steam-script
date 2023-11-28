@@ -1162,7 +1162,8 @@
 						var isfoil = hashName.search(/Foil/) < 0 ? false : true;
 						html += `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/my/gamecards/${feeApp}/${isfoil ? '?border=1' : ''}" target="_blank"><span>打开徽章页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}" target="_blank"><span>打开商店页面</span></a>
-								<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>`;
+								<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>
+								<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${feeApp}" target="_blank"><span>查看社区物品</span></a>`;
 						iconElem0.style.display = "flex";
 						iconElem1.style.display = "flex";
 					} else {
@@ -2113,7 +2114,8 @@
 				linkElem.innerHTML = `<style>.page_link_btn {border-radius: 2px; cursor: pointer; background: black; color: white; margin: 10px 0px 0px 0px; display: inline-block;} .page_link_btn > span {padding: 0px 15px; font-size: 14px; line-height: 25px;} .page_link_btn:hover {background: rgba(102, 192, 244, 0.4)}</style>
 										<a href="https://steamcommunity.com/my/gamecards/${appid}/${isfoil ? '?border=1' : ''}" class="page_link_btn" target="_blank"><span>打开徽章页面</span></a>
 										<a href="https://store.steampowered.com/app/${appid}" class="page_link_btn" target="_blank"><span>打开商店页面</span></a>
-										<a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" class="page_link_btn" target="_blank"><span>打开Exchange页面</span></a>`;
+										<a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" class="page_link_btn" target="_blank"><span>打开Exchange页面</span></a>
+										<a href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${appid}" class="page_link_btn" target="_blank"><span>查看该游戏社区物品</span></a>`;
 				var market_commodity_order_block = document.querySelector("div.market_commodity_order_block");
 				if (market_commodity_order_block) {
 					market_commodity_order_block.appendChild(linkElem);
@@ -2188,26 +2190,22 @@
 			if (res && res.length > 1) {
 				var appid = res[1];
 			} 
-			var storeBtn = document.createElement("a");
-			storeBtn.className = "btn_grey_grey btn_medium";
-			storeBtn.innerHTML = "<span>打开商店页面</span>";
-			storeBtn.href = `https://store.steampowered.com/app/${appid}`;
-			storeBtn.setAttribute("target", "_blank");
-			storeBtn.style.marginRight = "4px";
-			var exchangeInventoryBtn = document.createElement("a");
-			exchangeInventoryBtn.className = "btn_grey_grey btn_medium";
-			exchangeInventoryBtn.innerHTML = "<span>打开Exchange页面</span>";
-			exchangeInventoryBtn.href = `https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}`;
-			exchangeInventoryBtn.setAttribute("target", "_blank");
 
-			var elem = document.querySelector("div.badge_detail_tasks>div.gamecards_inventorylink")
+			var buttons = document.createElement("div");
+			buttons.style = "margin-top: 8px;";
+			buttons.innerHTML = `<a class="btn_grey_grey btn_medium" style="margin-right: 4px;" href="https://store.steampowered.com/app/${appid}" target="_blank"><span>打开商店页面</span></a>
+								 <a class="btn_grey_grey btn_medium" style="margin-right: 4px;" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" target="_blank"><span>打开Exchange页面</span></a>
+								 <a class="btn_grey_grey btn_medium" style="margin-right: 4px;" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${appid}" target="_blank"><span>查看该游戏社区物品</span></a>
+								 <a class="btn_grey_grey btn_medium" id="multi_buy_order" style="display: none;"><span>批量购买卡牌</span></a>`;
+
+			var elem = document.querySelector("div.badge_detail_tasks>div.gamecards_inventorylink");
 			if (!elem) {
 				elem = document.createElement("div");
 				elem.className = "gamecards_inventorylink";
 				document.querySelector("div.badge_detail_tasks").insertBefore(elem, document.querySelector("div.badge_detail_tasks").firstElementChild);
 			}
-			elem.appendChild(storeBtn);
-			elem.appendChild(exchangeInventoryBtn);
+
+			elem.appendChild(buttons);
 		}
 
 		async function appendItemPriceInfoBtn() {
@@ -2234,14 +2232,16 @@
 				var response = await searchMarketGameItems(gameid, 2, cardborder);
 			}
 			if (response.success) {
+				var cardAssets = [];
 				var results = response.results;
 				var cardElems = document.querySelectorAll("div.badge_card_set_card");
 				for (let cardElem of cardElems) {
 					let image = cardElem.querySelector("img.gamecard").src;
 					let title = cardElem.querySelector(".badge_card_set_title").textContent.replace(/\(\d+\)/, "").replace("(集换式卡牌)", "").replace("(Trading Card)", "").trim();
 					for (let card of results) {
-						let cardTitle = card.name.replace("(集换式卡牌)", "").replace("(Trading Card)", "").trim();
+						let cardTitle = card.name.replace(/\(集换式卡牌\)$/, "").replace(/\(Trading Card\)$/, "").trim();
 						if (image.includes(card.asset_description.icon_url) || title == cardTitle) {
+							cardAssets.push(card.asset_description);
 							let hashName = card.asset_description.market_hash_name || card.hash_name;
 							hashName = encodeURIComponent(hashName);
 							let html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">打开市场页面</a>
@@ -2259,6 +2259,12 @@
 							};
 						}
 					}
+				}
+
+				var multiBuyOrder = document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order");
+				multiBuyOrder.style.display = null;
+				multiBuyOrder.onclick = function() {
+					dialogMultiCreateBuyOrder(cardAssets, currencyInfo);
 				}
 
 				//显示市场价格信息
@@ -2453,7 +2459,7 @@
 	//创建订购单的弹窗
 	function dialogCreateBuyOrder(appid, marketHashName, currencyInfo) {
 		var html = `<style>.buy_order_row {font-size: 14px; margin-bottom: 12px;} #buy_order_price_total {color: #FFFFFF; font-size: 16px;}
-					#buy_order_purchase {float: right; background: #588a1b; box-shadow: 2px 2px 2px #00000099; border-radius: 2px; padding: 2px 10px; cursor: pointer; color: #FFFFFF}
+					#buy_order_purchase {float: right; background: #588a1b; box-shadow: 2px 2px 2px #00000099; border-radius: 2px; padding: 2px 10px; cursor: pointer; color: #FFFFFF;}
 					#buy_order_purchase:hover {background: #79b92b;} #buy_order_message {margin-top: 12px; color: #FFFFFF; max-width: 430px;}</style>
 					<div><div class="buy_order_row"><span>每件出价的金额：</span><input id="buy_order_price" type="number" step="0.01" min="0.03"></div>
 					<div class="buy_order_row"><span>想要购买的数量：</span><input id="buy_order_quantity" type="number" step="1" min="1"></div>
@@ -2494,6 +2500,91 @@
 		function calculatePriceTotal() {
 			var price = Math.round(parseFloat(model.querySelector("#buy_order_price").value) * 100);
 			var quantity = parseInt(model.querySelector("#buy_order_quantity").value);
+			return price * quantity;
+		}
+	}
+
+	//批量创建订购单的弹窗
+	function dialogMultiCreateBuyOrder(assets, currencyInfo) {
+		var html = "";
+		for (var asset of assets) {
+			html += `<tr class="multi_order_row" data-hash-name="${encodeURIComponent(asset.market_hash_name)}" data-appid="${asset.appid}">
+					 <td><div class="multi_order_name"><img src="https://community.cloudflare.steamstatic.com/economy/image/${asset.icon_url}"><span>${asset.market_name || asset.name}</span></div></td>
+					 <td><input class="multi_order_price" type="number" step="0.01" min="0.03"></td>
+					 <td><input class="multi_order_quantity" type="number" step="1" min="0"></td>
+					 <td><div class="multi_order_total" data-price-total="0">--</div></td>
+					 <td><div class="multi_order_status"><span class="multi_order_success" style="display: none;">✔️</span><span class="multi_order_warning" style="display: none;">⚠️</span></div></td></tr>`;
+		}
+		html = `<style>.multi_order_table img {height: 40px; margin: 5px;} .multi_order_name {display: flex; align-items: center; width: 390px;}
+				.multi_order_table td {padding: 0 5px; height: 30px;} .multi_order_table {border-spacing: 0 5px; min-width: 800px; margin-bottom: 10px;}
+				.multi_order_table tr {background-color: #00000033;} input.multi_order_price {width: 160px;} input.multi_order_quantity {width: 60px;}
+				#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 2px 2px 2px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
+				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {width: 100px; font-size: 13px;} .multi_order_status {width: 32px; text-align: center;} .multi_order_status span {cursor: default;}
+				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;}</style>
+				<table class="multi_order_table"><colgroup><col style="width: 100%;"><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 40px;"></colgroup>
+				<thead><tr><td style="border-right: 1px solid #404040">物品名称</td><td style="border-right: 1px solid #404040">价格</td><td style="border-right: 1px solid #404040">数量</td><td colspan="2">总价</td></tr></thead>
+				<tbody>${html}</tbody></table>
+				<div id="multi_order_purchase">提交订单</div><div><span>订购单的总价：</span><span id="multi_order_all_price">--</span></div><div style="clear:both;"></div>`;
+
+		var cmodel = unsafeWindow.ShowDialog("购买多样物品", html);
+		var model = cmodel.GetContent()[0];
+
+		model.querySelector("tbody").oninput = function(event) {
+			var input = event.target;
+			var elem = input.parentNode.parentNode;
+			var total = calculatePriceTotal(elem);
+			if (isNaN(total)) {
+				elem.querySelector(".multi_order_total").setAttribute("data-price-total", 0);
+				elem.querySelector(".multi_order_total").textContent = "--";
+			} else {
+				elem.querySelector(".multi_order_total").setAttribute("data-price-total", total);
+				total = (total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
+				elem.querySelector(".multi_order_total").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${total}`: `${total} ${currencyInfo.strSymbol}`;
+			}
+
+			var allPriceTotal = 0;
+			for (var totalElem of model.querySelectorAll(".multi_order_total")) {
+				allPriceTotal += parseInt(totalElem.getAttribute("data-price-total"));
+			}
+
+			allPriceTotal = (allPriceTotal / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
+			model.querySelector("#multi_order_all_price").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${allPriceTotal}`: `${allPriceTotal} ${currencyInfo.strSymbol}`;
+		};
+
+		model.querySelector("#multi_order_purchase").onclick = async function(event) {
+			var button = event.target;
+			button.setAttribute("disabled", "disabled");
+			button.textContent = "提交中...";
+			var sessionid = unsafeWindow.g_sessionID;
+			var currency = currencyInfo.eCurrencyCode;
+			for(var elem of model.querySelectorAll(".multi_order_row")) {
+				elem.querySelector(".multi_order_success").style.display = "none";
+				elem.querySelector(".multi_order_warning").style.display = "none";
+				var appid = elem.getAttribute("data-appid");
+				var hashName = elem.getAttribute("data-hash-name");
+				var total = calculatePriceTotal(elem);
+				var quantity = parseInt(elem.querySelector(".multi_order_quantity").value);
+				if (!isNaN(total) && quantity > 0) {
+					var result = await createBuyOrder(sessionid, currency, appid, hashName, total, quantity);
+					if (result.success == "1") {
+						elem.querySelector(".multi_order_success").style.display = null;
+						elem.querySelector(".multi_order_success").title = "您已成功提交订购单！";
+					} else if (result.message) {
+						elem.querySelector(".multi_order_warning").style.display = null;
+						elem.querySelector(".multi_order_warning").title = result.message;
+					} else {
+						elem.querySelector(".multi_order_warning").style.display = null;
+						elem.querySelector(".multi_order_warning").title = "抱歉！我们无法从 Steam 服务器获得关于您订单的信息。请再次检查您的订单是否确已创建或填写。如没有，请稍后再试。";
+					}
+				}
+			}
+			button.setAttribute("disabled", "");
+			button.textContent = "提交订单";
+		}
+
+		function calculatePriceTotal(elem) {
+			var price = Math.round(parseFloat(elem.querySelector(".multi_order_price").value) * 100);
+			var quantity = parseInt(elem.querySelector(".multi_order_quantity").value);
 			return price * quantity;
 		}
 	}
