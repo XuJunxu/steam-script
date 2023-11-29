@@ -1042,7 +1042,7 @@
 			var elem = event.target;
 			var label = elem.parentNode.parentNode.querySelector(".price_receive");
 			var label2 = elem.parentNode.parentNode.querySelector(".price_receive_2");
-			var amount = isNaN(parseFloat(elem.value)) ? 0 : Math.round(parseFloat(elem.value) * 100);
+			var amount = isNaN(Number(elem.value)) ? 0 : Math.round(Number(elem.value) * 100);
 			var price = calculatePriceYouReceive(amount, item);
 			var pay = calculatePriceBuyerPay(price, item);
 			if (currencyInfo.bSymbolIsPrefix) {
@@ -1073,7 +1073,7 @@
 
 		function sellItemCustom(event, item) {
 			var input = event.currentTarget.parentNode.querySelector("input");
-			var amount = isNaN(parseFloat(input.value)) ? 0 : Math.round(parseFloat(input.value) * 100);
+			var amount = isNaN(Number(input.value)) ? 0 : Math.round(Number(input.value) * 100);
 			sellSelectedItem(amount, item);
 		}
 
@@ -1083,7 +1083,7 @@
 			var m_rgAssets = unsafeWindow.g_rgAppContextData[item.appid].rgContexts[parseInt(item.contextid)].inventory.m_rgAssets;
 			if (hashName && m_rgAssets) {
 				var input = event.currentTarget.parentNode.querySelector("input");
-				var amount = isNaN(parseFloat(input.value)) ? 0 : Math.round(parseFloat(input.value) * 100);
+				var amount = isNaN(Number(input.value)) ? 0 : Math.round(Number(input.value) * 100);
 				var price = calculatePriceYouReceive(amount, item);
 				var buyerPay = calculatePriceBuyerPay(price, item);
 				for (let assetid in m_rgAssets) {
@@ -2445,7 +2445,7 @@
 								var text = rows[i].firstElementChild.textContent;
 								var pay = getPriceFromSymbolStr(text);
 								var price = calculatePriceYouReceive(pay);
-								var [pay2, price2] = calculateSecondPrice(price);
+								var [pay2, price2] = calculateSecondBuyPrice(price);
 								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${(data.price_prefix + " " + (price / 100.0).toFixed(2) + " " + data.price_suffix).trim()})</div>`;
 								var td = document.createElement("td");
 								if (currencyInfo2.bSymbolIsPrefix) {
@@ -2513,10 +2513,9 @@
 		model.querySelector("#buy_order_purchase").onclick = async function(event) {
 			var button = event.target;
 			button.setAttribute("disabled", "disabled");
-			var priceTotal = calculatePriceTotal();
-			if (!isNaN(priceTotal)) {
-				var quantity = parseInt(model.querySelector("#buy_order_quantity").value);
-				var result = await createBuyOrder(unsafeWindow.g_sessionID, currencyInfo.eCurrencyCode, appid, marketHashName, priceTotal, quantity);
+			var amount = calculatePriceTotal();
+			if (amount.price_total > 0 && amount.quantity > 0) {
+				var result = await createBuyOrder(unsafeWindow.g_sessionID, currencyInfo.eCurrencyCode, appid, marketHashName, amount.price_total, amount.quantity);
 				if (result.success == "1") {
 					model.querySelector("#buy_order_message").textContent = "您已成功提交订购单！";
 				} else if (result.message) {
@@ -2530,19 +2529,19 @@
 		}
 
 		function updatePriceTotal() {
-			var total = calculatePriceTotal();
-			if (isNaN(total)) {
-				model.querySelector("#buy_order_price_total").textContent = "--";
-			} else {
-				total = (total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
+			var amount = calculatePriceTotal();
+			if (amount.price_total > 0 && amount.quantity > 0) {
+				var total = (amount.price_total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
 				model.querySelector("#buy_order_price_total").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${total}`: `${total} ${currencyInfo.strSymbol}`;
+			} else {
+				model.querySelector("#buy_order_price_total").textContent = "--";
 			}
 		}
 
 		function calculatePriceTotal() {
-			var price = Math.round(parseFloat(model.querySelector("#buy_order_price").value) * 100);
+			var price = Math.round(Number(model.querySelector("#buy_order_price").value) * 100);
 			var quantity = parseInt(model.querySelector("#buy_order_quantity").value);
-			return price * quantity;
+			return {quantity: quantity, price_total: price * quantity};
 		}
 	}
 
@@ -2551,47 +2550,33 @@
 		var html = "";
 		for (var asset of assets) {
 			html += `<tr class="multi_order_row" data-hash-name="${encodeURIComponent(asset.market_hash_name)}" data-appid="${asset.appid}">
-					 <td><div class="multi_order_name"><img src="${asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url}"><span>${asset.market_name || asset.name}</span></div></td>
-					 <td><input class="multi_order_price" type="number" step="0.01" min="0.03"></td>
+					 <td><div class="multi_order_name"><img src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}"><span>${asset.market_name || asset.name}</span></div></td>
+					 <td><div class="multi_order_cell"><input class="multi_order_price" type="number" step="0.01" min="0.03"><div class="multi_order_second_price multi_order_second"></div></div></td>
 					 <td><input class="multi_order_quantity" type="number" step="1" min="0"></td>
-					 <td><div class="multi_order_total" data-price-total="0">--</div></td>
+					 <td><div class="multi_order_cell"><div class="multi_order_total" data-price-total="0">--</div><div class="multi_order_second_total multi_order_second" data-price-total="0"></div></div></td>
 					 <td><div class="multi_order_status"><span class="multi_order_success" style="display: none;">✔️</span><span class="multi_order_warning" style="display: none;">⚠️</span></div></td></tr>`;
 		}
-		html = `<style>.multi_order_table img {height: 40px; margin: 5px;} .multi_order_name {display: flex; align-items: center; width: 390px;}
+		html = `<style>.multi_order_table img {width: 48px; height: 48px; margin: 5px;} .multi_order_name {display: flex; align-items: center; width: 390px;} .multi_order_cell {position: relative;}
 				.multi_order_table td {padding: 0 5px; height: 30px;} .multi_order_table {border-spacing: 0 5px; min-width: 800px; margin-bottom: 10px;}
-				.multi_order_table tr {background-color: #00000033;} input.multi_order_price {width: 160px;} input.multi_order_quantity {width: 60px;}
+				.multi_order_table tr {background-color: #00000033;} input.multi_order_price {width: 160px; color: #acb2b8} input.multi_order_quantity {width: 60px; color: #acb2b8}
 				#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 2px 2px 2px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
-				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {width: 100px; font-size: 13px;} .multi_order_status {width: 32px; text-align: center;} .multi_order_status span {cursor: default;}
-				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;}</style>
+				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {width: 100px; font-size: 13px; text-wrap: nowrap;} .multi_order_status {width: 32px; text-align: center;} 
+				.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888;}
+				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name span {overflow: hidden; word-wrap: break-word;}
+				</style>
 				<table class="multi_order_table"><colgroup><col style="width: 100%;"><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 40px;"></colgroup>
 				<thead><tr><td style="border-right: 1px solid #404040">物品名称</td><td style="border-right: 1px solid #404040">价格</td><td style="border-right: 1px solid #404040">数量</td><td colspan="2">总价</td></tr></thead>
 				<tbody>${html}</tbody></table>
-				<div id="multi_order_purchase">提交订单</div><div><span>订购单的总价：</span><span id="multi_order_all_price">--</span></div><div style="clear:both;"></div>`;
+				<div id="multi_order_purchase">提交订单</div><div><div style="display: inline-block;">订购单的总价：</div><div class="multi_order_cell" style="display: inline-block;"><div id="multi_order_all_price">--</div>
+				<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div>`;
 
 		var cmodel = unsafeWindow.ShowDialog("购买多样物品", html);
 		var model = cmodel.GetContent()[0];
 
-		model.querySelector("tbody").oninput = function(event) {
-			var input = event.target;
-			var elem = input.parentNode.parentNode;
-			var total = calculatePriceTotal(elem);
-			if (isNaN(total)) {
-				elem.querySelector(".multi_order_total").setAttribute("data-price-total", 0);
-				elem.querySelector(".multi_order_total").textContent = "--";
-			} else {
-				elem.querySelector(".multi_order_total").setAttribute("data-price-total", total);
-				total = (total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
-				elem.querySelector(".multi_order_total").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${total}`: `${total} ${currencyInfo.strSymbol}`;
-			}
-
-			var allPriceTotal = 0;
-			for (var totalElem of model.querySelectorAll(".multi_order_total")) {
-				allPriceTotal += parseInt(totalElem.getAttribute("data-price-total"));
-			}
-
-			allPriceTotal = (allPriceTotal / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
-			model.querySelector("#multi_order_all_price").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${allPriceTotal}`: `${allPriceTotal} ${currencyInfo.strSymbol}`;
-		};
+		var tableRows = model.querySelectorAll(".multi_order_row");
+		for (var row of tableRows) {
+			row.oninput = updatePriceTotal;
+		}
 
 		model.querySelector("#multi_order_purchase").onclick = async function(event) {
 			var button = event.target;
@@ -2604,10 +2589,9 @@
 				elem.querySelector(".multi_order_warning").style.display = "none";
 				var appid = elem.getAttribute("data-appid");
 				var hashName = elem.getAttribute("data-hash-name");
-				var total = calculatePriceTotal(elem);
-				var quantity = parseInt(elem.querySelector(".multi_order_quantity").value);
-				if (!isNaN(total) && quantity > 0) {
-					var result = await createBuyOrder(sessionid, currency, appid, hashName, total, quantity);
+				var amount = calculatePriceTotal(elem);
+				if (amount.price_total > 0 && amount.quantity > 0) {
+					var result = await createBuyOrder(sessionid, currency, appid, hashName, amount.price_total, amount.quantity);
 					if (result.success == "1") {
 						elem.querySelector(".multi_order_success").style.display = null;
 						elem.querySelector(".multi_order_success").title = "您已成功提交订购单！";
@@ -2624,10 +2608,53 @@
 			button.textContent = "提交订单";
 		}
 
+		function updatePriceTotal(event) {
+			var elem = event.currentTarget;
+			var amount = calculatePriceTotal(elem);
+			if (amount.price_total > 0 && amount.quantity > 0) {
+				elem.querySelector(".multi_order_total").setAttribute("data-price-total", amount.price_total);
+				var total = (amount.price_total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
+				elem.querySelector(".multi_order_total").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${total}`: `${total} ${currencyInfo.strSymbol}`;
+			} else {
+				elem.querySelector(".multi_order_total").setAttribute("data-price-total", 0);
+				elem.querySelector(".multi_order_total").textContent = "--";
+			}
+
+			var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
+			var price2 = (amount.price_2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
+			price2 = currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${price2})`: `(${price2} ${currencyInfo2.strSymbol})`;
+			var total2 = (amount.price_total_2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
+			total2 = currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${total2})`: `(${total2} ${currencyInfo2.strSymbol})`;
+			
+			elem.querySelector(".multi_order_second_price").textContent = amount.price_2 > 0 ? price2 : "";
+			elem.querySelector(".multi_order_second_total").textContent = amount.price_total_2 > 0 ? total2 : "";
+			elem.querySelector(".multi_order_second_total").setAttribute("data-price-total", amount.price_total_2 > 0 ? amount.price_total_2 : 0);
+
+			var allPriceTotal = 0;
+			var allPriceTotal2 = 0;
+			for (var totalElem of model.querySelectorAll(".multi_order_total")) {
+				allPriceTotal += parseInt(totalElem.getAttribute("data-price-total"));
+			}
+			for (var totalElem of model.querySelectorAll(".multi_order_second_total")) {
+				allPriceTotal2 += parseInt(totalElem.getAttribute("data-price-total"));
+			}
+
+			allPriceTotal = (allPriceTotal / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
+			model.querySelector("#multi_order_all_price").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${allPriceTotal}`: `${allPriceTotal} ${currencyInfo.strSymbol}`;
+
+			var allTotal2 = (allPriceTotal2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
+			model.querySelector(".multi_order_all_price_second").textContent = allPriceTotal2 > 0 ? (currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${allTotal2})`: `(${allTotal2} ${currencyInfo2.strSymbol})`) : "";
+		}
+
 		function calculatePriceTotal(elem) {
-			var price = Math.round(parseFloat(elem.querySelector(".multi_order_price").value) * 100);
+			var price = Math.round(Number(elem.querySelector(".multi_order_price").value) * 100);
 			var quantity = parseInt(elem.querySelector(".multi_order_quantity").value);
-			return price * quantity;
+			var price2 = 0;
+			if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
+				var price2 = calculateSecondBuyPrice(calculatePriceYouReceive(price))[0];
+			} 
+			
+			return {price: price, quantity: quantity, price_total: price * quantity, price_2: price2, price_total_2: price2 * quantity};
 		}
 	}
 
@@ -3048,9 +3075,23 @@
 
 	//根据汇率计算第二货币的价格
 	function calculateSecondPrice(price, item) {
-		var price2 = Math.max(Math.ceil(price * globalCurrencyRate.wallet_second_rate), 1);
-		var pay2 = calculatePriceBuyerPay(price2, item);
-		return [pay2, price2];
+		if (price > 0) {
+			var price2 = Math.max(Math.ceil(price * globalCurrencyRate.wallet_second_rate), 1);
+			var pay2 = calculatePriceBuyerPay(price2, item);
+			return [pay2, price2];
+		} else {
+			return [0, 0];
+		}
+	}
+
+	function calculateSecondBuyPrice(price, item) {
+		if (price > 0) {
+			var price2 = Math.floor(price * globalCurrencyRate.wallet_second_rate);
+			var pay2 = calculatePriceBuyerPay(price2, item);
+			return [pay2, price2];
+		} else {
+			return [0, 0];
+		}
 	}
 
 	var itemPriceGramInfo = {};
