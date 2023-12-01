@@ -1,22 +1,22 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.9
+// @version      2.1.10
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
-// @match        http*://store.steampowered.com/wishlist*
+// @match        http*://store.steampowered.com/wishlist/*
 // @match        http*://store.steampowered.com/app/*
-// @match        http*://store.steampowered.com/explore/*
+// @match        http*://store.steampowered.com/explore*
 // @match        http*://steamcommunity.com/tradeoffer/*
 // @match        http*://steamcommunity.com/id/*/inventory*
 // @match        http*://steamcommunity.com/profiles/*/inventory*
-// @match        http*://steamcommunity.com/market/*
+// @match        http*://steamcommunity.com/market*
 // @match        http*://steamcommunity.com/id/*/gamecards/*
 // @match        http*://steamcommunity.com/profiles/*/gamecards/*
-// @match        http*://store.steampowered.com/account/history/*
-// @match        http*://steamcommunity.com/sharedfiles/filedetails/*
-// @match        http*://steamcommunity.com/workshop/filedetails/*
+// @match        http*://store.steampowered.com/account/history*
+// @match        http*://steamcommunity.com/sharedfiles/filedetails*
+// @match        http*://steamcommunity.com/workshop/filedetails*
 // @require      https://cdn.bootcdn.net/ajax/libs/localforage/1.7.1/localforage.min.js
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -521,7 +521,7 @@
 		var elems = document.querySelectorAll("#category_block a");
 		for (var el of elems) {
 			if (el.href.search(/search\/?\?category2\=29/) > 0) {
-				var appid = location.href.match(/store\.steampowered\.com\/app\/(\d+)\//)[1];
+				var appid = location.href.match(/store\.steampowered\.com\/app\/(\d+)/)[1];
 				el.href = `https://steamcommunity.com/my/gamecards/${appid}/`;
 				el.setAttribute("target", "_blank");
 				break;
@@ -1215,7 +1215,7 @@
 
 	//steam市场界面
 	function steamMarketPage() {  
-		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/market\/(?!listings|search)/)) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/market(?!\/listings|\/search)/)) {
 			return;
 		}
 
@@ -1810,7 +1810,7 @@
 		}
 
 		function getListingAssetInfo(listing) {
-			var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(/ /g, "").split(",");
+			var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\(([^\(\)]+)\)/)[1].replace(/ /g, "").split(",");
 			return unsafeWindow.g_rgAssets[eval(args[2])][eval(args[3])][eval(args[4])];
 		}
 
@@ -3268,14 +3268,14 @@
 	}
 
 	function getListid(listing) {
-		var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\((.+)\)/)[1].replace(/ /g, "").split(",");
+		var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\(([^\(\)]+)\)/)[1].replace(/ /g, "").split(",");
 		return eval(args[1]);
 	}
 
 	async function cancelSelectedBuyOrder(rowsToCancel) {
 		for (var row of rowsToCancel) {
 			var btn = row.querySelector("a.item_market_action_button_edit");
-			var buyOrderId = eval(btn.href.match(/CancelMarketBuyOrder\((.+)\)/)[1]);
+			var buyOrderId = eval(btn.href.match(/CancelMarketBuyOrder\(([^\(\)]+)\)/)[1]);
 
 			var data = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
 			if (data.success) {
