@@ -1088,7 +1088,7 @@
 				var buyerPay = calculatePriceBuyerPay(price, item);
 				for (let assetid in m_rgAssets) {
 					let it = m_rgAssets[assetid];
-					if (it.description && it.description.marketable && it.description.market_hash_name == hashName) {
+					if (it?.description?.marketable && it.description.market_hash_name == hashName && !it.element.getAttribute("data-sold")) {
 						await sellSelectedItem(0, it, price, buyerPay);
 					}
 				}
@@ -1101,6 +1101,7 @@
 				var data = await sellItem(unsafeWindow.g_sessionID, item.appid, item.contextid, item.assetid, 1, price);
 				if (data.success) {
 					item.element.style.background = "green";
+					item.element.setAttribute("data-sold", "1");
 
 					var buyerPay = pricePay || calculatePriceBuyerPay(price, item);
 					sellTotalPriceBuyerPay += buyerPay;
@@ -1124,9 +1125,10 @@
 					document.querySelector("#sell_log_text").innerHTML += logText;
 					document.querySelector("#sell_log_total").innerHTML = logTotal;
 				} else {
-					var logText = `${sellCount} - ${item.description.name} 上架市场失败，原因：${data.message || errorTranslator(data)}` + "<br>";
+					var logText = `Failed - ${item.description.name} 上架市场失败，原因：${data.message || errorTranslator(data)}` + "<br>";
 					document.querySelector("#sell_log_text").innerHTML += logText;
 				}
+				document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
 				document.querySelector("#clear_sell_log").style.display = "inline-block";
 			}
 		}
@@ -1282,6 +1284,7 @@
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
 									#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span:hover {background: #324965;}
 									#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price {cursor: pointer; position: relative;}
+									#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price:hover {background: #324965;}
 									.market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
 									.market_price_label {line-height: normal;}
 									.market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px; margin-left: -5px;}
@@ -1401,7 +1404,8 @@
 			}
 
 			var styleElem = document.createElement("style");
-			styleElem.innerHTML = ".market_listing_my_price:not(.market_listing_buyorder_qty) {cursor: pointer;}";
+			styleElem.innerHTML = ".market_price_can_click {cursor: pointer;} .market_price_can_click:hover, .buy_order_table_header_cell:hover {background: #324965;}" + 
+								  ".buy_order_table_header_cell {cursor: pointer; flex: 1 1 auto;}";
 			buyOrderListing.appendChild(styleElem);
 
 			var buyOrderRows = buyOrderListing.querySelectorAll(".market_listing_row");
@@ -1411,7 +1415,10 @@
 				addRowCheckbox(row);
 				buyOrderTable.appendChild(row);
 				buyOrderRowsTimeSort.push(row);
-				row.querySelector(".market_listing_my_price").onclick = showListingPriceInfo2;
+
+				var priceCell = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty)");
+				priceCell.classList.add("market_price_can_click");
+				priceCell.onclick = showListingPriceInfo2;
 			}
 			buyOrderListing.appendChild(buyOrderTable);
 
@@ -1428,9 +1435,10 @@
 			});
 
 			//使表头可点击排序
+			buyOrderListing.querySelector(".market_listing_table_header").style = "display: flex;flex-direction: row-reverse;";
 			var tableHeader = buyOrderListing.querySelector(".market_listing_table_header > span:last-child");
 			tableHeader.innerHTML = tableHeader.textContent;
-			tableHeader.setAttribute("style", "cursor: pointer; ");
+			tableHeader.classList.add("buy_order_table_header_cell");
 			tableHeader.onclick = function(event) {
 				var elem = event.currentTarget;
 				var textContent = elem.textContent;
@@ -2165,6 +2173,7 @@
 		if (globalSettings.gamecards_show_priceoverview || globalSettings.gamecards_append_linkbtn) {
 			appendCardsPageLinkBtn();
 			appendItemPriceInfoBtn();
+			appendMyBuyOrders();
 		}
 
 		function changeGameCardsPage() {  //修改页面布局
@@ -2207,15 +2216,10 @@
 
 		async function appendItemPriceInfoBtn() {
 			var styleElem = document.createElement("style");
-			styleElem.innerHTML = ".market_link {display: block; color: #EBEBEB; font-size: 12px; background: #00000066; padding: 3px; text-align: center;}";
+			styleElem.innerHTML = ".market_link {display: block; color: #EBEBEB; font-size: 12px; background: #00000066; padding: 3px; text-align: center;} .market_link:hover {background: #7bb7e355;}";
 			document.body.appendChild(styleElem);
 
-			var res = location.href.match(/\/gamecards\/(\d+)/);
-			if (res && res.length > 1) {
-				var gameid = res[1];
-			} else {
-				return;
-			}
+			var gameid = getGameId();
 
 			var res1 = location.href.match(/\/gamecards\/\d+\/?\?border=(\d)/);
 			if (res1 && res1.length > 1) {
@@ -2304,6 +2308,82 @@
 			}
 		}
 
+		async function appendMyBuyOrders() {
+			var myOrders = await getMyBuyOrders();
+			if (myOrders && myOrders.length > 0) {
+				var gameid = getGameId();
+				var gameOrders = [];
+				for (var order of myOrders) {
+					if (order.appid == "753" && order.market_hash_name.startsWith(gameid + "-")) {
+						gameOrders.push(order);
+					}
+				}
+
+				if (gameOrders.length > 0) {
+					var html = "";
+					for (var order of gameOrders) {
+						html += `<tr class="my_buy_order_row" data-market-hash-name="${order.market_hash_name}" data-buy-orderid="${order.buy_orderid}">
+								 <td><div class="my_buy_order_name"><img src="${order.icon}"><span><a href="${order.market_link}" target="_blank">${order.name}</a></span></div></td>
+								 <td><div class="my_buy_order_cell">${order.quantity}</div></td><td><div class="my_buy_order_cell my_buy_order_price" data-market-hash-name="${order.market_hash_name}">${order.price}</div></td>
+								 <td class="my_buy_order_action"><a class="my_buy_order_cancel" data-name="${order.name}" data-buy-orderid="${order.buy_orderid}">取消</a><input type="checkbox" class="my_buy_order_checkbox"></td></tr>`;
+					}
+					html = `<style>.my_buy_order_table {border-spacing: 0 5px; width: 920px; margin: 10px; } .my_buy_order_table thead td:not(:last-child) {border-right: 1px solid #404040;}
+							.my_buy_order_table tr {background-color: #00000033;} .my_buy_order_table td {padding: 0 5px; height: 30px; font-size: 12px;} .my_buy_order_table thead td {text-align: center;}
+							.my_buy_order_name {display: flex; align-items: center; width: 410px;} .my_buy_order_name img {width: 38px; height: 38px; margin: 5px; border: 1px solid #3A3A3A; background-color: #333333;}
+							.my_buy_order_name span {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px;} .my_buy_order_cell {width: 105px; color: white; text-align: center;} 
+							.my_buy_order_action {text-align: center; position: relative;} .my_buy_order_cancel {display: inline-block; line-height: 30px; width: 60px;} 
+							.my_buy_order_cancel:hover, #my_buy_order_cancel_all:hover, #my_buy_order_update:hover, .my_buy_order_price:hover {background: #7bb7e355;} 
+							.my_buy_order_checkbox {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5);}  
+							#my_buy_order_action_all {position: relative;} #my_buy_order_cancel_all {display: inline-block; line-height: 24px; width: 80px;} .my_buy_order_price {line-height: 30px; cursor: pointer;}
+							#my_buy_order_select_btn {position: absolute; top: 0; right: 20px; line-height: 30px;} #my_buy_order_select_all {cursor: pointer; transform: scale(1.5) translateY(2px);} 
+							#my_buy_order_select_btn label {cursor: pointer; color: white; padding-right: 4px;} .my_buy_order_name a {color: inherit; font-weight: bold;} .my_buy_order_name a:hover {text-decoration: underline;}
+							#my_buy_order_update {position: absolute; top: 3px; left: 10px; line-height: 24px; width: 60px;}</style>
+							<div class="my_buy_order_section">
+							<table class="my_buy_order_table"><colgroup><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 100%;"></colgroup>
+							<thead><tr><td style="position: relative;"><a id="my_buy_order_update">更新</a>名称</td><td>数量</td><td>价格</td><td id="my_buy_order_action_all"><a id="my_buy_order_cancel_all">取消求购</a>
+							<div id="my_buy_order_select_btn"><label for="my_buy_order_select_all">全选</label><input id="my_buy_order_select_all" type="checkbox"></div></td></tr></thead><tbody>${html}</tbody></table>
+							</div>`
+
+					var container = document.createElement("div");
+					container.innerHTML = html;
+					document.querySelector(".badge_card_set_cards").parentNode.appendChild(container);
+
+					var rows = container.querySelectorAll(".my_buy_order_row");
+					for (var row of rows) {
+						row.querySelector(".my_buy_order_price").onclick = showMarketPriceInfo;
+						row.querySelector(".my_buy_order_cancel").onclick = cancelBuyOrderClicked;
+					}
+
+					container.querySelector("#my_buy_order_select_all").onclick = event => {
+						var checked = event.target.checked;
+						for (var checkbox of container.querySelectorAll(".my_buy_order_row .my_buy_order_checkbox")) {
+							checkbox.checked = checked;
+						}
+					}
+
+					container.querySelector("#my_buy_order_cancel_all").onclick = event => {
+						let toCancel = [];
+						for (row of rows) {
+							var button = row.querySelector(".my_buy_order_cancel");
+							var checkbox = row.querySelector(".my_buy_order_checkbox");
+							if (!button.getAttribute("data-cancelled") && checkbox.checked) {
+								toCancel.push(button);
+							}
+						}
+
+						unsafeWindow.ShowConfirmDialog("取消求购", "确定取消所有选中的求购？").done(function() {
+							cancelAllSelected(toCancel);
+						});
+					}
+
+					container.querySelector("#my_buy_order_update").onclick = event => {
+						container.parentNode.removeChild(container);
+						appendMyBuyOrders();
+					}
+				}
+			}
+		}
+
 		async function getAllCardsPrice() {
 			var elems = document.querySelectorAll(".show_market_info");
 			for (let el of elems) {
@@ -2340,6 +2420,37 @@
 					elem2.title = html2;
 				}
 			}
+		}
+
+		function showMarketPriceInfo(event) {
+			dialogPriceInfo.show("753", event.target.getAttribute("data-market-hash-name"), currencyInfo);
+		}
+
+		function cancelBuyOrderClicked(event) {
+			var button = event.target;
+			unsafeWindow.ShowConfirmDialog("取消求购", `确定取消求购 ${button.getAttribute("data-name")} ？`).done(function() {
+				cancelSelectedBuyOrder(button);
+			});
+		}
+
+		async function cancelAllSelected(toCancel) {
+			for (var btn of toCancel) {
+				await cancelSelectedBuyOrder(btn);
+			}
+		}
+
+		async function cancelSelectedBuyOrder(button) {
+			var buyOrderId = button.getAttribute("data-buy-orderid");
+			var res = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
+			if (res.success == 1) {
+				button.textContent = "已取消";
+				button.style.color = "red";
+				button.setAttribute("data-cancelled", "true");
+			}
+		}
+
+		function getGameId() {
+			return location.href.match(/\/gamecards\/(\d+)/)[1];
 		}
 
 	}
@@ -2642,9 +2753,9 @@
 				.multi_order_table tr {background-color: #00000033;} input.multi_order_price {width: 140px; color: #acb2b8;} input.multi_order_quantity {width: 60px; color: #acb2b8;}
 				#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 2px 2px 2px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
 				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {width: 100px; font-size: 13px; text-wrap: nowrap;} .multi_order_status {width: 32px; text-align: center;} 
-				.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888;}
+				.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888; text-wrap: nowrap;}
 				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name span {overflow: hidden; word-wrap: break-word;}
-				</style>
+				#multi_order_all_price {text-wrap: nowrap;}</style>
 				<table class="multi_order_table"><colgroup><col style="width: 100%;"><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 40px;"></colgroup>
 				<thead><tr><td style="border-right: 1px solid #404040">物品名称</td><td style="border-right: 1px solid #404040">价格</td><td style="border-right: 1px solid #404040">数量</td><td colspan="2">总价</td></tr></thead>
 				<tbody>${html}</tbody></table>
@@ -3278,7 +3389,7 @@
 			var buyOrderId = eval(btn.href.match(/CancelMarketBuyOrder\(([^\(\)]+)\)/)[1]);
 
 			var data = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
-			if (data.success) {
+			if (data.success == 1) {
 				row.querySelector(".market_listing_check").setAttribute("data-removed", "true");
 				btn.querySelector(".item_market_action_button_contents").textContent = "已取消";
 				btn.style.color = "red";
@@ -3373,6 +3484,58 @@
 		});
 	}
 
+	//获取所有求购订单
+	function getMyBuyOrders() {
+		return new Promise(function(resolve, reject) {
+			var url = `https://steamcommunity.com/market/`;
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
+			xhr.responseType = "document";
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					var myOrders = [];
+					var buyOrderSection;
+					for (var section of e.target.response.querySelectorAll(".my_listing_section")) {
+						if (section.querySelector(".market_listing_row")?.id?.match(/mybuyorder_\d+/)) {
+							buyOrderSection = section;
+							break;
+						}
+					}
+
+					for (var row of (buyOrderSection ? buyOrderSection.querySelectorAll(".market_listing_row"): [])) {
+						var icon = row.querySelector("img").src;
+						var name = row.querySelector("a.market_listing_item_name_link").textContent.trim();
+						var marketLink = row.querySelector("a.market_listing_item_name_link").href;
+						var appid = marketLink.match(/market\/listings\/(\d+)\//)[1];
+						var hashName = marketLink.match(/market\/listings\/\d+\/([^\/]+)/)[1];
+						var quantity = row.querySelector(".market_listing_buyorder_qty .market_listing_price").textContent.trim();
+						var qty = row.querySelector(".market_listing_inline_buyorder_qty").textContent.trim();
+						var price = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty) .market_listing_price").textContent.replace(qty, "").trim();
+						var orderid = row.id.match(/^mybuyorder_(\d+)/)[1];
+
+						myOrders.push({icon: icon, name: name, market_link: marketLink, appid: appid, market_hash_name: hashName, quantity: quantity, price: price, buy_orderid: orderid});
+					} 
+
+					resolve(myOrders);
+				} else {
+					console.log("getMyBuyOrders failed");
+					resolve(null);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("getMyBuyOrders error");
+				resolve(null);
+			};
+			xhr.ontimeout = function() {
+				console.log("getMyBuyOrders timeout");
+				resolve(null);
+			};
+			xhr.send();
+		});
+	}
+
 	//提交订购单
 	function createBuyOrder(sessionid, currency, appid, market_hash_name, price_total, quantity, billing_state="", save_my_address=0) {
 		return new Promise(function(resolve, reject) {
@@ -3438,7 +3601,7 @@
 			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded");
 			xhr.onload = function(e) {
 				if (e.target.status == 200) {
-					resolve({success: true});
+					resolve(JSON.parse(e.target.response));
 				} else {
 					console.log("cancelBuyOrder failed");
 					resolve(e.target);
