@@ -1250,7 +1250,9 @@
 								.Listing_page_control {margin-top: 10px; user-select: none;}
 								.Listing_page_control .market_paging_controls {margin-top: 2px;}
 								.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
-								.market_listing_table_header {text-align: center;}`;
+								.market_listing_table_header {text-align: center;}
+								.market_listing_game_name_link {color: inherit;} 
+								.market_listing_game_name_link:hover {text-decoration: underline;}`;
 			document.body.appendChild(styleElem);
 		}
 
@@ -1331,7 +1333,10 @@
 				var pricePay = getPriceFromSymbolStr(listings[i].querySelector(".market_listing_price > span > span:first-child").textContent);
 				var pricReceive = getPriceFromSymbolStr(listings[i].querySelector(".market_listing_price  > span > span:last-child").textContent);
 				listingsTemp.push([gameName, itemName, pricePay, listings[i]]);
+
 				addRowCheckbox(listings[i]);
+				addGameCardsLink(listings[i]);
+
 				listings[i].querySelector(".market_listing_my_price").onclick = showListingPriceInfo;
 				totalPay += pricePay;
 				totalReceive += pricReceive;
@@ -1413,6 +1418,8 @@
 			var buyOrderTable = document.createElement("div");
 			for (var row of buyOrderRows) {
 				addRowCheckbox(row);
+				addGameCardsLink(row);
+
 				buyOrderTable.appendChild(row);
 				buyOrderRowsTimeSort.push(row);
 
@@ -1812,6 +1819,7 @@
 					if (marketData[gameName + name]) {
 						var hashName = encodeURIComponent(marketData[gameName + name]);
 						row.querySelector(".market_listing_item_name").innerHTML = `<a class="market_listing_item_name_link" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">${name}</a>`;
+						addGameCardsLink(row);
 					}
 				}
 			}
@@ -1820,6 +1828,18 @@
 		function getListingAssetInfo(listing) {
 			var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\(([^\(\)]+)\)/)[1].replace(/ /g, "").split(",");
 			return unsafeWindow.g_rgAssets[eval(args[2])][eval(args[3])][eval(args[4])];
+		}
+
+		//点击物品名称下的游戏名可打开徽章页面
+		function addGameCardsLink(listing) {
+			var nameLink = listing.querySelector(".market_listing_item_name_link").href;
+			var appid = nameLink.match(/\/market\/listings\/(\d+)\//)[1];
+			if (appid == "753") {
+				var gameid = nameLink.match(/\/market\/listings\/\d+\/(\d+)-/)[1];
+				var gameCardLink = "https://steamcommunity.com/my/gamecards/" + gameid;
+				var gameNameElem = listing.querySelector(".market_listing_game_name");
+				gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${gameCardLink}" target="_blank">${gameNameElem.textContent}</a>`;
+			}
 		}
 
 		//在物品右侧添加复选框
@@ -2176,7 +2196,8 @@
 			appendMyBuyOrders();
 		}
 
-		function changeGameCardsPage() {  //修改页面布局
+		//修改页面布局
+		function changeGameCardsPage() {  
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `div.badge_card_to_collect_links {text-align-last: right;}
 									div.game_card_unowned_border {display: none;}
@@ -2191,6 +2212,7 @@
 			});
 		}
 
+		//添加多个网页的链接
 		function appendCardsPageLinkBtn() {
 			var res = location.href.match(/\/gamecards\/(\d+)/);
 			if (res && res.length > 1) {
@@ -2214,6 +2236,7 @@
 			elem.appendChild(buttons);
 		}
 
+		//卡牌下方添加链接和价格
 		async function appendItemPriceInfoBtn() {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = ".market_link {display: block; color: #EBEBEB; font-size: 12px; background: #00000066; padding: 3px; text-align: center;} .market_link:hover {background: #7bb7e355;}";
@@ -2308,6 +2331,7 @@
 			}
 		}
 
+		//添加显示该游戏的所有求购订单
 		async function appendMyBuyOrders() {
 			var myOrders = await getMyBuyOrders();
 			if (myOrders && myOrders.length > 0) {
@@ -2330,7 +2354,7 @@
 					html = `<style>.my_buy_order_table {border-spacing: 0 5px; width: 920px; margin: 10px; } .my_buy_order_table thead td:not(:last-child) {border-right: 1px solid #404040;}
 							.my_buy_order_table tr {background-color: #00000033;} .my_buy_order_table td {padding: 0 5px; height: 30px; font-size: 12px;} .my_buy_order_table thead td {text-align: center;}
 							.my_buy_order_name {display: flex; align-items: center; width: 410px;} .my_buy_order_name img {width: 38px; height: 38px; margin: 5px; border: 1px solid #3A3A3A; background-color: #333333;}
-							.my_buy_order_name span {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px;} .my_buy_order_cell {width: 105px; color: white; text-align: center;} 
+							.my_buy_order_name span {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px;} .my_buy_order_cell {width: 105px; color: white; text-align: center; overflow: hidden; white-space: nowrap;} 
 							.my_buy_order_action {text-align: center; position: relative;} .my_buy_order_cancel {display: inline-block; line-height: 30px; width: 60px;} 
 							.my_buy_order_cancel:hover, #my_buy_order_cancel_all:hover, #my_buy_order_update:hover, .my_buy_order_price:hover {background: #7bb7e355;} 
 							.my_buy_order_checkbox {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5);}  
@@ -3505,7 +3529,7 @@
 					}
 
 					for (var row of (buyOrderSection ? buyOrderSection.querySelectorAll(".market_listing_row"): [])) {
-						var icon = row.querySelector("img").src;
+						var icon = row.querySelector("img")?.src;  //可能没有图片
 						var name = row.querySelector("a.market_listing_item_name_link").textContent.trim();
 						var marketLink = row.querySelector("a.market_listing_item_name_link").href;
 						var appid = marketLink.match(/market\/listings\/(\d+)\//)[1];
