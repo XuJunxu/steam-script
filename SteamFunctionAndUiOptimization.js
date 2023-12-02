@@ -2347,20 +2347,22 @@
 					var html = "";
 					for (var order of gameOrders) {
 						html += `<tr class="my_buy_order_row" data-market-hash-name="${order.market_hash_name}" data-buy-orderid="${order.buy_orderid}">
-								 <td><div class="my_buy_order_name"><img src="${order.icon}"><span><a href="${order.market_link}" target="_blank">${order.name}</a></span></div></td>
+								 <td><div class="my_buy_order_name"><img src="${order.icon}"><span><a class="my_buy_order_item_name" href="${order.market_link}" target="_blank">${order.name}</a><br>
+								 <span class="my_buy_order_game_name">${order.game_name}</span></span></div></td>
 								 <td><div class="my_buy_order_cell">${order.quantity}</div></td><td><div class="my_buy_order_cell my_buy_order_price" data-market-hash-name="${order.market_hash_name}">${order.price}</div></td>
 								 <td class="my_buy_order_action"><a class="my_buy_order_cancel" data-name="${order.name}" data-buy-orderid="${order.buy_orderid}">取消</a><input type="checkbox" class="my_buy_order_checkbox"></td></tr>`;
 					}
 					html = `<style>.my_buy_order_table {border-spacing: 0 5px; width: 920px; margin: 10px; } .my_buy_order_table thead td:not(:last-child) {border-right: 1px solid #404040;}
 							.my_buy_order_table tr {background-color: #00000033;} .my_buy_order_table td {padding: 0 5px; height: 30px; font-size: 12px;} .my_buy_order_table thead td {text-align: center;}
 							.my_buy_order_name {display: flex; align-items: center; width: 410px;} .my_buy_order_name img {width: 38px; height: 38px; margin: 5px; border: 1px solid #3A3A3A; background-color: #333333;}
-							.my_buy_order_name span {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px;} .my_buy_order_cell {width: 105px; color: white; text-align: center; overflow: hidden; white-space: nowrap;} 
+							.my_buy_order_item_name, my_buy_order_game_name {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: inherit;} 
+							.my_buy_order_cell {width: 105px; color: white; text-align: center; overflow: hidden; white-space: nowrap;} .my_buy_order_item_name:hover {text-decoration: underline;}
 							.my_buy_order_action {text-align: center; position: relative;} .my_buy_order_cancel {display: inline-block; line-height: 30px; width: 60px;} 
 							.my_buy_order_cancel:hover, #my_buy_order_cancel_all:hover, #my_buy_order_update:hover, .my_buy_order_price:hover {background: #7bb7e355;} 
 							.my_buy_order_checkbox {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5);}  
 							#my_buy_order_action_all {position: relative;} #my_buy_order_cancel_all {display: inline-block; line-height: 24px; width: 80px;} .my_buy_order_price {line-height: 30px; cursor: pointer;}
 							#my_buy_order_select_btn {position: absolute; top: 0; right: 20px; line-height: 30px;} #my_buy_order_select_all {cursor: pointer; transform: scale(1.5) translateY(2px);} 
-							#my_buy_order_select_btn label {cursor: pointer; color: white; padding-right: 4px;} .my_buy_order_name a {color: inherit; font-weight: bold;} .my_buy_order_name a:hover {text-decoration: underline;}
+							#my_buy_order_select_btn label {cursor: pointer; color: white; padding-right: 4px;} .my_buy_order_item_name {font-size: 14px; font-weight: bold;}
 							#my_buy_order_update {position: absolute; top: 3px; left: 10px; line-height: 24px; width: 60px;}</style>
 							<div class="my_buy_order_section">
 							<table class="my_buy_order_table"><colgroup><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 100%;"></colgroup>
@@ -2479,6 +2481,22 @@
 
 	}
 
+	function ShowDialogBetter(title, desc, params) {
+		var cmodel = unsafeWindow.ShowDialog(title, desc, params);
+
+		setMaxHeight();
+		window.addEventListener("resize", function() {
+			setMaxHeight();
+		});
+
+		function setMaxHeight() {
+			var maxHeight = document.compatMode === 'BackCompat' ? document.body.clientHeight : document.documentElement.clientHeight;
+			cmodel.SetMaxHeight(maxHeight - 156);
+		}
+
+		return cmodel;
+	}
+
 	//市场价格信息的弹窗
 	var dialogPriceInfo = {
 		init: function(appid, marketHashName, currencyInfo) {
@@ -2509,7 +2527,7 @@
 						<div class="create_buy_order_inline"><a id="create_buy_order_purchase" style="position: relative; z-index: 9;">提交订单</a></div>
 						<div id="create_buy_order_message" style="margin-top: 15px; color: #FFFFFF; width: 490px;"></div>
 						</div></div>`;
-			this.cmodel = unsafeWindow.ShowDialog(decodeURIComponent(marketHashName), html);
+			this.cmodel = ShowDialogBetter(decodeURIComponent(marketHashName), html);
 			this.model = this.cmodel.GetContent()[0];
 
 			this.appid = appid;
@@ -2721,7 +2739,7 @@
 					<div class="buy_order_row"><span>订购单的总价：</span><span id="buy_order_price_total"><span></div>
 					<div id="buy_order_purchase">提交订单</div><div style="clear:both;"></div>
 					<div id="buy_order_message" style="display: none;"></div></div>`;
-		var cmodel = unsafeWindow.ShowDialog("购买 " + decodeURIComponent(marketHashName), html);
+		var cmodel = ShowDialogBetter("购买 " + decodeURIComponent(marketHashName), html);
 		var model = cmodel.GetContent()[0];
 
 		model.querySelector("#buy_order_price").oninput = updatePriceTotal;
@@ -2766,28 +2784,34 @@
 		var html = "";
 		for (var asset of assets) {
 			html += `<tr class="multi_order_row" data-hash-name="${encodeURIComponent(asset.market_hash_name)}" data-appid="${asset.appid}">
-					 <td><div class="multi_order_name"><img src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}"><span>${asset.market_name || asset.name}</span></div></td>
+					 <td><div class="multi_order_name multi_order_cell"><img src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}"><span>${asset.market_name || asset.name}</span></div></td>
 					 <td><div class="multi_order_cell"><input class="multi_order_price" type="number" step="0.01" min="0.03"><div class="multi_order_second_price multi_order_second"></div></div></td>
-					 <td><input class="multi_order_quantity" type="number" step="1" min="0"></td>
+					 <td><div class="multi_order_cell"><input class="multi_order_quantity" type="number" step="1" min="0"></div></td>
 					 <td><div class="multi_order_cell"><div class="multi_order_total" data-price-total="0">--</div><div class="multi_order_second_total multi_order_second" data-price-total="0"></div></div></td>
-					 <td><div class="multi_order_status"><span class="multi_order_success" style="display: none;">✔️</span><span class="multi_order_warning" style="display: none;">⚠️</span></div></td></tr>`;
+					 <td><div class="multi_order_status multi_order_cell"><span class="multi_order_success" style="display: none;">✔️</span><span class="multi_order_warning" style="display: none;">⚠️</span></div></td></tr>`;
 		}
-		html = `<style>.multi_order_table img {width: 48px; height: 48px; margin: 5px;} .multi_order_name {display: flex; align-items: center; width: 390px;} .multi_order_cell {position: relative;}
-				.multi_order_table td {padding: 0 5px; height: 30px;} .multi_order_table {border-spacing: 0 5px; min-width: 800px; margin-bottom: 10px;}
-				.multi_order_table tr {background-color: #00000033;} input.multi_order_price {width: 140px; color: #acb2b8;} input.multi_order_quantity {width: 60px; color: #acb2b8;}
-				#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 2px 2px 2px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
-				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {width: 100px; font-size: 13px; text-wrap: nowrap;} .multi_order_status {width: 32px; text-align: center;} 
+		html = `<style>.multi_order_table {border-spacing: 0 5px; margin-bottom: 10px; width: 855px;} .multi_order_cell {position: relative; width: 100%; display: inline-block; line-height: normal;}
+				.multi_order_table td {padding: 0 5px; box-sizing: border-box; display: inline-block;} .multi_order_table img {width: 48px; height: 48px; margin-right: 5px;}
+				.multi_order_table td:nth-child(1) {width: 430px;} .multi_order_table td:nth-child(2) {width: 156px;} .multi_order_table td:nth-child(3) {width: 76px;} .multi_order_table td:nth-child(4) {width: 136px;} .multi_order_table td:nth-child(5) {width: 42px;}
+				.multi_order_table tr {background-color: #00000033;} .multi_order_table thead td {height: 30px; line-height: 30px;} .multi_order_table tbody td {height: 58px; line-height: 58px;} 
+				.multi_order_cell input {box-sizing: border-box; width: 100%; color: #acb2b8;} .multi_order_name {display: flex; align-items: center; margin: 5px 0px; overflow: hidden; text-wrap: nowrap;}
+				#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
+				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {font-size: 13px; text-wrap: nowrap;} .multi_order_status {text-align: center;} 
 				.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888; text-wrap: nowrap;}
-				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name span {overflow: hidden; word-wrap: break-word;}
-				#multi_order_all_price {text-wrap: nowrap;}</style>
-				<table class="multi_order_table"><colgroup><col style="width: 100%;"><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 40px;"></colgroup>
-				<thead><tr><td style="border-right: 1px solid #404040">物品名称</td><td style="border-right: 1px solid #404040">价格</td><td style="border-right: 1px solid #404040">数量</td><td colspan="2">总价</td></tr></thead>
+				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name span {overflow: hidden; text-overflow: ellipsis;}
+				#multi_order_all_price {text-wrap: nowrap;} .multi_order_table tbody {display: inline-block; overflow-x: hidden; overflow-y: auto; min-height: 130px;}</style>
+				<table class="multi_order_table">
+				<thead style="display: inline-block;"><tr><td style="border-right: 1px solid #404040;">物品名称</td><td style="border-right: 1px solid #404040;">价格</td><td style="border-right: 1px solid #404040;">数量</td><td style="width: 178px;">总价</td></tr></thead>
 				<tbody>${html}</tbody></table>
-				<div id="multi_order_purchase">提交订单</div><div><div style="display: inline-block;">订购单的总价：</div><div class="multi_order_cell" style="display: inline-block;"><div id="multi_order_all_price">--</div>
-				<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div>`;
+				<div style="width: 840px;"><div id="multi_order_purchase">提交订单</div><div style="white-space: nowrap;"><span>订购单的总价：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
+				<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div></div>`;
 
-		var cmodel = unsafeWindow.ShowDialog("购买多样物品", html);
+		var cmodel = ShowDialogBetter("购买多种物品", html);
 		var model = cmodel.GetContent()[0];
+
+		cmodel.OnResize(function(maxWidth, maxHeight) {
+			model.querySelector("tbody").style.maxHeight = (maxHeight - 83) + "px";
+		});
 
 		var tableRows = model.querySelectorAll(".multi_order_row");
 		for (var row of tableRows) {
@@ -3531,6 +3555,7 @@
 					for (var row of (buyOrderSection ? buyOrderSection.querySelectorAll(".market_listing_row"): [])) {
 						var icon = row.querySelector("img")?.src;  //可能没有图片
 						var name = row.querySelector("a.market_listing_item_name_link").textContent.trim();
+						var gameName = row.querySelector(".market_listing_game_name").textContent.trim();
 						var marketLink = row.querySelector("a.market_listing_item_name_link").href;
 						var appid = marketLink.match(/market\/listings\/(\d+)\//)[1];
 						var hashName = marketLink.match(/market\/listings\/\d+\/([^\/]+)/)[1];
@@ -3539,7 +3564,7 @@
 						var price = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty) .market_listing_price").textContent.replace(qty, "").trim();
 						var orderid = row.id.match(/^mybuyorder_(\d+)/)[1];
 
-						myOrders.push({icon: icon, name: name, market_link: marketLink, appid: appid, market_hash_name: hashName, quantity: quantity, price: price, buy_orderid: orderid});
+						myOrders.push({icon: icon, name: name, game_name: gameName, market_link: marketLink, appid: appid, market_hash_name: hashName, quantity: quantity, price: price, buy_orderid: orderid});
 					} 
 
 					resolve(myOrders);
