@@ -1992,6 +1992,10 @@
 			return;
 		}
 
+		if (!(Object.prototype.toString.call(unsafeWindow.g_rgAssets) === "[object Object]")) {  //在获取该物品的列表时发生了一个错误。请稍后再试。
+			location.reload();
+		}
+
 		addSteamCommunitySetting();
 
 		//修改页面布局
@@ -2164,7 +2168,7 @@
 		function getAssetInfo() {
 			var assets = unsafeWindow.g_rgAssets;
 
-			if (!Object.prototype.toString.call(assets) === "[object Object]") {
+			if (!(Object.prototype.toString.call(assets) === "[object Object]")) {
 				return null;
 			}
 
