@@ -1427,7 +1427,7 @@
 
 				var priceCell = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty)");
 				priceCell.classList.add("market_price_can_click");
-				priceCell.onclick = showListingPriceInfo2;
+				priceCell.onclick = showListingPriceInfo;
 			}
 			buyOrderListing.appendChild(buyOrderTable);
 
@@ -1833,7 +1833,7 @@
 							
 							var priceElem = row.querySelector(".market_listing_their_price");
 							priceElem.classList.add("market_price_can_click");
-							priceElem.onclick = showListingPriceInfo3;
+							priceElem.onclick = showListingPriceInfo2;
 							if (!priceElem.querySelector(".market_listing_price").textContent.trim()) {
 								priceElem.querySelector(".market_listing_price").textContent = "...";
 							}
@@ -1928,16 +1928,7 @@
 		}
 
 		//弹窗显示物品的市场价格信息
-		function showListingPriceInfo(event) {
-			var listing = event.currentTarget.parentNode;
-			var assetInfo = getListingAssetInfo(listing);
-			var marketHashName = getMarketHashName(assetInfo);
-			dialogPriceInfo.show(assetInfo.appid, marketHashName, currencyInfo, function(data) {
-				addPriceLabel(listing, data);
-			});
-		}
-
-		function showListingPriceInfo2(event, add=true) {
+		function showListingPriceInfo(event, add=true) {
 			var listing = event.currentTarget.parentNode;
 			var res = listing.querySelector("a.market_listing_item_name_link").href.match(/steamcommunity\.com\/market\/listings\/(\d+)\/([^\/]+)/);
 			var appid = res[1];
@@ -1949,8 +1940,8 @@
 			});
 		}
 
-		function showListingPriceInfo3(event) {
-			showListingPriceInfo2(event, false);
+		function showListingPriceInfo2(event) {
+			showListingPriceInfo(event, false);
 		}
 
 		//用给定的列表设置显示物品页面，用于显示对应排序的页面
@@ -2113,6 +2104,12 @@
 		}
 
 		async function showPriceOverview() {  //添加销量信息
+			var assetInfo = getAssetInfo();
+			
+			if (!assetInfo) {
+				return;
+			}
+
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = "div.price_overview {margin: 10px 10px 0px 10px;} div.price_overview>span {margin-right: 50px;}";
 			document.body.appendChild(styleElem);
@@ -2130,7 +2127,6 @@
 				market_buyorder_info.appendChild(elem);
 			}
 
-			var assetInfo = getAssetInfo();
 			var appid = assetInfo.appid;
 			var marketHashName = getMarketHashName(assetInfo);
 			var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
@@ -2167,6 +2163,11 @@
 
 		function getAssetInfo() {
 			var assets = unsafeWindow.g_rgAssets;
+
+			if (!Object.prototype.toString.call(assets) === "[object Object]") {
+				return null;
+			}
+
 			for (var appid in assets) {
 				for (var contextid in assets[appid]) {
 					for (var assetid in assets[appid][contextid]) {
@@ -2804,21 +2805,22 @@
 		var html = "";
 		for (var asset of assets) {
 			html += `<tr class="multi_order_row" data-hash-name="${encodeURIComponent(asset.market_hash_name)}" data-appid="${asset.appid}">
-					 <td><div class="multi_order_name multi_order_cell"><img src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}"><span>${asset.market_name || asset.name}</span></div></td>
+					 <td><div class="multi_order_name multi_order_cell"><img class="multi_order_item_img" src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}">
+					 <a class="multi_order_name_link" href="https://steamcommunity.com/market/listings/${asset.appid}/${encodeURIComponent(asset.market_hash_name)}" target="_blank">${asset.market_name || asset.name}</a></div></td>
 					 <td><div class="multi_order_cell"><input class="multi_order_price" type="number" step="0.01" min="0.03"><div class="multi_order_second_price multi_order_second"></div></div></td>
 					 <td><div class="multi_order_cell"><input class="multi_order_quantity" type="number" step="1" min="0"></div></td>
 					 <td><div class="multi_order_cell"><div class="multi_order_total" data-price-total="0">--</div><div class="multi_order_second_total multi_order_second" data-price-total="0"></div></div></td>
 					 <td><div class="multi_order_status multi_order_cell"><span class="multi_order_success" style="display: none;">✔️</span><span class="multi_order_warning" style="display: none;">⚠️</span></div></td></tr>`;
 		}
 		html = `<style>.multi_order_table {border-spacing: 0 5px; margin-bottom: 10px; width: 855px;} .multi_order_cell {position: relative; width: 100%; display: inline-block; line-height: normal;}
-				.multi_order_table td {padding: 0 5px; box-sizing: border-box; display: inline-block;} .multi_order_table img {width: 48px; height: 48px; margin-right: 5px;}
+				.multi_order_table td {padding: 0 5px; box-sizing: border-box; display: inline-block;} .multi_order_item_img {width: 48px; height: 48px; margin-right: 5px; cursor: pointer;}
 				.multi_order_table td:nth-child(1) {width: 430px;} .multi_order_table td:nth-child(2) {width: 156px;} .multi_order_table td:nth-child(3) {width: 76px;} .multi_order_table td:nth-child(4) {width: 136px;} .multi_order_table td:nth-child(5) {width: 42px;}
 				.multi_order_table tr {background-color: #00000033;} .multi_order_table thead td {height: 30px; line-height: 30px;} .multi_order_table tbody td {height: 58px; line-height: 58px;} 
 				.multi_order_cell input {box-sizing: border-box; width: 100%; color: #acb2b8;} .multi_order_name {display: flex; align-items: center; margin: 5px 0px; overflow: hidden; text-wrap: nowrap;}
 				#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
-				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {font-size: 13px; text-wrap: nowrap;} .multi_order_status {text-align: center;} 
+				#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {font-size: 13px; text-wrap: nowrap;} .multi_order_status {text-align: center;} .multi_order_name_link:hover {text-decoration: underline;}
 				.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888; text-wrap: nowrap;}
-				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name span {overflow: hidden; text-overflow: ellipsis;}
+				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name_link {overflow: hidden; text-overflow: ellipsis; font-weight: bold; color: inherit;}
 				#multi_order_all_price {text-wrap: nowrap;} .multi_order_table tbody {display: inline-block; overflow-x: hidden; overflow-y: auto; min-height: 130px;}</style>
 				<table class="multi_order_table">
 				<thead style="display: inline-block;"><tr><td style="border-right: 1px solid #404040;">物品名称</td><td style="border-right: 1px solid #404040;">价格</td><td style="border-right: 1px solid #404040;">数量</td><td style="width: 178px;">总价</td></tr></thead>
@@ -2834,8 +2836,13 @@
 		});
 
 		var tableRows = model.querySelectorAll(".multi_order_row");
-		for (var row of tableRows) {
+		for (let row of tableRows) {
 			row.oninput = updatePriceTotal;
+			row.onclick = function(event) {
+				if (event.target.classList.contains("multi_order_item_img")) {
+					dialogPriceInfo.show(row.getAttribute("data-appid"), row.getAttribute("data-hash-name"), currencyInfo);
+				}
+			};
 		}
 
 		model.querySelector("#multi_order_purchase").onclick = async function(event) {
@@ -3293,21 +3300,28 @@
 		var nameLink = nameElem.href;
 		var appid = nameLink.match(/\/market\/listings\/(\d+)\//)[1];
 		var gameNameElem = listing.querySelector(".market_listing_game_name");
+
+		var cardLinkElem = document.createElement("a");
+		cardLinkElem.setAttribute("target", "_blank");
+		var itemImg = listing.querySelector(".market_listing_item_img");
+		if (itemImg) {
+			itemImg.parentNode.insertBefore(cardLinkElem, itemImg);
+			cardLinkElem.appendChild(itemImg);
+		}
+
 		if (appid == "753") {
 			var gameid = nameLink.match(/\/market\/listings\/\d+\/(\d+)-/)[1];
 			var storeLink = "https://store.steampowered.com/app/" + gameid;
-			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank">${gameNameElem.innerHTML}</a>`;
-			var cardLinkElem = document.createElement("a");
+			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank" title="打开商店页面">${gameNameElem.innerHTML}</a>`;
+			
 			cardLinkElem.href = "https://steamcommunity.com/my/gamecards/" + gameid;
-			cardLinkElem.setAttribute("target", "_blank");
-			var itemImg = listing.querySelector(".market_listing_item_img");
-			if (itemImg) {
-				itemImg.parentNode.insertBefore(cardLinkElem, itemImg);
-				cardLinkElem.appendChild(itemImg);
-			}
+			cardLinkElem.setAttribute("title", "打开徽章页面");
 		} else {
 			var storeLink = "https://store.steampowered.com/app/" + appid;
-			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank">${gameNameElem.innerHTML}</a>`;
+			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank" title="打开商店页面">${gameNameElem.innerHTML}</a>`;
+		
+			cardLinkElem.href = "https://steamcommunity.com/market/search?appid=" + appid;
+			cardLinkElem.setAttribute("title", "打开市场搜索结果");
 		}
 	}
 
