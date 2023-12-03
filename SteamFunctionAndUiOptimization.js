@@ -1252,7 +1252,8 @@
 								.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
 								.market_listing_table_header {text-align: center;}
 								.market_listing_game_name_link {color: inherit;} 
-								.market_listing_game_name_link:hover {text-decoration: underline;}`;
+								.market_listing_game_name_link:hover {text-decoration: underline;}
+								.market_price_can_click {cursor: pointer;} .market_price_can_click:hover {background: #324965;}`;
 			document.body.appendChild(styleElem);
 		}
 
@@ -1409,8 +1410,7 @@
 			}
 
 			var styleElem = document.createElement("style");
-			styleElem.innerHTML = ".market_price_can_click {cursor: pointer;} .market_price_can_click:hover, .buy_order_table_header_cell:hover {background: #324965;}" + 
-								  ".buy_order_table_header_cell {cursor: pointer; flex: 1 1 auto;}";
+			styleElem.innerHTML = ".buy_order_table_header_cell:hover {background: #324965;} .buy_order_table_header_cell {cursor: pointer; flex: 1 1 auto;}";
 			buyOrderListing.appendChild(styleElem);
 
 			var buyOrderRows = buyOrderListing.querySelectorAll(".market_listing_row");
@@ -1828,6 +1828,14 @@
 						if (assetInfo) {
 							var hashName = encodeURIComponent(assetInfo.market_hash_name);
 							nameElem.innerHTML = `<a class="market_listing_item_name_link" href="https://steamcommunity.com/market/listings/${assetInfo.appid}/${hashName}" target="_blank">${nameElem.innerHTML}</a>`;
+							
+							var priceElem = row.querySelector(".market_listing_their_price");
+							priceElem.classList.add("market_price_can_click");
+							priceElem.onclick = showListingPriceInfo3;
+							if (!priceElem.querySelector(".market_listing_price").textContent.trim()) {
+								priceElem.querySelector(".market_listing_price").textContent = "...";
+							}
+							
 							addGameCardsLink(row);
 						}
 					}
@@ -1927,14 +1935,20 @@
 			});
 		}
 
-		function showListingPriceInfo2(event) {
+		function showListingPriceInfo2(event, add=true) {
 			var listing = event.currentTarget.parentNode;
 			var res = listing.querySelector("a.market_listing_item_name_link").href.match(/steamcommunity\.com\/market\/listings\/(\d+)\/([^\/]+)/);
 			var appid = res[1];
 			var marketHashName = res[2];
 			dialogPriceInfo.show(appid, marketHashName, currencyInfo, function(data) {
-				addPriceLabel(listing, data);
+				if (add) {
+					addPriceLabel(listing, data);
+				}
 			});
+		}
+
+		function showListingPriceInfo3(event) {
+			showListingPriceInfo2(event, false);
 		}
 
 		//用给定的列表设置显示物品页面，用于显示对应排序的页面
