@@ -1802,24 +1802,34 @@
 		}
 
 		function addMarketLink(data) {
-			if (data.assets && data.assets[753] && data.assets[753][6]) {
-				var assets  = data.assets[753][6];
-				var marketData = {};
-				for (var assetid in assets) {
-					var info = assets[assetid];
-					if (info.type && info.name && info.market_hash_name) {
-						marketData[info.type + info.name] = info.market_hash_name;
+			if (data.assets) {
+				var assets = [];
+				for (var appid in data.assets) {
+					for (var contextid in data.assets[appid]) {
+						for (var assetid in data.assets[appid][contextid]) {
+							assets.push(data.assets[appid][contextid][assetid]);
+						}
 					}
 				}
 
 				var historyRows = document.querySelectorAll("#tabContentsMyMarketHistoryRows .market_listing_row");
 				for (var row of historyRows) {
-					var name = row.querySelector(".market_listing_item_name").textContent;
-					var gameName = row.querySelector(".market_listing_game_name").textContent;
-					if (marketData[gameName + name]) {
-						var hashName = encodeURIComponent(marketData[gameName + name]);
-						row.querySelector(".market_listing_item_name").innerHTML = `<a class="market_listing_item_name_link" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">${name}</a>`;
-						addGameCardsLink(row);
+					var nameElem = row.querySelector(".market_listing_item_name");
+					var itemImg = row.querySelector(".market_listing_item_img");
+					if (itemImg) {
+						var assetInfo = null;
+						for (var ass of assets) {
+							if (ass.icon_url && itemImg.src.includes(ass.icon_url)) {
+								assetInfo = ass;
+								break;
+							}
+						}
+
+						if (assetInfo) {
+							var hashName = encodeURIComponent(assetInfo.market_hash_name);
+							nameElem.innerHTML = `<a class="market_listing_item_name_link" href="https://steamcommunity.com/market/listings/${assetInfo.appid}/${hashName}" target="_blank">${nameElem.innerHTML}</a>`;
+							addGameCardsLink(row);
+						}
 					}
 				}
 			}
@@ -1828,18 +1838,6 @@
 		function getListingAssetInfo(listing) {
 			var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\(([^\(\)]+)\)/)[1].replace(/ /g, "").split(",");
 			return unsafeWindow.g_rgAssets[eval(args[2])][eval(args[3])][eval(args[4])];
-		}
-
-		//点击物品名称下的游戏名可打开徽章页面
-		function addGameCardsLink(listing) {
-			var nameLink = listing.querySelector(".market_listing_item_name_link").href;
-			var appid = nameLink.match(/\/market\/listings\/(\d+)\//)[1];
-			if (appid == "753") {
-				var gameid = nameLink.match(/\/market\/listings\/\d+\/(\d+)-/)[1];
-				var gameCardLink = "https://steamcommunity.com/my/gamecards/" + gameid;
-				var gameNameElem = listing.querySelector(".market_listing_game_name");
-				gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${gameCardLink}" target="_blank">${gameNameElem.textContent}</a>`;
-			}
 		}
 
 		//在物品右侧添加复选框
@@ -3266,6 +3264,31 @@
 
 	}
 
+	//点击图片可打开徽章页面，点击物品名称下的游戏名可打开商店页面
+	function addGameCardsLink(listing) {
+		var nameElem = listing.querySelector(".market_listing_item_name_link");
+		nameElem.setAttribute("target", "_blank");
+		var nameLink = nameElem.href;
+		var appid = nameLink.match(/\/market\/listings\/(\d+)\//)[1];
+		var gameNameElem = listing.querySelector(".market_listing_game_name");
+		if (appid == "753") {
+			var gameid = nameLink.match(/\/market\/listings\/\d+\/(\d+)-/)[1];
+			var storeLink = "https://store.steampowered.com/app/" + gameid;
+			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank">${gameNameElem.innerHTML}</a>`;
+			var cardLinkElem = document.createElement("a");
+			cardLinkElem.href = "https://steamcommunity.com/my/gamecards/" + gameid;
+			cardLinkElem.setAttribute("target", "_blank");
+			var itemImg = listing.querySelector(".market_listing_item_img");
+			if (itemImg) {
+				itemImg.parentNode.insertBefore(cardLinkElem, itemImg);
+				cardLinkElem.appendChild(itemImg);
+			}
+		} else {
+			var storeLink = "https://store.steampowered.com/app/" + appid;
+			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank">${gameNameElem.innerHTML}</a>`;
+		}
+	}
+
 	function getMarketHashName(assetInfo) {
 		var marketHashName = assetInfo.market_hash_name || assetInfo.market_name || assetInfo.name;
 		return encodeURIComponent(marketHashName); 
@@ -3799,7 +3822,8 @@
 
 	function searchMarketGameItems(gameid, itemclass=-1, cardborder=-1, query="") {
 		return new Promise(function (resolve, reject) {
-			var url = `https://steamcommunity.com/market/search/render/?norender=1&query=${query}&start=0&count=100&search_descriptions=0&sort_column=name&sort_dir=desc&appid=753&category_753_Event%5B%5D=any&category_753_Game%5B%5D=tag_app_${gameid}`;
+			var url = `https://steamcommunity.com/market/search/render/?norender=1&query=${query}&start=0&count=100&search_descriptions=0&
+					   sort_column=name&sort_dir=desc&appid=753&category_753_Event%5B%5D=any&category_753_Game%5B%5D=tag_app_${gameid}`;
 			if (itemclass > -1) {
 				url += `&category_753_item_class%5B%5D=tag_item_class_${itemclass}`;
 			}
