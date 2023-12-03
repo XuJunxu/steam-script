@@ -910,6 +910,8 @@
 					if (globalSettings.inventory_sell_btn && selectedItem.description.marketable) {
 						document.querySelector("#price_gram_container0 .sell_price_input").oninput = event => showPriceReceive(event, selectedItem);
 						document.querySelector("#price_gram_container1 .sell_price_input").oninput = event => showPriceReceive(event, selectedItem);
+						document.querySelector("#price_gram_container0 .sell_price_input").onmousewheel = event => event.preventDefault();
+						document.querySelector("#price_gram_container1 .sell_price_input").onmousewheel = event => event.preventDefault();
 						document.querySelector("#price_gram_container0 .sell_comfirm").onclick = event => sellItemCustom(event, selectedItem);
 						document.querySelector("#price_gram_container1 .sell_comfirm").onclick = event => sellItemCustom(event, selectedItem);
 						document.querySelector("#price_gram_container0 .sell_all_same").onclick = event => sellAllSameItem(event, selectedItem);
@@ -2505,6 +2507,12 @@
 			var maxHeight = document.compatMode === 'BackCompat' ? document.body.clientHeight : document.documentElement.clientHeight;
 			cmodel.SetMaxHeight(maxHeight - 156);
 		}
+
+		cmodel.GetContent()[0].addEventListener("mousewheel", function(event) {
+			if (event.target.tagName.toLowerCase() == "input" && event.target.type.toLowerCase() == "number") {
+				event.preventDefault();
+			}
+		});
 
 		return cmodel;
 	}
