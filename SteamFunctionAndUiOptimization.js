@@ -1280,6 +1280,9 @@
 			if (!marketListings) {
 				return;
 			}
+
+			document.querySelector("#tabMyListings").addEventListener("click", showMarketMyListings);
+
 			marketListings.innerHTML = "<div style='text-align: center;'><img src='https://community.steamstatic.com/public/images/login/throbber.gif' alt='载入中'></div>";
 			
 			var styleElem = document.createElement("style");
@@ -1411,6 +1414,17 @@
 				return;
 			}
 
+			var tabMyBuyOrder = document.createElement("a");
+			tabMyBuyOrder.innerHTML = `<span class="market_tab_well_tab_contents">我的订购单</span>`;
+			tabMyBuyOrder.id = "tabMyBuyOrder";
+			tabMyBuyOrder.className = "market_tab_well_tab market_tab_well_tab_inactive";
+			tabMyBuyOrder.style.marginLeft = "3px";
+			tabMyBuyOrder.addEventListener("click", showMyBuyOrders);
+			document.querySelector("#myMarketTabs .market_tab_well_tabs").appendChild(tabMyBuyOrder);
+
+			buyOrderListing.id = "tabContentsMyBuyOrders";
+			document.querySelector("#myListings").appendChild(buyOrderListing);
+
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = ".buy_order_table_header_cell:hover {background: #324965;} .buy_order_table_header_cell {cursor: pointer; flex: 1 1 auto;}";
 			buyOrderListing.appendChild(styleElem);
@@ -1472,6 +1486,30 @@
 			addBuyOrderActions();
 		}
 
+		function showMarketMyListings() {
+			document.querySelector("#tabContentsMyListings").show();
+			document.querySelector("#tabContentsMyMarketHistory").hide();
+			document.querySelector("#tabContentsMyBuyOrders")?.hide();
+			document.querySelector("#tabMyListings").addClassName("market_tab_well_tab_active");
+			document.querySelector("#tabMyListings").removeClassName("market_tab_well_tab_inactive");
+			document.querySelector("#tabMyMarketHistory").addClassName("market_tab_well_tab_inactive");
+			document.querySelector("#tabMyMarketHistory").removeClassName("market_tab_well_tab_active");
+			document.querySelector("#tabMyBuyOrder")?.addClassName("market_tab_well_tab_inactive");
+			document.querySelector("#tabMyBuyOrder")?.removeClassName("market_tab_well_tab_active");
+		}
+
+		function showMyBuyOrders() {
+			document.querySelector("#tabContentsMyListings").hide();
+			document.querySelector("#tabContentsMyMarketHistory").hide();
+			document.querySelector("#tabContentsMyBuyOrders")?.show();
+			document.querySelector("#tabMyListings").addClassName("market_tab_well_tab_inactive");
+			document.querySelector("#tabMyListings").removeClassName("market_tab_well_tab_active");
+			document.querySelector("#tabMyMarketHistory").addClassName("market_tab_well_tab_inactive");
+			document.querySelector("#tabMyMarketHistory").removeClassName("market_tab_well_tab_active");
+			document.querySelector("#tabMyBuyOrder")?.addClassName("market_tab_well_tab_active");
+			document.querySelector("#tabMyBuyOrder")?.removeClassName("market_tab_well_tab_inactive");
+		}
+
 		//显示市场历史记录
 		async function showMarketHistory(event) {
 			event.preventDefault();
@@ -1479,10 +1517,13 @@
 			unsafeWindow.HideHover();
 			document.querySelector("#tabContentsMyListings").hide();
 			document.querySelector("#tabContentsMyMarketHistory").show();
+			document.querySelector("#tabContentsMyBuyOrders")?.hide();
 			document.querySelector("#tabMyListings").addClassName("market_tab_well_tab_inactive");
 			document.querySelector("#tabMyListings").removeClassName("market_tab_well_tab_active");
 			document.querySelector("#tabMyMarketHistory").addClassName("market_tab_well_tab_active");
 			document.querySelector("#tabMyMarketHistory").removeClassName("market_tab_well_tab_inactive");
+			document.querySelector("#tabMyBuyOrder")?.addClassName("market_tab_well_tab_inactive");
+			document.querySelector("#tabMyBuyOrder")?.removeClassName("market_tab_well_tab_active");
 
 			if (document.querySelector("#tabContentsMyMarketHistory #history_page_control_before")) {
 				return;
