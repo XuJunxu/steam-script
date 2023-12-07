@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.12
+// @version      2.1.13
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -2034,7 +2034,9 @@
 		}
 
 		if (!(Object.prototype.toString.call(unsafeWindow.g_rgAssets) === "[object Object]")) {  //在获取该物品的列表时发生了一个错误。请稍后再试。
-			location.reload();
+			if (document.body.innerHTML.match(/Market_LoadOrderSpread\(\s?\d+\s?\)/)) {
+				location.reload();
+			}
 		}
 
 		addSteamCommunitySetting();
@@ -2280,11 +2282,10 @@
 			} 
 
 			var buttons = document.createElement("div");
-			buttons.style = "margin-top: 8px;";
-			buttons.innerHTML = `<a class="btn_grey_grey btn_medium" style="margin-right: 4px;" href="https://store.steampowered.com/app/${appid}" target="_blank"><span>打开商店页面</span></a>
-								 <a class="btn_grey_grey btn_medium" style="margin-right: 4px;" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" target="_blank"><span>打开Exchange页面</span></a>
-								 <a class="btn_grey_grey btn_medium" style="margin-right: 4px;" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${appid}" target="_blank"><span>查看该游戏社区物品</span></a>
-								 <a class="btn_grey_grey btn_medium" id="multi_buy_order" style="display: none;"><span>批量购买卡牌</span></a>`;
+			buttons.innerHTML = `<a class="btn_grey_grey btn_medium" style="margin: 8px 4px 0 0;" href="https://store.steampowered.com/app/${appid}" target="_blank"><span>打开商店页面</span></a>
+								 <a class="btn_grey_grey btn_medium" style="margin: 8px 4px 0 0;" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" target="_blank"><span>打开Exchange页面</span></a>
+								 <a class="btn_grey_grey btn_medium" style="margin: 8px 4px 0 0;" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${appid}" target="_blank"><span>查看该游戏社区物品</span></a>
+								 <a class="btn_grey_grey btn_medium" id="multi_buy_order" style="margin: 8px 0 0 0; display: none;"><span>批量购买卡牌</span></a>`;
 
 			var elem = document.querySelector("div.badge_detail_tasks>div.gamecards_inventorylink");
 			if (!elem) {
@@ -2320,8 +2321,8 @@
 				}
 			}
 
-			if (hashNameList && hashNameList.length == cardElems.length) {
-				var cardAssets1 = [];
+			if (hashNameList && hashNameList.length > 0 && hashNameList.length == cardElems.length) {
+				let cardAssets1 = [];
 				for (var i = 0; i < cardElems.length; i++) {
 					var cardElem = cardElems[i];
 					var hashName = hashNameList[i];
@@ -2355,7 +2356,7 @@
 				var response = await searchMarketGameItems(gameid, 2, cardborder);
 			}
 			if (response.success) {
-				var cardAssets = [];
+				let cardAssets = [];
 				var results = response.results;
 				for (let cardElem of cardElems) {
 					let image = cardElem.querySelector("img.gamecard").src;
@@ -3047,11 +3048,15 @@
 				selectOptions += `<option value="${code}" ${code == settings.currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 				selectOptions2 += `<option value="${code}" ${code == settings.second_currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 			}
-			var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_select, .settings_row input[type="checkbox"], .settings_row label, input[type="button"] {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} .settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;}
-							.settings_row input[type="number"] {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} .margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="number"]::-webkit-outer-spin-button, .settings_row input[type="number"]::-webkit-inner-spin-button{-webkit-appearance: none !important;}
+			var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} 
+							.settings_select, .settings_row input[type="checkbox"], .settings_row label, input[type="button"] {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} 
+							.settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;} .settings_input_number {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} 
+							.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} 
+							.settings_input_number::-webkit-outer-spin-button, .settings_input_number::-webkit-inner-spin-button {-webkit-appearance: none !important;}
 							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
 							<div class="settings_container">
-							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min)：</span><input type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = parseInt(this.value);" style="width: 60px;">
+							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min)：</span>
+							<input class="settings_input_number" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = parseInt(this.value);">
 							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
 							<span id="show_update_time" style="margin-left: 20px;">${new Date(exchangeRate.last_update).toLocaleString()}</span></div>
 							<div style="margin-bottom: 10px; display: flex;">
@@ -3077,7 +3082,7 @@
 							<div class="settings_option"><input id="sfu_market_adjust_selllistings" type="checkbox" ${settings.market_adjust_selllistings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_selllistings = this.checked;"></input><label for="sfu_market_adjust_selllistings" class="margin_right_20">调整出售物品表格</label></div>
 							<div class="settings_option"><input id="sfu_market_adjust_history" type="checkbox" ${settings.market_adjust_history ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_history = this.checked;"></input><label for="sfu_market_adjust_history" class="margin_right_20">调整市场历史记录表格</label></div>
 							<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">出售物品表格自动显示最低出售和最高求购</label></div>
-							<div class="settings_option"><label for="sfu_market_page_size">出售物品表格每页物品数量</label><input id="sfu_market_page_size" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
+							<div class="settings_option"><label for="sfu_market_page_size">出售物品表格每页物品数量</label><input class="settings_input_number" id="sfu_market_page_size" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
 							</div>
 							<div class="settings_page_title">市场物品页面设置：</div>
 							<div class="settings_row">
