@@ -862,7 +862,16 @@
 		}
 
 		function hasMarketableCard() {
-			var assets = unsafeWindow.g_ActiveInventory?.m_rgAssets || [];
+			if (!unsafeWindow.g_ActiveInventory) {
+				return false;
+			}
+
+			if (unsafeWindow.g_ActiveInventory.m_rgChildInventories) {
+				var assets = unsafeWindow.g_ActiveInventory.m_rgChildInventories[6].m_rgAssets || [];
+			} else {
+				var assets = unsafeWindow.g_ActiveInventory.m_rgAssets || [];
+			}
+
 			for (let assetid in assets) {
 				var desc = assets[assetid].description;
 				if (!desc?.marketable) {
