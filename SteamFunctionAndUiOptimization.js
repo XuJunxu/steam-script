@@ -854,6 +854,11 @@
 				}, 100);
 				return;
 			}
+
+			if (!hasMarketableCard()) {
+				return;
+			}
+
 			var checkbox = document.querySelector("#tag_filter_753_0_cardborder_cardborder_0") || document.querySelector("#tag_filter_753_6_cardborder_cardborder_0");
 			var checkbox2 = document.querySelector("#tag_filter_753_0_misc_tradable") || document.querySelector("#tag_filter_753_6_misc_tradable");
 			var checkbox3 = document.querySelector("#tag_filter_753_0_misc_marketable") || document.querySelector("#tag_filter_753_6_misc_marketable");
@@ -866,6 +871,24 @@
 			if (checkbox3) {
 				checkbox3.click();
 			}
+		}
+
+		function hasMarketableCard() {
+			var assets = unsafeWindow.g_ActiveInventory.m_rgAssets;
+			for (let assetid in assets) {
+				var desc = assets[assetid].description;
+				if (!desc?.marketable) {
+					continue;
+				}
+				
+				var tags = desc.tags;
+				for (let tag of tags) {
+					if (tag.category == "cardborder" && tag.internal_name == "cardborder_0") {
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		//在右侧大图片上方添加市场价格信息和出售按键
