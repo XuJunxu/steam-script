@@ -2315,6 +2315,8 @@
 			}
 
 			elem.appendChild(buttons);
+
+			document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order").onclick = showMultiCreateBuyOrder;
 		}
 
 		//卡牌下方添加链接和价格
@@ -2323,6 +2325,7 @@
 			styleElem.innerHTML = ".market_link {display: block; color: #EBEBEB; font-size: 12px; background: #00000066; padding: 3px; text-align: center;} .market_link:hover {background: #7bb7e355;}";
 			document.body.appendChild(styleElem);
 
+			var multiBuyOrderBtn = document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order");
 			var gameid = getGameId();
 
 			var res1 = location.href.match(/\/gamecards\/\d+\/?\?border=(\d)/);
@@ -2342,7 +2345,6 @@
 			}
 
 			if (hashNameList && hashNameList.length > 0 && hashNameList.length == cardElems.length) {
-				let cardAssets1 = [];
 				for (var i = 0; i < cardElems.length; i++) {
 					var cardElem = cardElems[i];
 					var hashName = hashNameList[i];
@@ -2356,27 +2358,21 @@
 					cardElem.lastElementChild.innerHTML = html;
 					cardElem.lastElementChild.onclick = showMarketPriceTable;
 
-					cardAssets1.push({
+					cardElem.asset = {
 						appid: 753,
 						icon: icon,
 						market_name: title1,
 						market_hash_name: decodeURIComponent(hashName)
-					});
+					};
 				}
-				
-				var multiBuyOrder = document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order");
-				multiBuyOrder.style.display = null;
-				multiBuyOrder.onclick = function() {
-					dialogMultiCreateBuyOrder(cardAssets1, currencyInfo);
-				}
+				multiBuyOrderBtn.style.display = null;
 			}
 			
 			var response = await searchMarketGameItems(gameid, 2, cardborder);
 			if (response.success && response.results.length == 0) {
 				var response = await searchMarketGameItems(gameid, 2, cardborder);
 			}
-			if (response.success) {
-				let cardAssets = [];
+			if (response.success && response.results.length > 0) {
 				var results = response.results;
 				for (let cardElem of cardElems) {
 					let image = cardElem.querySelector("img.gamecard").src;
@@ -2384,7 +2380,7 @@
 					for (let card of results) {
 						let cardTitle = card.name.replace(/\(集换式卡牌\)$/, "").replace(/\(Trading Card\)$/, "").trim();
 						if (image.includes(card.asset_description.icon_url) || title == cardTitle) {
-							cardAssets.push(card.asset_description);
+							cardElem.asset = card.asset_description;
 							let hashName = card.asset_description.market_hash_name || card.hash_name;
 							hashName = encodeURIComponent(hashName);
 							let html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">打开市场页面</a>
@@ -2397,19 +2393,23 @@
 						}
 					}
 				}
-
-				var multiBuyOrder = document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order");
-				multiBuyOrder.style.display = null;
-				multiBuyOrder.onclick = function() {
-					dialogMultiCreateBuyOrder(cardAssets, currencyInfo);
-				}
-
-				//显示市场价格信息
-				if (globalSettings.gamecards_show_priceoverview) {
-					getAllCardsPrice();
-				}
-
+				multiBuyOrderBtn.style.display = null;
 			}
+			//显示市场价格信息
+			if (globalSettings.gamecards_show_priceoverview) {
+				getAllCardsPrice();
+			}
+		}
+
+		function showMultiCreateBuyOrder() {
+			var cardElems = document.querySelectorAll("div.badge_card_set_card");
+			var cardAssets = [];
+			for (let elem of cardElems) {
+				if (elem.asset) {
+					cardAssets.push(elem.asset);
+				}
+			}
+			dialogMultiCreateBuyOrder(cardAssets, currencyInfo);
 		}
 
 		//添加显示该游戏的所有求购订单
@@ -2754,17 +2754,19 @@
 			}
 		},
 		showCreateBuyOrder: function(event) {
-			var button = event.target;
-			var price = null;
-			if (button.id == "market_buy_button") {
-				price = this.histogram.lowest_sell_order;
-			} else if (button.id == "market_buy_order_button") {
-				price = this.histogram.highest_buy_order;
-			}
-
-			if (price) {
-				this.model.querySelector("#create_buy_order_price").value = (price / 100.0).toFixed(2);
-				this.updatePriceTotal();
+			if (this.histogram) {
+				var button = event.target;
+				var price = null;
+				if (button.id == "market_buy_button") {
+					price = this.histogram.lowest_sell_order;
+				} else if (button.id == "market_buy_order_button") {
+					price = this.histogram.highest_buy_order;
+				}
+	
+				if (price) {
+					this.model.querySelector("#create_buy_order_price").value = (price / 100.0).toFixed(2);
+					this.updatePriceTotal();
+				}
 			}
 
 			this.model.querySelector(".create_buy_order_container").style.display = null;
