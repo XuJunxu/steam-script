@@ -34,7 +34,7 @@
 
 	//修复创意工坊预览大图无法显示的问题
 	function steamWorkshopImageRepair() {
-		if (!location.href.match(/^https?\:\/\/steamcommunity\.com\/(sharedfiles|workshop)\/filedetails/)) {
+		if (!location.href.match(/^https?\:\/\/steamcommunity\.com\/(sharedfiles|workshop)\/filedetails(?!\w)/)) {
 			return;
 		}
 
@@ -45,7 +45,7 @@
 
 	//消费记录页面
 	function steamAccountHistory() {
-		if (!location.href.match(/^https?\:\/\/store\.steampowered\.com\/account\/history/)) {
+		if (!location.href.match(/^https?\:\/\/store\.steampowered\.com\/account\/history(?!\w)/)) {
 			return;
 		}
 
@@ -316,7 +316,7 @@
 
 	//steam商店搜索页面
 	function steamStorePage() {  
-		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/search/)) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/search(?!\w)/)) {
 			return;
 		}
 
@@ -531,7 +531,7 @@
 
 	//探索队列界面
 	function steamExplorePage() {
-		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/explore/)) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/explore(?!\w)/)) {
 			return;
 		}
 
