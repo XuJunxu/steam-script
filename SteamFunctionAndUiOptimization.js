@@ -758,7 +758,7 @@
 
 	//库存界面
 	function steamInventoryPage(){  
-		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/inventory/)) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/inventory(?!\w)/)) {
 			return;
 		}
 
@@ -832,7 +832,7 @@
 		}
 		
 		//等待物品加载完设置过滤
-		function waitLoadInventory() {  
+		function waitLoadInventory(load=true) {  
 			var isLoaded = true;
 			if (typeof unsafeWindow.g_ActiveInventory === "undefined" || unsafeWindow.g_ActiveInventory == null || !unsafeWindow.g_ActiveInventory.appid) {
 				isLoaded = false;
@@ -840,17 +840,16 @@
 			if (isLoaded && unsafeWindow.g_ActiveInventory.appid != 753) {
 				return;
 			}
-			if (isLoaded && !(unsafeWindow.g_ActiveInventory.m_$Inventory && unsafeWindow.g_ActiveInventory.m_$Inventory.length > 0)) {
+			if (isLoaded && !unsafeWindow.g_ActiveInventory.BIsFullyLoaded()) {
 				isLoaded = false;
-			}
-			if (document.querySelectorAll("#filter_options .econ_tag_filter_category").length == 0) {  //使筛选条件可用
-				unsafeWindow.ShowTagFilters();
-				unsafeWindow.HideTagFilters();
-				isLoaded = false;
+				if (load) {
+					load = false;
+					unsafeWindow.g_ActiveInventory.ShowTags();
+				}
 			}
 			if (!isLoaded) {
 				setTimeout(function() {
-					waitLoadInventory();
+					waitLoadInventory(load);
 				}, 100);
 				return;
 			}
@@ -859,22 +858,11 @@
 				return;
 			}
 
-			var checkbox = document.querySelector("#tag_filter_753_0_cardborder_cardborder_0") || document.querySelector("#tag_filter_753_6_cardborder_cardborder_0");
-			var checkbox2 = document.querySelector("#tag_filter_753_0_misc_tradable") || document.querySelector("#tag_filter_753_6_misc_tradable");
-			var checkbox3 = document.querySelector("#tag_filter_753_0_misc_marketable") || document.querySelector("#tag_filter_753_6_misc_marketable");
-			if (checkbox) {
-				checkbox.click();
-			}
-			if (checkbox2) {
-				checkbox2.click();
-			}
-			if (checkbox3) {
-				checkbox3.click();
-			}
+			Filter.UpdateTagFiltering({"cardborder": ["cardborder_0"], "misc": ["marketable", "tradable"]});
 		}
 
 		function hasMarketableCard() {
-			var assets = unsafeWindow.g_ActiveInventory.m_rgAssets;
+			var assets = unsafeWindow.g_ActiveInventory?.m_rgAssets || [];
 			for (let assetid in assets) {
 				var desc = assets[assetid].description;
 				if (!desc?.marketable) {
@@ -3256,6 +3244,8 @@
 			updatePageControl();
 		});
 		obs.observe(inventory_pagecontrols.querySelector('.pagecontrol_element.pagecounts'), { childList: true, subtree: true }); 
+
+		updatePageControl();
 
 		function updatePageControl() {
 			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
