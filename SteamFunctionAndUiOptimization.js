@@ -2275,7 +2275,7 @@
 		//添加链接按键
 		if (globalSettings.gamecards_show_priceoverview || globalSettings.gamecards_append_linkbtn) {
 			appendCardsPageLinkBtn();
-			appendItemPriceInfoBtn();
+			cardsAddInfoBtn();
 			appendMyBuyOrders();
 		}
 
@@ -2321,7 +2321,7 @@
 		}
 
 		//卡牌下方添加链接和价格
-		async function appendItemPriceInfoBtn() {
+		async function cardsAddInfoBtn() {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = ".market_link {display: block; color: #EBEBEB; font-size: 12px; background: #00000066; padding: 3px; text-align: center;} .market_link:hover {background: #7bb7e355;}";
 			document.body.appendChild(styleElem);
@@ -2371,35 +2371,57 @@
 			
 			var response = await searchMarketGameItems(gameid, 2, cardborder);
 			if (response.success && response.results.length == 0) {
-				var response = await searchMarketGameItems(gameid, 2, cardborder);
+				response = await searchMarketGameItems(gameid, 2, cardborder);
 			}
 			if (response.success && response.results.length > 0) {
-				var results = response.results;
-				for (let cardElem of cardElems) {
-					let image = cardElem.querySelector("img.gamecard").src;
-					let title = cardElem.querySelector(".badge_card_set_title").textContent.replace(cardElem.querySelector(".badge_card_set_text_qty")?.textContent, "").trim().replace(/\(集换式卡牌\)$/, "").replace(/\(Trading Card\)$/, "").trim();
-					for (let card of results) {
-						let cardTitle = card.name.replace(/\(集换式卡牌\)$/, "").replace(/\(Trading Card\)$/, "").trim();
-						if (image.includes(card.asset_description.icon_url) || title == cardTitle) {
-							cardElem.asset = card.asset_description;
-							let hashName = card.asset_description.market_hash_name || card.hash_name;
-							hashName = encodeURIComponent(hashName);
-							let html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">打开市场页面</a>
-									    <a class="market_link show_market_info" data-market-hash-name="${hashName}" style="margin-top: 5px;">起价：${card.sell_price_text}</a>`;
-
-							cardElem.lastElementChild.innerHTML = html;
-							cardElem.lastElementChild.onclick = showMarketPriceTable;
-							
-							break;
+				var res = cardsAddMarketInfoBtn(cardElems, response.results);
+				if (!res) {
+					var response2 = await searchMarketGameItems(gameid, 2, cardborder, "", "english");
+					if (response2.success && response2.results.length > 0) {
+						if (location.href.search(/\?/) > 0) {
+							var url = location.href + "&l=english";
+						} else {
+							var url = location.href + "?l=english";
+						}
+						var cardElems2 = await getCardElements(url);
+						if (cardElems2?.length) {
+							res = cardsAddMarketInfoBtn(cardElems, response2.results, cardElems2);
 						}
 					}
 				}
-				multiBuyOrderBtn.style.display = null;
+
+				if (res) {
+					multiBuyOrderBtn.style.display = null;
+				}
 			}
 			//显示市场价格信息
 			if (globalSettings.gamecards_show_priceoverview) {
 				getAllCardsPrice();
 			}
+		}
+
+		function cardsAddMarketInfoBtn(cardElems, marketItems, cardElems2) {
+			var res = false;
+			for (let i = 0; i < cardElems.length; i++) {
+				let cardElem = cardElems[i];
+				let image = (cardElems2?.[i] || cardElem).querySelector("img.gamecard").src;
+				for (let card of marketItems) {
+					if (image.includes(card.asset_description.icon_url)) {
+						cardElem.asset = card.asset_description;
+						let hashName = card.asset_description.market_hash_name || card.hash_name;
+						hashName = encodeURIComponent(hashName);
+						let html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">打开市场页面</a>
+									<a class="market_link show_market_info" data-market-hash-name="${hashName}" style="margin-top: 5px;">起价：${card.sell_price_text}</a>`;
+
+						cardElem.lastElementChild.innerHTML = html;
+						cardElem.lastElementChild.onclick = showMarketPriceTable;
+						
+						res = true;
+						break;
+					}
+				}
+			}
+			return res;
 		}
 
 		function showMultiCreateBuyOrder() {
@@ -3668,6 +3690,34 @@
 		});
 	}
 
+	//获取徽章页面的卡牌元素
+	function getCardElements(url) {
+		return new Promise(function(resolve, reject) {
+			var xhr = new XMLHttpRequest();
+			xhr.timeout = TIMEOUT;
+			xhr.open("GET", url, true);
+			xhr.setRequestHeader("Cache-Control", "no-cache");
+			xhr.responseType = "document";
+			xhr.onload = function(e) {
+				if (e.target.status == 200) {
+					resolve(e.target.response.querySelectorAll(".badge_card_set_card"));
+				} else {
+					console.log("getCardElements failed");
+					resolve(null);
+				}
+			};
+			xhr.onerror = function(error) {
+				console.log("getCardElements error");
+				resolve(null);
+			};
+			xhr.ontimeout = function() {
+				console.log("getCardElements timeout");
+				resolve(null);
+			};
+			xhr.send();
+		});	
+	}
+
 	//获取所有求购订单
 	function getMyBuyOrders() {
 		return new Promise(function(resolve, reject) {
@@ -3933,7 +3983,7 @@
 		});
 	}
 
-	function searchMarketGameItems(gameid, itemclass=-1, cardborder=-1, query="") {
+	function searchMarketGameItems(gameid, itemclass=-1, cardborder=-1, query="", l=null) {
 		return new Promise(function (resolve, reject) {
 			var url = `https://steamcommunity.com/market/search/render/?norender=1&query=${query}&start=0&count=100&search_descriptions=0&
 					   sort_column=name&sort_dir=desc&appid=753&category_753_Event%5B%5D=any&category_753_Game%5B%5D=tag_app_${gameid}`;
@@ -3942,6 +3992,9 @@
 			}
 			if (cardborder > -1) {
 				url += `&category_753_cardborder%5B%5D=tag_cardborder_${cardborder}`;
+			}
+			if (typeof l === "string") {
+				url += `&l=${l}`;
 			}
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
