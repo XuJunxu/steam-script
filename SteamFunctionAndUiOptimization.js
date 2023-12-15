@@ -1183,7 +1183,7 @@
 					var hashName = getMarketHashName(selectedItem.description);
 					var html = `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/listings/${appid}/${hashName}" target="_blank"><span>打开市场页面</span></a>`;
 					if (selectedItem.appid == 753 && selectedItemIsCard(selectedItem)) {
-						var isfoil = hashName.search(/Foil/) < 0 ? false : true;
+						var isfoil = (hashName.search(/\(Foil\)$/) > 0);
 						html += `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/my/gamecards/${feeApp}/${isfoil ? '?border=1' : ''}" target="_blank"><span>打开徽章页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}" target="_blank"><span>打开商店页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>
@@ -1370,7 +1370,7 @@
 				var assetInfo = getListingAssetInfo(listings[i]);
 				var itemType = "";
 				if (assetInfo.appid == 753 && assetInfo.contextid == "6" && assetInfo.owner_actions[0].link.includes("https://steamcommunity.com/my/gamecards/")) {
-					if (assetInfo.market_hash_name.includes("Foil")) {
+					if (assetInfo.market_hash_name.search(/\(Foil\)$/) > 0) {
 						itemType = "FoilCard";
 						numFoilCard++;
 					} else {
@@ -2211,10 +2211,11 @@
 		}
 
 		function appendMarketlistingPageLinkBtn() {  //添加链接按键
-			var res = location.href.match(/\/market\/listings\/753\/(\d+)\-/);
-			if (res && res.length > 1) {
-				var appid = res[1];
-				var isfoil = location.href.search(/Foil/) < 0 ? false : true;
+			var assetInfo = getAssetInfo();
+
+			if (assetInfo && assetInfo.appid == 753) {
+				var appid = assetInfo.market_fee_app;
+				var isfoil = (assetInfo.market_hash_name.search(/\(Foil\)$/) > 0);
 				var linkElem = document.createElement("div");
 				linkElem.innerHTML = `<style>.page_link_btn {border-radius: 2px; cursor: pointer; background: black; color: white; margin: 10px 0px 0px 0px; display: inline-block;} .page_link_btn > span {padding: 0px 15px; font-size: 14px; line-height: 25px;} .page_link_btn:hover {background: rgba(102, 192, 244, 0.4)}</style>
 										<a href="https://steamcommunity.com/my/gamecards/${appid}/${isfoil ? '?border=1' : ''}" class="page_link_btn" target="_blank"><span>打开徽章页面</span></a>
@@ -2328,7 +2329,7 @@
 			var multiBuyOrderBtn = document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order");
 			var gameid = getGameId();
 
-			var res1 = location.href.match(/\/gamecards\/\d+\/?\?border=(\d)/);
+			var res1 = location.href.match(/border=(\d)/);
 			if (res1 && res1.length > 1) {
 				var cardborder = res1[1];
 			} else {
@@ -3373,6 +3374,7 @@
 		nameElem.setAttribute("target", "_blank");
 		var nameLink = nameElem.href;
 		var appid = nameLink.match(/\/market\/listings\/(\d+)\//)[1];
+		var hashName = decodeURIComponent(nameLink.match(/\/market\/listings\/\d+\/([^\/]+)/)[1]);
 		var gameNameElem = listing.querySelector(".market_listing_game_name");
 
 		var cardLinkElem = document.createElement("a");
@@ -3384,11 +3386,12 @@
 		}
 
 		if (appid == "753") {
+			var isFoil = (hashName.search(/\(Foil\)$/) > 0);
 			var gameid = nameLink.match(/\/market\/listings\/\d+\/(\d+)-/)[1];
 			var storeLink = "https://store.steampowered.com/app/" + gameid;
 			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank" title="打开商店页面">${gameNameElem.innerHTML}</a>`;
 			
-			cardLinkElem.href = "https://steamcommunity.com/my/gamecards/" + gameid;
+			cardLinkElem.href = `https://steamcommunity.com/my/gamecards/${gameid}/${isFoil ? "?border=1" : ""}`;
 			cardLinkElem.setAttribute("title", "打开徽章页面");
 		} else {
 			var storeLink = "https://store.steampowered.com/app/" + appid;
