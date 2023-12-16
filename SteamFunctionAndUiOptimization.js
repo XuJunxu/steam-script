@@ -34,7 +34,7 @@
 
 	//修复创意工坊预览大图无法显示的问题
 	function steamWorkshopImageRepair() {
-		if (!location.href.match(/^https?\:\/\/steamcommunity\.com\/(sharedfiles|workshop)\/filedetails(?!\w)/)) {
+		if (!location.href.match(/^https?\:\/\/steamcommunity\.com\/(sharedfiles|workshop)\/filedetails\b/)) {
 			return;
 		}
 
@@ -45,7 +45,7 @@
 
 	//消费记录页面
 	function steamAccountHistory() {
-		if (!location.href.match(/^https?\:\/\/store\.steampowered\.com\/account\/history(?!\w)/)) {
+		if (!location.href.match(/^https?\:\/\/store\.steampowered\.com\/account\/history\b/)) {
 			return;
 		}
 
@@ -127,7 +127,7 @@
 							}
 							allMarketTransaction.typeName.add(wht_type);
 						} else if (url.includes("HelpWithItemPurchase")) {  //游戏内购买
-							var transid = url.match(/transid=(\d+)/)[1];
+							var transid = url.match(/\btransid=(\d+)/)[1];
 							if (allPurchase.inGamePurchase.transid.includes(transid)) {
 								allPurchase.inGamePurchase.total -= wht_total;
 								allPurchase.refund.total += wht_total;
@@ -139,7 +139,7 @@
 								allPurchase.inGamePurchase.transid.push(transid);
 							}												
 						} else if (url.includes("HelpWithTransaction")) {  //商店购买和礼物购买
-							var transid = url.match(/transid=(\d+)/)[1];
+							var transid = url.match(/\btransid=(\d+)/)[1];
 							if (allPurchase.giftPurchase.transid.includes(transid)) {
 								allPurchase.giftPurchase.total -= wht_total;
 								allPurchase.refund.total += wht_total;
@@ -281,7 +281,7 @@
 					var wht_type = row.querySelector("td.wht_type > div:first-child")?.textContent.trim();
 					var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total").textContent);
 					var wht_wallet_change = row.querySelector("td.wht_wallet_change").textContent.trim();
-					var transid = row.getAttribute("onclick").match(/transid=(\d+)/)[1];
+					var transid = row.getAttribute("onclick").match(/\btransid=(\d+)/)[1];
 					
 					if (transid && wht_wallet_change && wht_type && wht_total) {
 						if (wht_wallet_change[0] == "-") {
@@ -316,7 +316,7 @@
 
 	//steam商店搜索页面
 	function steamStorePage() {  
-		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/search(?!\w)/)) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/search\b/)) {
 			return;
 		}
 
@@ -473,7 +473,7 @@
 
 	//愿望单页面
 	function steamWishlistPage() {
-		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/wishlist/)) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/wishlist\b/)) {
 			return;
 		}
 
@@ -514,7 +514,7 @@
 
 	//app页面
 	function steamAppStorePage() {
-		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/app/)) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/app\b/)) {
 			return;
 		}
 
@@ -531,7 +531,7 @@
 
 	//探索队列界面
 	function steamExplorePage() {
-		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/explore(?!\w)/)) {
+		if(!location.href.match(/^https?\:\/\/store\.steampowered\.com\/explore\b/)) {
 			return;
 		}
 
@@ -632,7 +632,7 @@
 
 	//交易报价页面
 	function steamTradeOfferPage() {
-		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/tradeoffer/)) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/tradeoffer\b/)) {
 			return;
 		}
 
@@ -758,7 +758,7 @@
 
 	//库存界面
 	function steamInventoryPage(){  
-		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/inventory(?!\w)/)) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/inventory\b/)) {
 			return;
 		}
 
@@ -1423,7 +1423,7 @@
 			var buyOrderListing;
 			for (var section of listingSection) {
 				var row = section.querySelector(".market_listing_row");
-				if (row && row.id.match(/mybuyorder_\d+/)) {
+				if (row && row.id.match(/\bmybuyorder_\d+/)) {
 					buyOrderListing = section;
 					buyOrderListing.classList.add("sfu_my_buy_order");
 					break;
@@ -1907,7 +1907,7 @@
 		}
 
 		function getListingAssetInfo(listing) {
-			var args = listing.querySelector("a.item_market_action_button_edit").href.match(/RemoveMarketListing\(([^\(\)]+)\)/)[1].replace(/ /g, "").split(",");
+			var args = listing.querySelector("a.item_market_action_button_edit").href.match(/\bRemoveMarketListing\(([^\(\)]+)\)/)[1].replace(/ /g, "").split(",");
 			return unsafeWindow.g_rgAssets[eval(args[2])][eval(args[3])][eval(args[4])];
 		}
 
@@ -2248,7 +2248,7 @@
 
 	//steam徽章界面
 	function steamGameCardsPage() {  
-		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/gamecards/)) {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/gamecards\b/)) {
 			return;
 		}
 
@@ -2329,7 +2329,7 @@
 			var multiBuyOrderBtn = document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order");
 			var gameid = getGameId();
 
-			var res1 = location.href.match(/border=(\d)/);
+			var res1 = location.search.match(/\bborder=(\d)/);
 			if (res1 && res1.length > 1) {
 				var cardborder = res1[1];
 			} else {
@@ -3732,7 +3732,7 @@
 					var myOrders = [];
 					var buyOrderSection;
 					for (var section of e.target.response.querySelectorAll(".my_listing_section")) {
-						if (section.querySelector(".market_listing_row")?.id?.match(/mybuyorder_\d+/)) {
+						if (section.querySelector(".market_listing_row")?.id?.match(/\bmybuyorder_\d+/)) {
 							buyOrderSection = section;
 							break;
 						}
@@ -3743,12 +3743,12 @@
 						var name = row.querySelector("a.market_listing_item_name_link").textContent.trim();
 						var gameName = row.querySelector(".market_listing_game_name").textContent.trim();
 						var marketLink = row.querySelector("a.market_listing_item_name_link").href;
-						var appid = marketLink.match(/market\/listings\/(\d+)\//)[1];
-						var hashName = marketLink.match(/market\/listings\/\d+\/([^\/]+)/)[1];
+						var appid = marketLink.match(/\/market\/listings\/(\d+)\//)[1];
+						var hashName = marketLink.match(/\/market\/listings\/\d+\/([^\/]+)/)[1];
 						var quantity = row.querySelector(".market_listing_buyorder_qty .market_listing_price").textContent.trim();
 						var qty = row.querySelector(".market_listing_inline_buyorder_qty").textContent.trim();
 						var price = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty) .market_listing_price").textContent.replace(qty, "").trim();
-						var orderid = row.id.match(/^mybuyorder_(\d+)/)[1];
+						var orderid = row.id.match(/\bmybuyorder_(\d+)/)[1];
 
 						myOrders.push({icon: icon, name: name, game_name: gameName, market_link: marketLink, appid: appid, market_hash_name: hashName, quantity: quantity, price: price, buy_orderid: orderid});
 					} 
@@ -4662,9 +4662,9 @@
 		return currencyData[code] || currencyData[defaultCode];
 	}
 
-	if (location.href.match(/^https?\:\/\/store\.steampowered\.com/)) {
+	if (location.href.match(/^https?\:\/\/store\.steampowered\.com\b/)) {
 		globalSettings = getStoreSettings();
-	} else if (location.href.match(/^https?\:\/\/steamcommunity\.com/)) {
+	} else if (location.href.match(/^https?\:\/\/steamcommunity\.com\b/)) {
 		globalSettings = getSteamCommunitySettings();
 		globalCurrencyRate = readCurrencyRate();
 		checkUpdateCurrencyRate(globalSettings, globalCurrencyRate);
