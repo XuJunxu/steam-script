@@ -98,7 +98,7 @@
 		function ComputeAndModifyHistory() {
 			var walletHistory = document.querySelectorAll("tr.wallet_table_row");
 			if (walletHistory.length > 0) {
-				var currencyInfo = getCurrencyInfo(globalSettings.history_currency_code);
+				var currencyInfo = getCurrencyInfo(globalSettings.history_currency_code, true);
 				var currencySymbol = currencyInfo.strSymbol;
 
 				var transactionTypes = {};
@@ -212,23 +212,12 @@
 								<label for="trans_type_${i}" class="trans_type_filter_label">${typeName} (${transactionTypes[typeName]})</label></span>`;
 			}
 
-			var symbol = currencyInfo.strSymbol;
-			if (currencyInfo.bSymbolIsPrefix) {
-				var statisticsContent = `<span>剩余额度：${symbol} ${(allPurchase.purchase.total - allPurchase.giftPurchase.total) / 100.0}</span>
-										<span>商店购买：${symbol} ${allPurchase.purchase.total / 100.0}</span>
-										<span>礼物购买：${symbol} ${allPurchase.giftPurchase.total / 100.0}</span>
-										<span>游戏内购买：${symbol} ${allPurchase.inGamePurchase.total / 100.0}</span>
-										<span>市场购买：${symbol} ${allMarketTransaction.decrease / 100.0}</span>
-										<span>市场出售：${symbol} ${allMarketTransaction.increase / 100.0}</span>`;
-			} else {
-				var statisticsContent = `<span>剩余额度：${(allPurchase.purchase.total - allPurchase.giftPurchase.total) / 100.0} ${symbol} </span>
-										<span>商店购买：${allPurchase.purchase.total / 100.0} ${symbol} </span>
-										<span>礼物购买：${allPurchase.giftPurchase.total / 100.0} ${symbol} </span>
-										<span>游戏内购买：${allPurchase.inGamePurchase.total / 100.0} ${symbol} </span>
-										<span>市场购买：${allMarketTransaction.decrease / 100.0} ${symbol} </span>
-										<span>市场出售：${allMarketTransaction.increase / 100.0} ${symbol} </span>`;
-			}
-
+			var statisticsContent = `<span>剩余额度：${getSymbolStrFromPrice((allPurchase.purchase.total - allPurchase.giftPurchase.total), currencyInfo)}</span>
+									<span>商店购买：${getSymbolStrFromPrice(allPurchase.purchase.total, currencyInfo)}</span>
+									<span>礼物购买：${getSymbolStrFromPrice(allPurchase.giftPurchase.total, currencyInfo)}</span>
+									<span>游戏内购买：${getSymbolStrFromPrice(allPurchase.inGamePurchase.total, currencyInfo)}</span>
+									<span>市场购买：${getSymbolStrFromPrice(allMarketTransaction.decrease, currencyInfo)}</span>
+									<span>市场出售：${getSymbolStrFromPrice(allMarketTransaction.increase, currencyInfo)}</span>`;
 			
 			var bar = document.createElement("div");
 			bar.id = "history_filter_bar";
@@ -1067,19 +1056,12 @@
 			var amount = isNaN(Number(elem.value)) ? 0 : Math.round(Number(elem.value) * 100);
 			var price = calculatePriceYouReceive(amount, item);
 			var pay = calculatePriceBuyerPay(price, item);
-			if (currencyInfo.bSymbolIsPrefix) {
-				label.innerHTML = `${currencyInfo.strSymbol} ${(pay / 100.0).toFixed(2)} (${currencyInfo.strSymbol} ${(price / 100.0).toFixed(2)})`;
-			} else {
-				label.innerHTML = `${(pay / 100.0).toFixed(2)} ${currencyInfo.strSymbol} (${(price / 100.0).toFixed(2)} ${currencyInfo.strSymbol})`;
-			}
+			label.innerHTML = `${getSymbolStrFromPrice(pay, currencyInfo)} (${getSymbolStrFromPrice(price, currencyInfo)})`;
+
 			if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
 				var [pay2, price2] = calculateSecondPrice(price, item);
 				var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
-				if (currencyInfo2.bSymbolIsPrefix) {
-					label2.innerHTML = `${currencyInfo2.strSymbol} ${(pay2 / 100.0).toFixed(2)} (${currencyInfo2.strSymbol} ${(price2 / 100.0).toFixed(2)})`;
-				} else {
-					label2.innerHTML = `${(pay2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol} (${(price2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol})`;
-				}
+				label2.innerHTML = `${getSymbolStrFromPrice(pay2, currencyInfo2)} (${getSymbolStrFromPrice(price2, currencyInfo2)})`;
 			} else {
 				label2.innerHTML = "";
 			}
@@ -1130,18 +1112,11 @@
 					sellTotalPriceReceive += price;
 					sellCount ++;
 
-					var symbol = currencyInfo.strSymbol;
-					if (currencyInfo.bSymbolIsPrefix) {
-						var strPrice = symbol + " " + (price / 100.0).toFixed(2);
-						var strBuyerPay = symbol + " " + (buyerPay / 100.0).toFixed(2);
-						var strTotalReceive = symbol + " " + (sellTotalPriceReceive / 100.0).toFixed(2);
-						var strTotalBuyerPay = symbol + " " + (sellTotalPriceBuyerPay / 100.0).toFixed(2);
-					} else {
-						var strPrice =  (price / 100.0).toFixed(2) + " " + symbol;
-						var strBuyerPay = (buyerPay / 100.0).toFixed(2) + " " + symbol;
-						var strTotalReceive = (sellTotalPriceReceive / 100.0).toFixed(2) + " " + symbol;
-						var strTotalBuyerPay = (sellTotalPriceBuyerPay / 100.0).toFixed(2) + " " + symbol;
-					}
+					var strPrice = getSymbolStrFromPrice(price, currencyInfo);
+					var strBuyerPay = getSymbolStrFromPrice(buyerPay, currencyInfo);
+					var strTotalReceive = getSymbolStrFromPrice(sellTotalPriceReceive, currencyInfo);
+					var strTotalBuyerPay = getSymbolStrFromPrice(sellTotalPriceBuyerPay, currencyInfo);
+
 					var logText = `${sellCount} - ${item.description.name} 已在市场上架，售价为 ${strBuyerPay}，将收到 ${strPrice}` + (data.requires_confirmation ? " (需要确认)" : "") + "<br>";
 					var logTotal = `累计上架物品的总价为 ${strTotalBuyerPay}，将收到 ${strTotalReceive}`;
 					document.querySelector("#sell_log_text").innerHTML += logText;
@@ -1389,7 +1364,7 @@
 
 			//显示总售价
 			if (listings.length == totalCount) {
-				document.querySelector("#my_market_selllistings_number").textContent += ` ▶ ${(totalPay / 100.0).toFixed(2)} ▶ ${(totalReceive / 100.0).toFixed(2)}`;
+				document.querySelector("#my_market_selllistings_number").textContent += ` ▶ ${getSymbolStrFromPrice(totalPay, currencyInfo)} ▶ ${getSymbolStrFromPrice(totalReceive, currencyInfo)}`;
 			} else {
 				document.querySelector("#my_market_selllistings_number").textContent += ` ▶ Error`;
 			}
@@ -1452,6 +1427,7 @@
 			var buyOrderRows = buyOrderListing.querySelectorAll(".market_listing_row");
 			
 			var buyOrderTable = document.createElement("div");
+			var totalBuy = 0;
 			for (var row of buyOrderRows) {
 				addRowCheckbox(row);
 				addGameCardsLink(row);
@@ -1462,8 +1438,17 @@
 				var priceCell = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty)");
 				priceCell.classList.add("market_price_can_click");
 				priceCell.onclick = showListingPriceInfo;
+
+				var quantity = row.querySelector(".market_listing_my_price.market_listing_buyorder_qty .market_listing_price").textContent.trim();
+				var qty = priceCell.querySelector(".market_listing_inline_buyorder_qty").textContent.trim();
+				var price = getPriceFromSymbolStr(priceCell.querySelector(".market_listing_price").textContent.replace(qty, "").trim());
+				totalBuy += price * quantity;
 			}
 			buyOrderListing.appendChild(buyOrderTable);
+
+			var buyOrderNumber = buyOrderListing.querySelector(".my_market_header #my_market_buylistings_number");
+			buyOrderNumber.textContent += " ▶ " + getSymbolStrFromPrice(totalBuy, currencyInfo);
+			buyOrderNumber.title = "所有求购订单的总金额不能超过钱包余额的10倍";
 
 			buyOrderRowsNameSort = buyOrderRowsTimeSort.slice();
 			buyOrderRowsNameSort.sort(function(a, b) {
@@ -2541,8 +2526,8 @@
 				var elem2 = document.querySelector(`.show_market_info[data-market-hash-name="${hashName}"]`);
 				if (elem2) {  //在卡牌下方显示最低出售价和最高求购价
 					if (data1.success) {
-						var html2 = data1.sell_order_graph.length > 0 ? (currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${data1.sell_order_graph[0][0].toFixed(2)}` : `${data1.sell_order_graph[0][0].toFixed(2)} ${currencyInfo.strSymbol}`) : "无";
-						html2 += data1.buy_order_graph.length > 0 ? (currencyInfo.bSymbolIsPrefix ? ` | ${currencyInfo.strSymbol} ${data1.buy_order_graph[0][0].toFixed(2)}` : ` | ${data1.buy_order_graph[0][0].toFixed(2)} ${currencyInfo.strSymbol}`) : " | 无";
+						var html2 = data1.sell_order_graph.length > 0 ? getSymbolStrFromPrice(data1.sell_order_graph[0][0].toString(), currencyInfo) : "无";
+						html2 += " | " + (data1.buy_order_graph.length > 0 ? getSymbolStrFromPrice(data1.buy_order_graph[0][0].toString(), currencyInfo) : "无");
 					} else {
 						var html2 = errorTranslator(data1);
 					}
@@ -2712,11 +2697,7 @@
 								var [pay2, price2] = calculateSecondPrice(price);
 								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${(data.price_prefix + " " + (price / 100.0).toFixed(2) + " " + data.price_suffix).trim()})</div>`;
 								var td = document.createElement("td");
-								if (currencyInfo2.bSymbolIsPrefix) {
-									td.innerHTML = `<div class="orders_price_pay">${currencyInfo2.strSymbol} ${(pay2 / 100.0).toFixed(2)}</div><div class="orders_price_receive">(${currencyInfo2.strSymbol} ${(price2 / 100.0).toFixed(2)})</div>`;
-								} else {
-									td.innerHTML = `<div class="orders_price_pay">${(pay2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol}</div><div class="orders_price_receive">(${(price2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol})</div>`;
-								}
+								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 								rows[i].insertBefore(td, rows[i].lastElementChild);
 							}
 						}
@@ -2732,11 +2713,7 @@
 								var [pay2, price2] = calculateSecondBuyPrice(price);
 								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${(data.price_prefix + " " + (price / 100.0).toFixed(2) + " " + data.price_suffix).trim()})</div>`;
 								var td = document.createElement("td");
-								if (currencyInfo2.bSymbolIsPrefix) {
-									td.innerHTML = `<div class="orders_price_pay">${currencyInfo2.strSymbol} ${(pay2 / 100.0).toFixed(2)}</div><div class="orders_price_receive">(${currencyInfo2.strSymbol} ${(price2 / 100.0).toFixed(2)})</div>`;
-								} else {
-									td.innerHTML = `<div class="orders_price_pay">${(pay2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol}</div><div class="orders_price_receive">(${(price2 / 100.0).toFixed(2)} ${currencyInfo2.strSymbol})</div>`;
-								}
+								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 								rows[i].insertBefore(td, rows[i].lastElementChild);
 							}
 						}
@@ -2799,17 +2776,14 @@
 		updatePriceTotal: function() {
 			var amount = this.calculatePriceTotal();
 			if (amount.price_total > 0 && amount.quantity > 0) {
-				var total = (amount.price_total / 100.0).toFixed(2).replace(".", this.currencyInfo.strDecimalSymbol);
-				this.model.querySelector("#create_buy_order_total").textContent = this.currencyInfo.bSymbolIsPrefix ? `${this.currencyInfo.strSymbol} ${total}`: `${total} ${this.currencyInfo.strSymbol}`;
+				this.model.querySelector("#create_buy_order_total").textContent = getSymbolStrFromPrice(amount.price_total, this.currencyInfo);
 			} else {
 				this.model.querySelector("#create_buy_order_total").textContent = "--";
 			}
 
 			var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
-			var price2 = (amount.price_2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
-			price2 = currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${price2})`: `(${price2} ${currencyInfo2.strSymbol})`;
-			var total2 = (amount.price_total_2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
-			total2 = currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${total2})`: `(${total2} ${currencyInfo2.strSymbol})`;
+			var price2 = getSymbolStrFromPrice(amount.price_2, currencyInfo2);
+			var total2 = getSymbolStrFromPrice(amount.price_total_2, currencyInfo2);
 			
 			this.model.querySelector("#create_buy_order_second_price").textContent = amount.price_2 > 0 ? price2 : "";
 			this.model.querySelector("#create_buy_order_second_total").textContent = amount.price_total_2 > 0 ? total2 : "";
@@ -2877,8 +2851,7 @@
 		function updatePriceTotal() {
 			var amount = calculatePriceTotal();
 			if (amount.price_total > 0 && amount.quantity > 0) {
-				var total = (amount.price_total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
-				model.querySelector("#buy_order_price_total").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${total}`: `${total} ${currencyInfo.strSymbol}`;
+				model.querySelector("#buy_order_price_total").textContent = getSymbolStrFromPrice(amount.price_total, currencyInfo);
 			} else {
 				model.querySelector("#buy_order_price_total").textContent = "--";
 			}
@@ -2971,18 +2944,15 @@
 			var amount = calculatePriceTotal(elem);
 			if (amount.price_total > 0 && amount.quantity > 0) {
 				elem.querySelector(".multi_order_total").setAttribute("data-price-total", amount.price_total);
-				var total = (amount.price_total / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
-				elem.querySelector(".multi_order_total").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${total}`: `${total} ${currencyInfo.strSymbol}`;
+				elem.querySelector(".multi_order_total").textContent = getSymbolStrFromPrice(amount.price_total, currencyInfo);
 			} else {
 				elem.querySelector(".multi_order_total").setAttribute("data-price-total", 0);
 				elem.querySelector(".multi_order_total").textContent = "--";
 			}
 
 			var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
-			var price2 = (amount.price_2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
-			price2 = currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${price2})`: `(${price2} ${currencyInfo2.strSymbol})`;
-			var total2 = (amount.price_total_2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
-			total2 = currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${total2})`: `(${total2} ${currencyInfo2.strSymbol})`;
+			var price2 = getSymbolStrFromPrice(amount.price_2, currencyInfo2);
+			var total2 = getSymbolStrFromPrice(amount.price_total_2, currencyInfo2);
 			
 			elem.querySelector(".multi_order_second_price").textContent = amount.price_2 > 0 ? price2 : "";
 			elem.querySelector(".multi_order_second_total").textContent = amount.price_total_2 > 0 ? total2 : "";
@@ -2997,11 +2967,8 @@
 				allPriceTotal2 += parseInt(totalElem.getAttribute("data-price-total"));
 			}
 
-			allPriceTotal = (allPriceTotal / 100.0).toFixed(2).replace(".", currencyInfo.strDecimalSymbol);
-			model.querySelector("#multi_order_all_price").textContent = currencyInfo.bSymbolIsPrefix ? `${currencyInfo.strSymbol} ${allPriceTotal}`: `${allPriceTotal} ${currencyInfo.strSymbol}`;
-
-			var allTotal2 = (allPriceTotal2 / 100.0).toFixed(2).replace(".", currencyInfo2.strDecimalSymbol);
-			model.querySelector(".multi_order_all_price_second").textContent = allPriceTotal2 > 0 ? (currencyInfo2.bSymbolIsPrefix ? `(${currencyInfo2.strSymbol} ${allTotal2})`: `(${allTotal2} ${currencyInfo2.strSymbol})`) : "";
+			model.querySelector("#multi_order_all_price").textContent = getSymbolStrFromPrice(allPriceTotal, currencyInfo);
+			model.querySelector(".multi_order_all_price_second").textContent = allPriceTotal2 > 0 ? getSymbolStrFromPrice(allPriceTotal2, currencyInfo2) : "";
 		}
 
 		function calculatePriceTotal(elem) {
@@ -3436,6 +3403,24 @@
 			str = str + ',00';
 		}
 		return parseInt(str.replace(/\D/g, ''));
+	}
+
+	function getSymbolStrFromPrice(price, currencyInfo=null) {
+		if (typeof price !== "string") {
+			price = (price / 100.0).toFixed(2);
+		}
+		
+		if (currencyInfo) {
+			price = price.replace(".", currencyInfo.strDecimalSymbol);
+			if (currencyInfo.bSymbolIsPrefix) {
+				return currencyInfo.strSymbol + ' ' + price;
+			} else {
+				return price + ' ' + currencyInfo.strSymbol;
+			}
+		} else {
+			return price;
+		}
+
 	}
 
 	function getAppid(elem, stopElem, className, attrName) {
