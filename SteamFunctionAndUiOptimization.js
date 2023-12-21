@@ -1345,7 +1345,7 @@
 				var assetInfo = getListingAssetInfo(listings[i]);
 				var itemType = "";
 				if (assetInfo.appid == 753 && assetInfo.contextid == "6" && assetInfo.owner_actions[0].link.includes("https://steamcommunity.com/my/gamecards/")) {
-					if (assetInfo.market_hash_name.search(/\(Foil\)$/) > 0) {
+					if (assetInfo.market_hash_name.search(/(\(Foil\)$|\(Foil Trading Card\))/) > 0) {
 						itemType = "FoilCard";
 						numFoilCard++;
 					} else {
