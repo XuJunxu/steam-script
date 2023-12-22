@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.1.13
+// @version      2.1.14
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -1967,7 +1967,7 @@
 		//弹窗显示物品的市场价格信息
 		function showListingPriceInfo(event, add=true) {
 			var listing = event.currentTarget.parentNode;
-			var res = listing.querySelector("a.market_listing_item_name_link").href.match(/steamcommunity\.com\/market\/listings\/(\d+)\/([^\/]+)/);
+			var res = listing.querySelector("a.market_listing_item_name_link").href.match(/steamcommunity\.com\/market\/listings\/(\d+)\/([^\/\?\&\#\=]+)/);  //??
 			var appid = res[1];
 			var marketHashName = res[2];
 			dialogPriceInfo.show(appid, marketHashName, currencyInfo, function(data) {
@@ -2452,7 +2452,7 @@
 					}
 					totalBuy += getPriceFromSymbolStr(order.price) * order.quantity;
 				}
-				container.querySelector("#my_buy_order_number").textContent = `（${myOrders.length} ▶ ${getSymbolStrFromPrice(totalBuy)}）`;
+				container.querySelector("#my_buy_order_number").textContent = `（${myOrders.length} ▶ ${getSymbolStrFromPrice(totalBuy, currencyInfo)}）`;
 
 				if (gameOrders.length > 0) {
 					var html = "";
@@ -3745,7 +3745,7 @@
 						var gameName = row.querySelector(".market_listing_game_name").textContent.trim();
 						var marketLink = row.querySelector("a.market_listing_item_name_link").href;
 						var appid = marketLink.match(/\/market\/listings\/(\d+)\//)[1];
-						var hashName = marketLink.match(/\/market\/listings\/\d+\/([^\/]+)/)[1];
+						var hashName = marketLink.match(/\/market\/listings\/\d+\/([^\/\?\&\#\=]+)/)[1];  //??
 						var quantity = row.querySelector(".market_listing_buyorder_qty .market_listing_price").textContent.trim();
 						var qty = row.querySelector(".market_listing_inline_buyorder_qty").textContent.trim();
 						var price = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty) .market_listing_price").textContent.replace(qty, "").trim();
