@@ -1157,9 +1157,9 @@
 					var feeApp = selectedItem.description.market_fee_app;
 					var hashName = getMarketHashName(selectedItem.description);
 					var html = `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/listings/${appid}/${hashName}" target="_blank"><span>打开市场页面</span></a>`;
-					if (selectedItem.appid == 753 && selectedItemIsCard(selectedItem)) {
-						var isfoil = (hashName.search(/\(Foil\)$/) > 0);
-						html += `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/my/gamecards/${feeApp}/${isfoil ? '?border=1' : ''}" target="_blank"><span>打开徽章页面</span></a>
+					var link = gameCardsLink(selectedItem.description);
+					if (selectedItem.appid == 753 && link) {
+						html += `<a class="btn_small btn_grey_white_innerfade" href="${link}" target="_blank"><span>打开徽章页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}" target="_blank"><span>打开商店页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${feeApp}" target="_blank"><span>查看社区物品</span></a>`;
@@ -1187,15 +1187,6 @@
 					document.querySelector("#inventory_link_btn1").style.display = "none";
 				}
 			});
-		}
-
-		function selectedItemIsCard(selectedItem) {
-			for(var tag of selectedItem.description.tags) {
-				if (tag.category == "cardborder") {
-					return true;
-				}
-			}
-			return false;
 		}
 
 		function selectedItemMarketable(selectedItem) {
@@ -1335,17 +1326,14 @@
 				var pricReceive = getPriceFromSymbolStr(listings[i].querySelector(".market_listing_price  > span > span:last-child").textContent);
 				listingsTemp.push([gameName, itemName, pricePay, listings[i]]);
 
-				addRowCheckbox(listings[i]);
-				addGameCardsLink(listings[i]);
-
 				listings[i].querySelector(".market_listing_my_price").onclick = showListingPriceInfo;
 				totalPay += pricePay;
 				totalReceive += pricReceive;
 
 				var assetInfo = getListingAssetInfo(listings[i]);
 				var itemType = "";
-				if (assetInfo.appid == 753 && assetInfo.contextid == "6" && assetInfo.owner_actions[0].link.includes("https://steamcommunity.com/my/gamecards/")) {
-					if (assetInfo.market_hash_name.search(/(\(Foil\)$|\(Foil Trading Card\))/) > 0) {
+				if (assetInfo.appid == 753 && assetInfo.contextid == "6" && gameCardsLink(assetInfo)) {
+					if (gameCardsLink(assetInfo).search(/border\=1/) > 0) {
 						itemType = "FoilCard";
 						numFoilCard++;
 					} else {
@@ -1357,6 +1345,9 @@
 					numOther++;
 				}
 				listings[i].setAttribute("market_item_type", itemType);
+
+				addRowCheckbox(listings[i]);
+				addGameCardsLink(listings[i], assetInfo);
 			}
 
 			//添加页面导航
@@ -1884,7 +1875,7 @@
 								priceElem.querySelector(".market_listing_price").textContent = "...";
 							}
 							
-							addGameCardsLink(row);
+							addGameCardsLink(row, assetInfo);
 						}
 					}
 				}
@@ -2200,10 +2191,10 @@
 
 			if (assetInfo && assetInfo.appid == 753) {
 				var appid = assetInfo.market_fee_app;
-				var isfoil = (assetInfo.market_hash_name.search(/\(Foil\)$/) > 0);
+				var link = gameCardsLink(assetInfo) || ("https://steamcommunity.com/my/gamecards/" + appid);
 				var linkElem = document.createElement("div");
 				linkElem.innerHTML = `<style>.page_link_btn {border-radius: 2px; cursor: pointer; background: black; color: white; margin: 10px 0px 0px 0px; display: inline-block;} .page_link_btn > span {padding: 0px 15px; font-size: 14px; line-height: 25px;} .page_link_btn:hover {background: rgba(102, 192, 244, 0.4)}</style>
-										<a href="https://steamcommunity.com/my/gamecards/${appid}/${isfoil ? '?border=1' : ''}" class="page_link_btn" target="_blank"><span>打开徽章页面</span></a>
+										<a href="${link}" class="page_link_btn" target="_blank"><span>打开徽章页面</span></a>
 										<a href="https://store.steampowered.com/app/${appid}" class="page_link_btn" target="_blank"><span>打开商店页面</span></a>
 										<a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" class="page_link_btn" target="_blank"><span>打开Exchange页面</span></a>
 										<a href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${appid}" class="page_link_btn" target="_blank"><span>查看该游戏社区物品</span></a>`;
@@ -3358,12 +3349,11 @@
 	}
 
 	//点击图片可打开徽章页面，点击物品名称下的游戏名可打开商店页面
-	function addGameCardsLink(listing) {
+	function addGameCardsLink(listing, asset) {
 		var nameElem = listing.querySelector(".market_listing_item_name_link");
 		nameElem.setAttribute("target", "_blank");
 		var nameLink = nameElem.href;
 		var appid = nameLink.match(/\/market\/listings\/(\d+)\//)[1];
-		var hashName = decodeURIComponent(nameLink.match(/\/market\/listings\/\d+\/([^\/]+)/)[1]);
 		var gameNameElem = listing.querySelector(".market_listing_game_name");
 
 		var cardLinkElem = document.createElement("a");
@@ -3375,12 +3365,18 @@
 		}
 
 		if (appid == "753") {
-			var isFoil = (hashName.search(/\(Foil\)$/) > 0);
 			var gameid = nameLink.match(/\/market\/listings\/\d+\/(\d+)-/)[1];
 			var storeLink = "https://store.steampowered.com/app/" + gameid;
+			if (asset) {
+				var cardLink = gameCardsLink(asset) || ("https://steamcommunity.com/my/gamecards/" + gameid);
+			} else {   //求购订单无法获取物品的asset
+				var isFoil = nameLink.search(/(28Foil%29|%28Foil%20Trading%20Card%29)/) > 0;
+				var cardLink = `https://steamcommunity.com/my/gamecards/${gameid}/${isFoil? "?border=1" : ""}`;
+			}
+			
 			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank" title="打开商店页面">${gameNameElem.innerHTML}</a>`;
 			
-			cardLinkElem.href = `https://steamcommunity.com/my/gamecards/${gameid}/${isFoil ? "?border=1" : ""}`;
+			cardLinkElem.href = cardLink;
 			cardLinkElem.setAttribute("title", "打开徽章页面");
 		} else {
 			var storeLink = "https://store.steampowered.com/app/" + appid;
@@ -3430,6 +3426,15 @@
 				return el.getAttribute(attrName);
 			}
 			el = el.parentNode;
+		}
+		return null;
+	}
+
+	//闪卡name有(Foil)(Foil Trading Card)...
+	function gameCardsLink(asset) {
+		var link = asset?.owner_actions?.[0]?.link;
+		if (typeof link === "string" && link.search(/steamcommunity\.com\/my\/gamecards\//) >= 0) {
+			return link;
 		}
 		return null;
 	}
