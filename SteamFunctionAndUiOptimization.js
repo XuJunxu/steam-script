@@ -2413,15 +2413,46 @@
 
 		//添加显示该游戏的所有求购订单
 		async function appendMyBuyOrders() {
+			var container = document.querySelector("#my_buy_order_container");
+			if (!container) {
+				container = document.createElement("div");
+				container.id = "my_buy_order_container";
+				container.innerHTML = `<style>.my_buy_order_table {border-spacing: 0 5px; width: 920px; margin: 10px; } .my_buy_order_table thead td:not(:last-child) {border-right: 1px solid #404040;}
+										.my_buy_order_table tr {background-color: #00000033;} .my_buy_order_table td {padding: 0 5px; height: 30px; font-size: 12px;} .my_buy_order_table thead td {text-align: center;}
+										.my_buy_order_name {display: flex; align-items: center; width: 410px;} .my_buy_order_name img {width: 38px; height: 38px; margin: 5px; border: 1px solid #3A3A3A; background-color: #333333;}
+										.my_buy_order_item_name, my_buy_order_game_name {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: inherit;} 
+										.my_buy_order_cell {width: 105px; color: white; text-align: center; overflow: hidden; white-space: nowrap;} .my_buy_order_item_name:hover {text-decoration: underline;}
+										.my_buy_order_action {text-align: center; position: relative;} .my_buy_order_cancel {display: inline-block; line-height: 30px; width: 60px;} 
+										.my_buy_order_cancel:hover, #my_buy_order_cancel_all:hover, #my_buy_order_update:hover, .my_buy_order_price:hover {background: #7bb7e355;} 
+										.my_buy_order_checkbox {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5);}  
+										#my_buy_order_action_all {position: relative;} #my_buy_order_cancel_all {display: inline-block; line-height: 24px; width: 80px;} .my_buy_order_price {line-height: 30px; cursor: pointer;}
+										#my_buy_order_select_btn {position: absolute; top: 0; right: 20px; line-height: 30px;} #my_buy_order_select_all {cursor: pointer; transform: scale(1.5) translateY(2px);} 
+										#my_buy_order_select_btn label {cursor: pointer; color: white; padding-right: 4px;} .my_buy_order_item_name {font-size: 14px; font-weight: bold;}
+										#my_buy_order_update {line-height: 24px; width: 60px; float: right; text-align: center; background: #00000066;} #my_buy_order_number {color: #BCBCBC; font-size: 12px;}</style>
+										<div style="margin: 10px 10px 0 10px;"><span style="color: white; font-size: 15px;">我的订购单</span><span id="my_buy_order_number"></span><a id="my_buy_order_update">更新</a></div>
+										<div id="my_buy_order_section"></div>`;
+
+				document.querySelector(".badge_card_set_cards").parentNode.appendChild(container);
+				container.querySelector("#my_buy_order_update").onclick = event => {
+					appendMyBuyOrders();
+				}
+			}
+
+			container.querySelector("#my_buy_order_number").textContent = "（0）";
+			container.querySelector("#my_buy_order_section").innerHTML = "";
+
 			var myOrders = await getMyBuyOrders();
 			if (myOrders && myOrders.length > 0) {
 				var gameid = getGameId();
 				var gameOrders = [];
+				var totalBuy = 0;
 				for (var order of myOrders) {
 					if (order.appid == "753" && order.market_hash_name.startsWith(gameid + "-")) {
 						gameOrders.push(order);
 					}
+					totalBuy += getPriceFromSymbolStr(order.price) * order.quantity;
 				}
+				container.querySelector("#my_buy_order_number").textContent = `（${myOrders.length} ▶ ${getSymbolStrFromPrice(totalBuy)}）`;
 
 				if (gameOrders.length > 0) {
 					var html = "";
@@ -2432,27 +2463,12 @@
 								 <td><div class="my_buy_order_cell">${order.quantity}</div></td><td><div class="my_buy_order_cell my_buy_order_price" data-market-hash-name="${order.market_hash_name}">${order.price}</div></td>
 								 <td class="my_buy_order_action"><a class="my_buy_order_cancel" data-name="${order.name}" data-buy-orderid="${order.buy_orderid}">取消</a><input type="checkbox" class="my_buy_order_checkbox"></td></tr>`;
 					}
-					html = `<style>.my_buy_order_table {border-spacing: 0 5px; width: 920px; margin: 10px; } .my_buy_order_table thead td:not(:last-child) {border-right: 1px solid #404040;}
-							.my_buy_order_table tr {background-color: #00000033;} .my_buy_order_table td {padding: 0 5px; height: 30px; font-size: 12px;} .my_buy_order_table thead td {text-align: center;}
-							.my_buy_order_name {display: flex; align-items: center; width: 410px;} .my_buy_order_name img {width: 38px; height: 38px; margin: 5px; border: 1px solid #3A3A3A; background-color: #333333;}
-							.my_buy_order_item_name, my_buy_order_game_name {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: inherit;} 
-							.my_buy_order_cell {width: 105px; color: white; text-align: center; overflow: hidden; white-space: nowrap;} .my_buy_order_item_name:hover {text-decoration: underline;}
-							.my_buy_order_action {text-align: center; position: relative;} .my_buy_order_cancel {display: inline-block; line-height: 30px; width: 60px;} 
-							.my_buy_order_cancel:hover, #my_buy_order_cancel_all:hover, #my_buy_order_update:hover, .my_buy_order_price:hover {background: #7bb7e355;} 
-							.my_buy_order_checkbox {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5);}  
-							#my_buy_order_action_all {position: relative;} #my_buy_order_cancel_all {display: inline-block; line-height: 24px; width: 80px;} .my_buy_order_price {line-height: 30px; cursor: pointer;}
-							#my_buy_order_select_btn {position: absolute; top: 0; right: 20px; line-height: 30px;} #my_buy_order_select_all {cursor: pointer; transform: scale(1.5) translateY(2px);} 
-							#my_buy_order_select_btn label {cursor: pointer; color: white; padding-right: 4px;} .my_buy_order_item_name {font-size: 14px; font-weight: bold;}
-							#my_buy_order_update {position: absolute; top: 3px; left: 10px; line-height: 24px; width: 60px;}</style>
-							<div class="my_buy_order_section">
-							<table class="my_buy_order_table"><colgroup><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 100%;"></colgroup>
-							<thead><tr><td style="position: relative;"><a id="my_buy_order_update">更新</a>名称</td><td>数量</td><td>价格</td><td id="my_buy_order_action_all"><a id="my_buy_order_cancel_all">取消求购</a>
-							<div id="my_buy_order_select_btn"><label for="my_buy_order_select_all">全选</label><input id="my_buy_order_select_all" type="checkbox"></div></td></tr></thead><tbody>${html}</tbody></table>
-							</div>`
 
-					var container = document.createElement("div");
-					container.innerHTML = html;
-					document.querySelector(".badge_card_set_cards").parentNode.appendChild(container);
+					html = `<table class="my_buy_order_table"><colgroup><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 100%;"></colgroup>
+							<thead><tr><td style="position: relative;">名称</td><td>数量</td><td>价格</td><td id="my_buy_order_action_all"><a id="my_buy_order_cancel_all">取消求购</a>
+							<div id="my_buy_order_select_btn"><label for="my_buy_order_select_all">全选</label><input id="my_buy_order_select_all" type="checkbox"></div></td></tr></thead><tbody>${html}</tbody></table>`;
+
+					container.querySelector("#my_buy_order_section").innerHTML = html;
 
 					var rows = container.querySelectorAll(".my_buy_order_row");
 					for (var row of rows) {
@@ -2480,11 +2496,6 @@
 						unsafeWindow.ShowConfirmDialog("取消求购", "确定取消所有选中的求购？").done(function() {
 							cancelAllSelected(toCancel);
 						});
-					}
-
-					container.querySelector("#my_buy_order_update").onclick = event => {
-						container.parentNode.removeChild(container);
-						appendMyBuyOrders();
 					}
 				}
 			}
