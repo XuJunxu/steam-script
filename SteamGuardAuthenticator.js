@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam令牌验证器
 // @namespace    SteamGuardAuthenticator
-// @version      1.0.1
+// @version      1.0.2
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
 // @match        http*://store.steampowered.com/*
@@ -36,12 +36,8 @@
     var STEAMPP = unsafeWindow == window;
     var STEAM_CLIENT = navigator.userAgent.search(/Valve Steam Client/) != -1;
 
-    var ACCOUNTS_GLOBAL = unsafeWindow.SG_accounts || [];
-
-    var ACCOUNTS = GM_getValue('SG_ACCOUNTS') || [];
+    var ACCOUNTS = getLocalAccounts();
     var AUTOCODE = GM_getValue('SG_AUTO_INPUT_CODE') ?? true;
-
-    var ACCOUNTS_ALL = ACCOUNTS_GLOBAL.concat(ACCOUNTS);
 
     var request = (function() {
         if (!STEAMPP) {
@@ -93,7 +89,19 @@
             };
         }
     })();
+
+    function getFileAccounts() {
+        return unsafeWindow.SG_accounts ?? [];
+    }
+
+    function getLocalAccounts() {
+        return GM_getValue('SG_ACCOUNTS') ?? [];
+    }
  
+    function getAllAccounts() {
+        return getFileAccounts().concat(getLocalAccounts());
+    }
+
     function steamGuardAuthenticatorButtons() {
         var buttons = document.createElement('div');
         buttons.innerHTML = `<div class="guard_float_buttons" id="guard_confirmation"><img src=${confirmImg}><div>确认</div></div>
@@ -156,9 +164,8 @@
             return;
         }
 
-        ACCOUNTS = GM_getValue('SG_ACCOUNTS') || [];
+        ACCOUNTS = getLocalAccounts();
         AUTOCODE = GM_getValue('SG_AUTO_INPUT_CODE') ?? true;
-        ACCOUNTS_ALL = ACCOUNTS_GLOBAL.concat(ACCOUNTS);
 
         var popupMenu = document.querySelector('#SG_Authenticator_dropdown .popup_menu');
         var time = Date.now();
@@ -170,8 +177,8 @@
                     <label for="auto_input_code_checkbox" style="cursor: pointer;">自动输入验证码</label>
                     <input id="auto_input_code_checkbox" type="checkbox" style="vertical-align: middle; right: 7.5px; margin: 0px;" ${AUTOCODE ? "checked=true" : ""}></a>`;
 
-        for (var i=0; i<ACCOUNTS_GLOBAL.length; i++) {
-            var account = ACCOUNTS_GLOBAL[i];
+        for (var i=0; i<getFileAccounts().length; i++) {
+            var account = getFileAccounts()[i];
             html += `<a class="popup_menu_item" style="position: relative; padding: 0;">
                      <span class="account_name" data-tooltip-text="点击复制该账号的验证码" data-gid=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span></a>`;
         }
@@ -252,7 +259,6 @@
             return;
         }
         ACCOUNTS.push(account);
-        ACCOUNTS_ALL = ACCOUNTS_GLOBAL.concat(ACCOUNTS);
         GM_setValue('SG_ACCOUNTS', ACCOUNTS);
         if (account.steamid && account.identity_secret) {
             ShowAlertDialog(title, title + '成功，该账号支持确认交易和市场。', '确定');
@@ -267,10 +273,8 @@
             return;
         }
 
-        ACCOUNTS = GM_getValue('SG_ACCOUNTS') || [];
-        ACCOUNTS_ALL = ACCOUNTS_GLOBAL.concat(ACCOUNTS);
         var account;
-        for (var a of ACCOUNTS_ALL) {
+        for (var a of getAllAccounts()) {
             if (a.steamid == userSteamID && a.identity_secret) {
                 account = a;
                 break;
@@ -468,7 +472,6 @@
                 })
             } else {
                 ACCOUNTS.splice(index, 1);
-                ACCOUNTS_ALL = ACCOUNTS_GLOBAL.concat(ACCOUNTS);
                 GM_setValue('SG_ACCOUNTS', ACCOUNTS);
                 ShowAlertDialog('删除账号', '删除成功。', '确定');
             }
@@ -478,7 +481,7 @@
     async function copyAuthCode(elem) {
         let account;
         if (elem.hasAttribute('data-gid')) {
-            account = ACCOUNTS_GLOBAL[elem.getAttribute('data-gid')];
+            account = getFileAccounts()[elem.getAttribute('data-gid')];
         } else if (elem.hasAttribute('data-id')) {
             account = ACCOUNTS[elem.getAttribute('data-id')];
         }
@@ -750,7 +753,7 @@
     var intersectionObserver = new IntersectionObserver(function(entries) {
         if (entries[0].intersectionRatio > 0) {
             var name = $J('#login_twofactorauth_message_entercode_accountname, [class^="login_SigningInAccountName"], [class^="newlogindialog_AccountName"]').text();
-            $J.each(ACCOUNTS_ALL, function(i, v) {
+            $J.each(getAllAccounts(), function(i, v) {
                 if(name == v.account_name) {
                     var $AuthCodeInput = $J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input');
                     var dt = new DataTransfer();
