@@ -2455,8 +2455,10 @@
 				container.querySelector("#my_buy_order_number").textContent = `（${myOrders.length} ▶ ${getSymbolStrFromPrice(totalBuy, currencyInfo)}）`;
 
 				if (gameOrders.length > 0) {
+					var totalQuantity = 0;
 					var html = "";
 					for (var order of gameOrders) {
+						totalQuantity += parseInt(order.quantity);
 						html += `<tr class="my_buy_order_row" data-market-hash-name="${order.market_hash_name}" data-buy-orderid="${order.buy_orderid}">
 								 <td><div class="my_buy_order_name"><img src="${order.icon}"><span><a class="my_buy_order_item_name" href="${order.market_link}" target="_blank">${order.name}</a><br>
 								 <span class="my_buy_order_game_name">${order.game_name}</span></span></div></td>
@@ -2465,7 +2467,7 @@
 					}
 
 					html = `<table class="my_buy_order_table"><colgroup><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 100%;"></colgroup>
-							<thead><tr><td style="position: relative;">名称</td><td>数量</td><td>价格</td><td id="my_buy_order_action_all"><a id="my_buy_order_cancel_all">取消求购</a>
+							<thead><tr><td style="position: relative;">名称</td><td>数量 (${totalQuantity})</td><td>价格</td><td id="my_buy_order_action_all"><a id="my_buy_order_cancel_all">取消求购</a>
 							<div id="my_buy_order_select_btn"><label for="my_buy_order_select_all">全选</label><input id="my_buy_order_select_all" type="checkbox"></div></td></tr></thead><tbody>${html}</tbody></table>`;
 
 					container.querySelector("#my_buy_order_section").innerHTML = html;
