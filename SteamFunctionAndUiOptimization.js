@@ -84,7 +84,6 @@
 				var loading = document.querySelector("#wallet_history_loading");
 				if (button.style.display == "none" && loading.style.display == "none") {
 					ComputeAndModifyHistory();
-					//calculateTotalPurchase();
 					return;
 				}
 				
@@ -112,13 +111,15 @@
 
 				for (var index=walletHistory.length-1; index >= 0; index--) {
 					var row = walletHistory[index];
-					var wht_type = row.querySelector("td.wht_type > div:first-child")?.textContent.replace(/\d/g, "").trim();
-					var url = row.getAttribute("onclick")?.match(/location.href='(.+)'/)[1] || "";
-					var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total").textContent);
+					var wht_items = row.querySelector("td.wht_items")?.textContent.trim() ?? "unknow";
+					var wht_type = row.querySelector("td.wht_type > div:first-child")?.textContent.replace(/\d/g, "").trim() ?? "";
+					var url = row.getAttribute("onclick")?.match(/location.href='(.+)'/)?.[1] ?? "";
+					var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total")?.textContent ?? "");
+					var wht_wallet_change = row.querySelector("td.wht_wallet_change")?.textContent.trim() ?? "";
 
-					if (wht_type && wht_total && row.querySelector("td.wht_total").textContent.includes(currencySymbol) && url) {
-						var wht_wallet_change = row.querySelector("td.wht_wallet_change").textContent.trim();
-
+					//《兑换数字礼物卡》则wht_type中没有textContent
+					//《市场交易出现待处理》则wht_wallet_change为null
+					if (wht_type && wht_total && row.querySelector("td.wht_total")?.textContent.includes(currencySymbol) && url) {
 						if (url.includes("steamcommunity.com/market/#myhistory")) {  //市场交易
 							if (wht_wallet_change[0] == "-") {
 								allMarketTransaction.decrease += wht_total;
@@ -162,6 +163,7 @@
 						}
 					}
 
+					wht_type = wht_type || wht_items;
 					transactionTypes[wht_type] = (transactionTypes[wht_type] || 0) + 1;
 					row.setAttribute("transaction-type", wht_type);
 					row.style.display = null;
@@ -255,52 +257,6 @@
 				}
 			};
 		}
-
-		//计算消费金额，只计算使用钱包余额的消费记录
-		function calculateTotalPurchase() {
-			var purchaseGames = 0;
-			var purchaseGifts = 0;
-			var transidGames = [];
-			var transidGifts = [];
-			var refunded = [];
-			var n=0, m=0;
-			var walletHistory = document.querySelectorAll("tr.wallet_table_row.wallet_table_row_amt_change");
-			if (walletHistory) {
-				for (var row of walletHistory) {
-					var wht_type = row.querySelector("td.wht_type > div:first-child")?.textContent.trim();
-					var wht_total = getPriceFromSymbolStr(row.querySelector("td.wht_total").textContent);
-					var wht_wallet_change = row.querySelector("td.wht_wallet_change").textContent.trim();
-					var transid = row.getAttribute("onclick").match(/\btransid=(\d+)/)[1];
-					
-					if (transid && wht_wallet_change && wht_type && wht_total) {
-						if (wht_wallet_change[0] == "-") {
-							if (wht_type == "购买") {
-								m++
-								purchaseGames += wht_total;
-								transidGames.push(transid);
-								row.querySelector("td.wht_total").style.color = "#00A8FF";
-							} else if (wht_type == "礼物购买") {
-								n++;
-								purchaseGifts += wht_total;
-								transidGifts.push(transid);
-								row.querySelector("td.wht_total").style.color = "#FF0000";
-							}
-						} else if (wht_type == "退款") {
-							refunded.push([transid, wht_total]);
-						}
-					}
-				}
-				for (var item of refunded) {
-					if (transidGames.includes(item[0])) {
-						purchaseGames -= item[1];
-					} else if (transidGifts.includes(item[0])) {
-						purchaseGifts -= item[1];
-					}
-				}
-			}
-			console.log(purchaseGames, purchaseGifts, m, n);
-		}
-
 	}
 
 	//steam商店搜索页面
