@@ -799,38 +799,85 @@
 				return;
 			}
 
-			if (!hasMarketableCard()) {
-				return;
-			}
-
-			Filter.UpdateTagFiltering({"cardborder": ["cardborder_0"], "misc": ["marketable", "tradable"]});
-		}
-
-		function hasMarketableCard() {
-			if (!unsafeWindow.g_ActiveInventory) {
-				return false;
-			}
-
-			if (unsafeWindow.g_ActiveInventory.m_rgChildInventories) {
-				var assets = unsafeWindow.g_ActiveInventory.m_rgChildInventories[6].m_rgAssets || [];
-			} else {
-				var assets = unsafeWindow.g_ActiveInventory.m_rgAssets || [];
-			}
-
-			for (let assetid in assets) {
-				var desc = assets[assetid].description;
-				if (!desc?.marketable) {
+			var hasMarketableCards = false;
+			var restriction = {};
+			for (let itemHolder of unsafeWindow.g_ActiveInventory.m_rgItemElements) {
+				var itemElem = itemHolder[0];
+				var desc = itemElem?.rgItem?.description;
+				if (desc === undefined || desc === null) {
 					continue;
 				}
+
+				if (!desc.marketable) {		//按照可交易时间分类
+					var restrictedTime = desc.owner_descriptions?.[0]?.value?.match(/\[date\](\d+)\[\/date\]/)?.[1];
+					if (restrictedTime) {
+						desc.tags ??= [];
+						desc.tags.push({category: "restrictedTime", internal_name: restrictedTime});
+						restriction[restrictedTime] = (restriction[restrictedTime] ?? 0) + 1;
+					}
+				}
 				
-				var tags = desc.tags;
-				for (let tag of tags) {
-					if (tag.category == "cardborder" && tag.internal_name == "cardborder_0") {
-						return true;
+				if (!hasMarketableCards && desc.marketable) {  //判断是否有可交易的普通卡牌
+					for (let tag of desc.tags) {
+						if (tag.category == "cardborder" && tag.internal_name == "cardborder_0") {
+							hasMarketableCards = true;
+						}
 					}
 				}
 			}
-			return false;
+
+			//可选择只显示指定可交易时间的物品
+			var restrictionList = Object.keys(restriction);
+			restrictionList.sort();
+			var html = `<option value="0">全部物品</option><option value="1">现在可出售的普通卡牌</option><option value="2">现在可出售的全部物品</option>`;
+			for (var time of restrictionList) {
+				var localTime = new Date(time * 1000).toLocaleString();
+				html += `<option value="${time}">${localTime} 后可出售 (${restriction[time]})</option>`;
+			}
+			var selectElem = document.createElement("select");
+			selectElem.innerHTML = html;
+			selectElem.style = "background: #000; color: #ebebeb; cursor: pointer; padding: 2px; font-size: 12px;";
+			selectElem.onchange = showRestrictedItems;
+
+			var container = document.createElement("div");
+			container.style = "float: right; margin-left: 20px;"
+
+			container.appendChild(selectElem);
+			document.querySelector(".inventory_filters .filter_tag_button_ctn").appendChild(container);
+			document.querySelector("#filter_tag_hide").addEventListener("click", function() { selectElem.value = "0";});
+
+			if (hasMarketableCards) {
+				selectElem.value = "1";
+				Filter.UpdateTagFiltering({"cardborder": ["cardborder_0"], "misc": ["marketable"]});
+			}
+		}
+
+		function showRestrictedItems(event) {
+			var select = event.target;
+			unsafeWindow.g_ActiveInventory.SetActivePage(0);
+			if (select.value <= 0) {
+				Filter.UpdateTagFiltering({});
+			} else if (select.value == 1) {
+				Filter.UpdateTagFiltering({"cardborder": ["cardborder_0"], "misc": ["marketable"]});
+			} else if (select.value == 2) {
+				Filter.UpdateTagFiltering({"misc": ["marketable"]});
+			} else {
+				Filter.UpdateTagFiltering({"restrictedTime": [select.value]});
+			}
+
+			//物品太多时部分图片无法加载
+			if (select.value > 0) {
+				select.imageReloaded = select.imageReloaded ?? {};
+				if (!select.imageReloaded[select.value]) {
+					for (var itemHolder of document.querySelectorAll('#inventories .itemHolder:not([style="display: none;"])')) {
+						var imgElem = itemHolder.querySelector("img");
+						if (imgElem && (!imgElem.src || imgElem.src.includes("trans.gif"))) {
+							imgElem.src = unsafeWindow.ImageURL(itemHolder.rgItem.description.icon_url, "96f", "96f", true);
+						}
+					}
+					select.imageReloaded[select.value] = true;
+				}
+			}
 		}
 
 		//在右侧大图片上方添加市场价格信息和出售按键
