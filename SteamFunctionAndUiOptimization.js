@@ -836,7 +836,7 @@
 			}
 			var selectElem = document.createElement("select");
 			selectElem.innerHTML = html;
-			selectElem.style = "background: #000; color: #ebebeb; cursor: pointer; padding: 2px; font-size: 12px;";
+			selectElem.style = "background: #000; color: #ebebeb; cursor: pointer; padding: 3px; font-size: 12px;";
 			selectElem.onchange = showRestrictedItems;
 
 			var container = document.createElement("div");
@@ -2995,7 +2995,7 @@
 		}
 	}
 
-	//添加商店设置
+	//添加商店页面设置
 	function addStoreSettings() {
 		var settingBtn = document.createElement("div");
 		settingBtn.setAttribute("style", "position: absolute; background-color: #3b4b5f; right: 10px; top: 10px; border-radius: 2px; box-shadow: 0px 0px 2px 0px #00000099");
@@ -3054,7 +3054,7 @@
 		return data;
 	}
 
-	//添加设置按键和设置页面
+	//添加社区页面设置
 	function addSteamCommunitySetting() {
 		var settingBtn = document.createElement("div");
 		settingBtn.setAttribute("style", "position: absolute; background-color: #3b4b5f; right: 10px; top: 10px; border-radius: 2px; box-shadow: 0px 0px 2px 0px #00000099");
@@ -3080,7 +3080,7 @@
 							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
 							<div class="settings_container">
 							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min)：</span>
-							<input class="settings_input_number" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = parseInt(this.value);">
+							<input class="settings_input_number" style="color: #EBEBEB;" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = parseInt(this.value);">
 							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
 							<span id="show_update_time" style="margin-left: 20px;">${new Date(exchangeRate.last_update).toLocaleString()}</span></div>
 							<div style="margin-bottom: 10px; display: flex;">
@@ -3106,7 +3106,7 @@
 							<div class="settings_option"><input id="sfu_market_adjust_selllistings" type="checkbox" ${settings.market_adjust_selllistings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_selllistings = this.checked;"></input><label for="sfu_market_adjust_selllistings" class="margin_right_20">调整出售物品表格</label></div>
 							<div class="settings_option"><input id="sfu_market_adjust_history" type="checkbox" ${settings.market_adjust_history ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_history = this.checked;"></input><label for="sfu_market_adjust_history" class="margin_right_20">调整市场历史记录表格</label></div>
 							<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">出售物品表格自动显示最低出售和最高求购</label></div>
-							<div class="settings_option"><label for="sfu_market_page_size">出售物品表格每页物品数量</label><input class="settings_input_number" id="sfu_market_page_size" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
+							<div class="settings_option"><label for="sfu_market_page_size">出售物品表格每页物品数量</label><input class="settings_input_number" id="sfu_market_page_size" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
 							</div>
 							<div class="settings_page_title">市场物品页面设置：</div>
 							<div class="settings_row">
