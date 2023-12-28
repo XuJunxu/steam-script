@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SteamCard
 // @namespace    SteamCard
-// @version      2.0.6
+// @version      2.0.7
 // @description  Steam Card
 // @author       Nin9
 // @include      https://store.steampowered.com/search*
@@ -355,6 +355,27 @@ function compareAccoutsGames() {
     })
 }
 
+var flags_searchForBadge = false;
+async function searchForBadge() {
+    if (location.href.search(/www\.steamcardexchange\.net/) < 0) {
+        return;
+    }
+
+    var res = await getInventory();
+    if (res.data) {
+        var invData = processInventory(res);
+        var index = 1;
+        for (var appid in invData) {
+            if (invData[appid][1] <= 5 && invData[appid][3][0] <= 5) {
+                console.log(index, "https://steamcommunity.com/my/gamecards/" + appid);
+                index ++;
+            }
+        }
+    } else {
+        console.log("getExchangeInventory failed");
+    }
+    
+}
 
 var checkInventoryData;
 async function checkHaveCard() {
@@ -403,4 +424,5 @@ function sleep(time) {
     flags_checkHaveCard && checkHaveCard();
     flags_saveOwnedGames && saveOwnedGames();
     flags_compareAccoutsGames && compareAccoutsGames();
+    flags_searchForBadge && searchForBadge();
 })(); 
