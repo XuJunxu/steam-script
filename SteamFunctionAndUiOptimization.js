@@ -2421,15 +2421,16 @@
 				container = document.createElement("div");
 				container.id = "my_buy_order_container";
 				container.innerHTML = `<style>.my_buy_order_table {border-spacing: 0 5px; width: 920px; margin: 10px; } .my_buy_order_table thead td:not(:last-child) {border-right: 1px solid #404040;}
-										.my_buy_order_table tr {background-color: #00000033;} .my_buy_order_table td {padding: 0 5px; height: 30px; font-size: 12px;} .my_buy_order_table thead td {text-align: center;}
+										.my_buy_order_table tr {background-color: #00000033;} .my_buy_order_table td {padding: 0 5px; height: 30px; font-size: 12px;} 
+										.my_buy_order_table thead td {text-align: center; white-space: nowrap; overflow: hidden; box-sizing: border-box; padding: 5px 5px;}
 										.my_buy_order_name {display: flex; align-items: center; width: 410px;} .my_buy_order_name img {width: 38px; height: 38px; margin: 5px; border: 1px solid #3A3A3A; background-color: #333333;}
 										.my_buy_order_item_name, my_buy_order_game_name {overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: inherit;} 
 										.my_buy_order_cell {width: 105px; color: white; text-align: center; overflow: hidden; white-space: nowrap;} .my_buy_order_item_name:hover {text-decoration: underline;}
 										.my_buy_order_action {text-align: center; position: relative;} .my_buy_order_cancel {display: inline-block; line-height: 30px; width: 60px;} 
 										.my_buy_order_cancel:hover, #my_buy_order_cancel_all:hover, #my_buy_order_update:hover, .my_buy_order_price:hover {background: #7bb7e355;} 
 										.my_buy_order_checkbox {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5);}  
-										#my_buy_order_action_all {position: relative;} #my_buy_order_cancel_all {display: inline-block; line-height: 24px; width: 80px;} .my_buy_order_price {line-height: 30px; cursor: pointer;}
-										#my_buy_order_select_btn {position: absolute; top: 0; right: 20px; line-height: 30px;} #my_buy_order_select_all {cursor: pointer; transform: scale(1.5) translateY(2px);} 
+										#my_buy_order_action_all {position: relative;} #my_buy_order_cancel_all {display: inline-block; line-height: 30px; width: 80px;} .my_buy_order_price {line-height: 30px; cursor: pointer;}
+										#my_buy_order_select_btn {position: absolute; top: 7.5px; right: 20px; line-height: 30px;} #my_buy_order_select_all {cursor: pointer; transform: scale(1.5) translateY(2px);} 
 										#my_buy_order_select_btn label {cursor: pointer; color: white; padding-right: 4px;} .my_buy_order_item_name {font-size: 14px; font-weight: bold;}
 										#my_buy_order_update {line-height: 24px; width: 60px; float: right; text-align: center; background: #00000066;} #my_buy_order_number {color: #BCBCBC; font-size: 12px;}</style>
 										<div style="margin: 10px 10px 0 10px;"><span style="color: white; font-size: 15px;">我的订购单</span><span id="my_buy_order_number"></span><a id="my_buy_order_update">更新</a></div>
@@ -2459,9 +2460,11 @@
 
 				if (gameOrders.length > 0) {
 					var totalQuantity = 0;
+					var totalPrice = 0;
 					var html = "";
 					for (var order of gameOrders) {
 						totalQuantity += parseInt(order.quantity);
+						totalPrice += parseInt(order.quantity) * getPriceFromSymbolStr(order.price);
 						html += `<tr class="my_buy_order_row" data-market-hash-name="${order.market_hash_name}" data-buy-orderid="${order.buy_orderid}">
 								 <td><div class="my_buy_order_name"><img src="${order.icon}"><span><a class="my_buy_order_item_name" href="${order.market_link}" target="_blank">${order.name}</a><br>
 								 <span class="my_buy_order_game_name">${order.game_name}</span></span></div></td>
@@ -2469,8 +2472,10 @@
 								 <td class="my_buy_order_action"><a class="my_buy_order_cancel" data-name="${order.name}" data-buy-orderid="${order.buy_orderid}">取消</a><input type="checkbox" class="my_buy_order_checkbox"></td></tr>`;
 					}
 
+					totalPrice = getSymbolStrFromPrice(totalPrice, currencyInfo);
 					html = `<table class="my_buy_order_table"><colgroup><col style="width: 0;"><col style="width: 0;"><col style="width: 0;"><col style="width: 100%;"></colgroup>
-							<thead><tr><td style="position: relative;">名称</td><td>数量 (${totalQuantity})</td><td>价格</td><td id="my_buy_order_action_all"><a id="my_buy_order_cancel_all">取消求购</a>
+							<thead><tr><td style="position: relative;">名称</td><td style="max-width: 115px;" title="${totalQuantity}"><div>数量</div><div>(${totalQuantity})</div></td>
+							<td style="max-width: 115px;" title="${totalPrice}"><div>价格</div><div>(${totalPrice})</div></td><td id="my_buy_order_action_all"><a id="my_buy_order_cancel_all">取消求购</a>
 							<div id="my_buy_order_select_btn"><label for="my_buy_order_select_all">全选</label><input id="my_buy_order_select_all" type="checkbox"></div></td></tr></thead><tbody>${html}</tbody></table>`;
 
 					container.querySelector("#my_buy_order_section").innerHTML = html;
