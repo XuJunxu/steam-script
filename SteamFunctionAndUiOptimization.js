@@ -801,7 +801,11 @@
 
 			var hasMarketableCards = false;
 			var restriction = {};
-			for (let itemHolder of unsafeWindow.g_ActiveInventory.m_rgItemElements) {
+			var ItemElements = unsafeWindow.g_ActiveInventory.m_rgItemElements;
+			if (unsafeWindow.g_ActiveInventory.m_rgChildInventories?.[6]?.m_rgItemElements) {
+				ItemElements = unsafeWindow.g_ActiveInventory.m_rgChildInventories[6].m_rgItemElements;
+			}
+			for (let itemHolder of ItemElements) {
 				var itemElem = itemHolder[0];
 				var desc = itemElem?.rgItem?.description;
 				if (desc === undefined || desc === null) {
