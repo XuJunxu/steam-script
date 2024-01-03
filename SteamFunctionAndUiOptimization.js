@@ -494,29 +494,29 @@
 			exploreBtn.onclick = null;
 			exploreBtn.className = 'discovery_queue_customize_ctn auto_explore_btn';
 			exploreBtn.style = 'float: right; margin-bottom: 0; padding: 0 15px; line-height: 32px;';
-			exploreBtn.innerHTML = '<span>生成新的队列</span>';
+			exploreBtn.innerHTML = '<span>生成新的队列...</span>';
 			var sessionid = unsafeWindow.g_sessionID;
 			var result = await generateNewDiscoveryQueue(sessionid, 0);
 			if (result.success) {
-				var queue = result.data.queue;
-				var num = 1;
-				var total = queue.length;
-				for (var appid of queue) {
-					exploreBtn.innerHTML = `<span>探索队列中：${num}/${total}</span>`;
-					var res = await clearFromQueue(sessionid, appid);
-					if (!res.success) {
-						break;
-					}
-					num++;
-				}
-				if (num > total) {
-					exploreBtn.innerHTML = '<span>探索队列完成</span>';
-				} else {
-					exploreBtn.innerHTML = '<span>探索队列失败</span>';
-				}
+				exploreApps(0, result.data.queue); 
 			} else {
-				exploreBtn.innerHTML = '<span>生成新的队列失败</span>';
+				exploreBtn.innerHTML = '<span>生成新的队列失败，将在5秒内重试...</span>';
+				setTimeout(autoExploreQueue, 5000);
 			}
+		}
+
+		async function exploreApps(start, queue) {
+			for (let i=start; i<queue.length; i++) {
+				exploreBtn.innerHTML = `<span>探索队列中：${i + 1}/${queue.length}</span>`;
+				let appid = queue[i];
+				let res = await clearFromQueue(unsafeWindow.g_sessionID, appid);
+				if (!res.success) {
+					exploreBtn.innerHTML = '<span>探索队列失败，将在5秒内重试...</span>';
+					setTimeout(function() { exploreApps(i, queue); }, 5000);
+					return;
+				}
+			}
+			exploreBtn.innerHTML = '<span>探索队列完成</span>';
 		}
 
 		function generateNewDiscoveryQueue(sessionid, queuetype) {
