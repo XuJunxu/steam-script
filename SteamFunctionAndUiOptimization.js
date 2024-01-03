@@ -1353,7 +1353,7 @@
 				}
 				listings[i].setAttribute("market_item_type", itemType);
 
-				addRowCheckbox(listings[i]);
+				addRowCheckbox(listings[i]).addEventListener("click", sellListingCheckboxClicked);
 				addGameCardsLink(listings[i], assetInfo);
 			}
 
@@ -1427,7 +1427,7 @@
 			var buyOrderTable = document.createElement("div");
 			var totalBuy = 0;
 			for (var row of buyOrderRows) {
-				addRowCheckbox(row);
+				addRowCheckbox(row).addEventListener("click", buyListingCheckboxClicked);
 				addGameCardsLink(row);
 
 				buyOrderTable.appendChild(row);
@@ -1900,6 +1900,15 @@
 			checkbox.setAttribute("type", "checkbox");
 			checkbox.className = "market_listing_check";
 			elem.querySelector(".market_listing_cancel_button").appendChild(checkbox);
+			return checkbox;
+		}
+
+		function sellListingCheckboxClicked(event) {
+			checkboxShiftSelected(event, "#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_check");
+		}
+
+		function buyListingCheckboxClicked(event) {
+			checkboxShiftSelected(event, "#tabContentsMyBuyOrders .market_listing_row .market_listing_check");
 		}
 
 		//在价格右侧显示最低售价和最高求购价
@@ -2098,8 +2107,13 @@
 					checkbox.setAttribute("type", "checkbox");
 					checkbox.className = "market_listing_check";
 					elem.querySelector(".market_listing_cancel_button").appendChild(checkbox);
+					checkbox.addEventListener("click", checkboxClicked);
 				}
 			}
+		}
+
+		function checkboxClicked(event) {
+			checkboxShiftSelected(event, "#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_check");
 		}
 
 		//出售列表上添加操作按键
@@ -3350,6 +3364,37 @@
 			}
 		}
 
+	}
+
+	var lastCheckbox = null;
+	function checkboxShiftSelected(event, selector) {
+		var checkbox = event.target;
+		if (checkbox.checked && event.shiftKey) {
+			if (!lastCheckbox) {
+				lastCheckbox = checkbox;
+			} else {
+				var allCheckbox = Array.prototype.slice.call(document.querySelectorAll(selector));
+				var flag = false;
+				if (lastCheckbox != checkbox && allCheckbox.includes(lastCheckbox) && allCheckbox.includes(checkbox)) {
+					for (var box of allCheckbox) {
+						if (box == lastCheckbox || box == checkbox) {
+							if (flag) {
+								lastCheckbox.checked = true;
+								break;
+							} else {
+								flag = true;
+							}
+						}
+						if (flag) {
+							box.checked = true;
+						}
+					}
+					lastCheckbox = null;
+				} else {
+					lastCheckbox = checkbox;
+				}
+			}
+		}
 	}
 
 	function appendCartForm(subid, sessionid, snr, orgsnr) {
