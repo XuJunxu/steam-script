@@ -108,6 +108,7 @@
 					inGamePurchase: {total: 0, typeName: "", transid: []},
 					refund: {total: 0, typeName: "", transid: []}
 				};
+				var allTransaction = {};
 
 				for (var index=walletHistory.length-1; index >= 0; index--) {
 					var row = walletHistory[index];
@@ -119,7 +120,9 @@
 
 					//《兑换数字礼物卡》则wht_type中没有textContent
 					//《市场交易出现待处理》则wht_wallet_change为null
-					if (wht_type && wht_total && row.querySelector("td.wht_total")?.textContent.includes(currencySymbol) && url) {
+					// 退款可能没有总计金额
+					// 游戏内购买不增加礼物额度
+					if (wht_type && (row.querySelector("td.wht_total")?.textContent.includes(currencySymbol) || !row.querySelector("td.wht_total")?.textContent.trim()) && url) {
 						if (url.includes("steamcommunity.com/market/#myhistory")) {  //市场交易
 							if (wht_wallet_change[0] == "-") {
 								allMarketTransaction.decrease += wht_total;
@@ -130,35 +133,38 @@
 						} else if (url.includes("HelpWithItemPurchase")) {  //游戏内购买
 							var transid = url.match(/\btransid=(\d+)/)[1];
 							if (allPurchase.inGamePurchase.transid.includes(transid)) {
-								allPurchase.inGamePurchase.total -= wht_total;
-								allPurchase.refund.total += wht_total;
+								allPurchase.inGamePurchase.total -= (wht_total || allTransaction[transid]);
+								allPurchase.refund.total += (wht_total || allTransaction[transid]);
 								allPurchase.refund.typeName = wht_type;
 								allPurchase.refund.transid.push(transid);
 							} else {
 								allPurchase.inGamePurchase.total += wht_total;
 								allPurchase.inGamePurchase.typeName = wht_type;
 								allPurchase.inGamePurchase.transid.push(transid);
+								allTransaction[transid] = wht_total;
 							}												
 						} else if (url.includes("HelpWithTransaction")) {  //商店购买和礼物购买
 							var transid = url.match(/\btransid=(\d+)/)[1];
 							if (allPurchase.giftPurchase.transid.includes(transid)) {
-								allPurchase.giftPurchase.total -= wht_total;
-								allPurchase.refund.total += wht_total;
+								allPurchase.giftPurchase.total -= (wht_total || allTransaction[transid]);
+								allPurchase.refund.total += (wht_total || allTransaction[transid]);
 								allPurchase.refund.typeName = wht_type;
 								allPurchase.refund.transid.push(transid);
 							} else if (allPurchase.purchase.transid.includes(transid)) {
-								allPurchase.purchase.total -= wht_total;
-								allPurchase.refund.total += wht_total;
+								allPurchase.purchase.total -= (wht_total || allTransaction[transid]);
+								allPurchase.refund.total += (wht_total || allTransaction[transid]);
 								allPurchase.refund.typeName = wht_type;
 								allPurchase.refund.transid.push(transid);
 							} else if (row.querySelector("td.wht_items .wth_payment a")?.hasAttribute("data-miniprofile")) {  //礼物购买
 								allPurchase.giftPurchase.total += wht_total;
 								allPurchase.giftPurchase.typeName = wht_type;
 								allPurchase.giftPurchase.transid.push(transid);
+								allTransaction[transid] = wht_total;
 							} else {
 								allPurchase.purchase.total += wht_total;
 								allPurchase.purchase.typeName = wht_type;
 								allPurchase.purchase.transid.push(transid);
+								allTransaction[transid] = wht_total;
 							}
 						}
 					}
