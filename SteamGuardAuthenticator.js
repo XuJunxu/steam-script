@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam令牌验证器
 // @namespace    SteamGuardAuthenticator
-// @version      1.0.2
+// @version      1.0.3
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
 // @match        http*://store.steampowered.com/*
@@ -766,6 +766,27 @@
     });
 
     var mutationObserver = new MutationObserver(function() {
+        if ($J('#page_content form input[maxlength="1"], .page_content form input[maxlength="1"]').length == 5) {
+            var name = $J('#page_content form span, .page_content form span').text();
+            $J.each(getAllAccounts(), function(i, v) {
+                if(name == v.account_name) {
+                    var $AuthCodeInput = $J('#page_content form input[maxlength="1"], .page_content form input[maxlength="1"]');
+                    var dt = new DataTransfer();
+                    dt.setData('text', generateAuthCode(v.shared_secret, timeOffset));
+
+                    setTimeout(function() {     //过快的输入验证码会显示登录错误，虽然可以成功登录
+                        $AuthCodeInput[0].dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true}));
+                    }, 500);
+                    
+                    return false;
+                }
+            });
+        }
+
+        if ($J('div[data-featuretarget="login"] [href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]').length) {
+            $J('div[data-featuretarget="login"] [href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]')[0].parentNode.firstElementChild.firstElementChild.click();
+        }
+
         if ($J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input').length) {
             intersectionObserver.observe($J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input')[0]);
         }
