@@ -589,9 +589,10 @@
 
 		appendPageControl();
 
-		var html = `<style>#trade_offer_buttons{margin: 10px 0px 0px 10px;} .btn_move_items{padding: 5px 15px;}</style>
+		var html = `<style>#trade_offer_buttons{margin: 10px 0px 0px 10px;} .btn_move_items{padding: 5px 15px; margin: 8px 4px 0 0;}</style>
 				<a class="btn_add_cards btn_move_items btn_green_white_innerfade">添加全部普通卡牌</a>
 				<a class="btn_add_all btn_move_items btn_green_white_innerfade">添加全部物品</a>
+				<a class="btn_add_current btn_move_items btn_green_white_innerfade">添加当前页物品</a>
 				<a class="btn_remove_all btn_move_items btn_green_white_innerfade">移除全部物品</a>`;
 		var trade_yours = document.createElement("div");
 		trade_yours.innerHTML = html;
@@ -603,12 +604,8 @@
 		trade_theirs.className = "trade_offer_buttons trade_theirs_bottons";
 		document.querySelector("#trade_theirs .offerheader").appendChild(trade_theirs);
 		
-		trade_yours.querySelector(".btn_add_cards").onclick = addAllCommonCards;
-		trade_yours.querySelector(".btn_add_all").onclick = addAllItems;
-		trade_yours.querySelector(".btn_remove_all").onclick = removeAllItems;
-		trade_theirs.querySelector(".btn_add_cards").onclick = addAllCommonCards;
-		trade_theirs.querySelector(".btn_add_all").onclick = addAllItems;
-		trade_theirs.querySelector(".btn_remove_all").onclick = removeAllItems;
+		trade_yours.onclick = optButtonClicked;
+		trade_theirs.onclick = optButtonClicked;
 
 		var obs = new MutationObserver(removeSlots);
 		obs.observe(document.querySelector("#trade_yours > div.trade_item_box"), { childList: true }); 
@@ -640,16 +637,31 @@
 			}
 		}
 
-		function addAllCommonCards(event) {
-			if (event.target.parentNode.classList.contains("trade_yours_bottons")) {
+		function optButtonClicked(event) {
+			if (event.currentTarget.classList.contains("trade_yours_bottons")) {
 				var contextData = unsafeWindow.g_rgAppContextData;
-			} else if (event.target.parentNode.classList.contains("trade_theirs_bottons")) {
+				var select = "#your_slots div.item";
+			} else if (event.currentTarget.classList.contains("trade_theirs_bottons")) {
 				var contextData = unsafeWindow.g_rgPartnerAppContextData;
+				var select = "#their_slots div.item";
 			} else {
 				return;
 			}
 
-			if (contextData && contextData[753] && contextData[753].rgContexts && contextData[753].rgContexts[6] && contextData[753].rgContexts[6].inventory) {
+			var button = event.target;
+			if (button.classList.contains("btn_add_cards")) {
+				addAllCommonCards(contextData);
+			} else if (button.classList.contains("btn_add_all")) {
+				addAllItems(contextData);
+			} else if (button.classList.contains("btn_add_current")) {
+				addCurrentItems();
+			} else if (button.classList.contains("btn_remove_all")) {
+				removeAllItems(select);
+			}
+		}
+
+		function addAllCommonCards(contextData) {
+			if (contextData?.[753]?.rgContexts?.[6]?.inventory) {
 				for (var itemHolder of contextData[753].rgContexts[6].inventory.rgItemElements) {
 					if (itemHolder?.rgItem?.tradable && checkCommonCard(itemHolder.rgItem.tags) && itemHolder == itemHolder.rgItem.element?.parentNode) {
 						unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
@@ -658,20 +670,11 @@
 			}
 		}
 
-		function addAllItems(event) {
-			if (event.target.parentNode.classList.contains("trade_yours_bottons")) {
-				var contextData = unsafeWindow.g_rgAppContextData;
-			} else if (event.target.parentNode.classList.contains("trade_theirs_bottons")) {
-				var contextData = unsafeWindow.g_rgPartnerAppContextData;
-			} else {
-				return;
-			}
-
+		function addAllItems(contextData) {
 			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
 			var contextIds = g_ActiveInventory.rgContextIds ?? [g_ActiveInventory.contextid];
 			for (var contextid of contextIds) {
-				if (contextData && contextData[g_ActiveInventory.appid] && contextData[g_ActiveInventory.appid].rgContexts && 
-					contextData[g_ActiveInventory.appid].rgContexts[contextid] && contextData[g_ActiveInventory.appid].rgContexts[contextid].inventory) {
+				if (contextData?.[g_ActiveInventory.appid]?.rgContexts?.[contextid]?.inventory) {
 					for (var itemHolder of contextData[g_ActiveInventory.appid].rgContexts[contextid].inventory.rgItemElements) {
 						if (itemHolder?.rgItem?.tradable && (!itemHolder.rgItem.is_stackable) && itemHolder == itemHolder.rgItem.element?.parentNode) {
 							unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
@@ -681,15 +684,16 @@
 			}
 		}
 
-		function removeAllItems(event) {
-			if (event.target.parentNode.classList.contains("trade_yours_bottons")) {
-				var select = "#your_slots div.item";
-			} else if (event.target.parentNode.classList.contains("trade_theirs_bottons")) {
-				var select = "#their_slots div.item";
-			} else {
-				return;
+		function addCurrentItems() {
+			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
+			for (var itemHolder of g_ActiveInventory.pageList[g_ActiveInventory.pageCurrent].children) {
+				if (itemHolder?.rgItem?.tradable && (!itemHolder.rgItem.is_stackable && itemHolder == itemHolder.rgItem.element?.parentNode)) {
+					unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+				}
 			}
+		}
 
+		function removeAllItems(select) {
 			for (var item of document.querySelectorAll(select)) {
 				unsafeWindow.MoveItemToInventory(item);
 			}
