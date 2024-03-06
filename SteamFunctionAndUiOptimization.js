@@ -915,11 +915,12 @@
 									.show_market_info:hover {background: rgba(102, 192, 244, 0.4)} .price_gram, .price_gram div{font-size: 12px; font-weight: normal;}`;
 			document.body.appendChild(styleElem);
 
+			var sellNumber = globalSettings.inventory_sell_number;
 			var html = `<div><a class="show_market_info">显示市场价格信息</a></div><div class="market_info"><div class="price_gram"></div><div class="price_overview"></div></div>
 						<div class="sell_btn_container">
 						<div><input class="sell_price_input" type="number" step="0.01" min="0.03" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
-						<a class="btn_small btn_green_white_innerfade sell_comfirm"><span>确认出售</span></a>
-						<a class="btn_small btn_green_white_innerfade sell_all_same" title="出售全部相同的物品"><span>批量出售</span></a></div>
+						<a class="btn_small btn_green_white_innerfade sell_comfirm quick_sell_btn"><span>确认出售</span></a>
+						<a class="btn_small btn_green_white_innerfade sell_all_same quick_sell_btn" title="出售全部相同的物品"><span>批量出售(${sellNumber > 0 ? sellNumber.toString() + "个" : "全部"})</span></a></div>
 						<div><label class="price_receive" style="margin-right: 10px;"></label><label class="price_receive_2"></label></div>
 						<div class="sell_btns"></div></div>`;
 			var container0 = document.createElement("div");
@@ -1117,10 +1118,17 @@
 				var amount = isNaN(Number(input.value)) ? 0 : Math.round(Number(input.value) * 100);
 				var price = calculatePriceYouReceive(amount, item);
 				var buyerPay = calculatePriceBuyerPay(price, item);
+				let maxNumber = globalSettings.inventory_sell_number;
+				let cnumber = 1;
 				for (let assetid in m_rgAssets) {
 					let it = m_rgAssets[assetid];
+
 					if (it?.description?.marketable && it.description.market_hash_name == hashName && !it.element.getAttribute("data-sold")) {
+						if (maxNumber > 0 && cnumber > maxNumber) {
+							break;
+						}
 						await sellSelectedItem(0, it, price, buyerPay);
+						cnumber++;
 					}
 				}
 			}
@@ -3139,7 +3147,7 @@
 							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
 							<div class="settings_container">
 							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min)：</span>
-							<input class="settings_input_number" style="color: #EBEBEB;" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = parseInt(this.value);">
+							<input class="settings_input_number" style="color: #EBEBEB;" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = Math.max(parseInt(this.value), 60);">
 							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
 							<span id="show_update_time" style="margin-left: 20px;">${new Date(exchangeRate.last_update).toLocaleString()}</span></div>
 							<div style="margin-bottom: 10px; display: flex;">
@@ -3159,6 +3167,7 @@
 							<div class="settings_option"><input id="sfu_inventory_append_linkbtn" type="checkbox" ${settings.inventory_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_append_linkbtn = this.checked;"></input><label for="sfu_inventory_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
 							<div class="settings_option"><input id="sfu_inventory_sell_btn" type="checkbox" ${settings.inventory_sell_btn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_sell_btn = this.checked;"></input><label for="sfu_inventory_sell_btn" class="margin_right_20">添加出售按键</label></div>
 							<div class="settings_option"><input id="sfu_inventory_market_info" type="checkbox" ${settings.inventory_market_info ? "checked=true" : ""} onclick="window.sfu_settings.inventory_market_info = this.checked;"></input><label for="sfu_inventory_market_info">自动显示市场价格信息</label></div>
+							<div class="settings_option"><label for="sfu_inventory_sell_number">一次批量出售的最大数量(0表示不限)</label><input class="settings_input_number" id="sfu_inventory_sell_number" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.inventory_sell_number}" oninput="window.sfu_settings.inventory_sell_number = Math.max(parseInt(this.value), 0);"></input></div>
 							</div>
 							<div class="settings_page_title">市场页面设置：</div>
 							<div class="settings_row">
@@ -3198,6 +3207,7 @@
 		data.inventory_append_linkbtn ??= true;
 		data.inventory_sell_btn ??= true;
 		data.inventory_market_info ??= true;
+		data.inventory_sell_number ??= 0;
 		data.marketlisting_set_style ??= true;
 		data.marketlisting_show_priceoverview ??= true;
 		data.marketlisting_append_linkbtn ??= true;
@@ -3208,6 +3218,13 @@
 		data.market_adjust_history ??= true;
 		data.market_show_priceinfo ??= false;
 		data.market_page_size ??= 100;
+
+		data.rate_update_interval = isNaN(data.rate_update_interval) ? 360 : data.rate_update_interval;
+		data.inventory_sell_number = isNaN(data.inventory_sell_number) ? 0 : data.inventory_sell_number;
+		data.market_page_size = isNaN(data.market_page_size) ? 100 : data.market_page_size;
+
+		data.rate_update_interval = Math.max(data.rate_update_interval, 60);
+		data.inventory_sell_number = Math.max(data.inventory_sell_number, 0);
 		data.market_page_size = Math.max(data.market_page_size, 10);
 		return data;
 	}
@@ -3286,7 +3303,7 @@
 		}
 		var pageControl = document.createElement('div');
 		pageControl.id = 'SFU_pagecontrols';
-		var html = `<span>跳到</span><input class="pageNumber" type="text">
+		var html = `<span style="font-size: 13px;">跳到</span><input class="pageNumber" type="text" style="color: white;">
 					<a class="pagebtn" href="javascript:InventoryPreviousPage();"> < </a>
 					<span id="pagecontrol_links"></span>
 					<a class="pagebtn" href="javascript:InventoryNextPage();"> > </a>`;
