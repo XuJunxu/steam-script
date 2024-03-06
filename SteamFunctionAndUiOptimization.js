@@ -3251,11 +3251,12 @@
 	function appendPageControl() {
 		var styleElem = document.createElement("style");
 		styleElem.innerHTML = `#inventory_pagecontrols { display: none; }
-							#SFU_pagecontrols { float: right; user-select: none; line-height: 22px; text-align: center; }
+							#SFU_pagecontrols { float: right; user-select: none; line-height: 22px; text-align: center; text-align: right;}
 							.pagecontrol_pagelink { color: #ffffff; cursor: pointer; margin: 0 3px; }
 							.pagecontrol_pagelink:hover { text-decoration: underline; }
 							.pagecontrol_pagelink.active:hover { text-decoration: none; }
-							.pagecontrol_pagelink.active { color: #747474; cursor: default; }`;
+							.pagecontrol_pagelink.active { color: #747474; cursor: default; }
+							.pageNumber { background: transparent; width: 25px; box-shadow: none; margin: 0 5px 0 5px; }`;
 		document.body.appendChild(styleElem);
 
 		var inventory_pagecontrols = document.querySelector('#inventory_pagecontrols');
@@ -3264,7 +3265,8 @@
 		}
 		var pageControl = document.createElement('div');
 		pageControl.id = 'SFU_pagecontrols';
-		var html = `<a class="pagebtn" href="javascript:InventoryPreviousPage();"> < </a>
+		var html = `<span>跳到</span><input class="pageNumber" type="text">
+					<a class="pagebtn" href="javascript:InventoryPreviousPage();"> < </a>
 					<span id="pagecontrol_links"></span>
 					<a class="pagebtn" href="javascript:InventoryNextPage();"> > </a>`;
 		pageControl.innerHTML = html;
@@ -3290,6 +3292,21 @@
 				}
 			}
 		};
+
+		var pageNumber = pageControl.querySelector('.pageNumber');
+		pageNumber.onkeydown = function(event) {
+			if (event.keyCode == 13) {  //按下回车键
+				var text = event.target.value.trim();
+				if (/^\d+$/.test(text)) {
+					var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
+					var maxPage = g_ActiveInventory.m_cPages ?? g_ActiveInventory.pageTotal;
+					var nextPage = parseInt(text);
+					if (1 <= nextPage && nextPage <= maxPage) {
+						changeInventoryPage(nextPage-1);
+					}
+				}
+			}
+		}
 		
 		var obs = new MutationObserver(function() {
 			updatePageControl();
@@ -3337,6 +3354,7 @@
 			
 			pageLinks.innerHTML = html;
 			pageLinks.querySelector(`.pagecontrol_pagelink[data-page-num="${iCurPage}"]`).classList.add("active");
+			pageNumber.value = iCurPage;
 		}
 	}
 
