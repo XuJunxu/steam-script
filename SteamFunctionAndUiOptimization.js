@@ -1264,6 +1264,9 @@
 								.control_action_container {padding-left: 6px; display: inline-block; position: relative;}
 								.Listing_page_control {margin-top: 10px; user-select: none;}
 								.Listing_page_control .market_paging_controls {margin-top: 2px;}
+								.market_page_number_container {float: right; margin-top: 1px;}
+								.market_page_number {margin: 0 15px 0 5px; width: 35px; background: transparent; box-shadow: none;}
+								.market_page_number::-webkit-outer-spin-button, .market_page_number::-webkit-inner-spin-button{-webkit-appearance: none !important;}
 								.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
 								.market_listing_table_header {text-align: center;}
 								.market_listing_game_name_link {color: inherit;} 
@@ -1279,10 +1282,8 @@
 
 		if (globalSettings.market_adjust_history) {
 			var styleElem = document.createElement("style");
-			styleElem.innerHTML = `.history_action_btn_container .history_page_number {width: 45px; height: 18px; border-radius: 3px; color: #fff; background-color: #324965; font-family: "Motiva Sans", Sans-serif; border-color: #45566A; margin: 1px 5px 0 -5px; text-align: center;}
-								.history_action_btn_container .history_total_page {margin-right: 5px;}
-								.wait_loading_history {position: absolute; height: 20px; top: 2px;}
-								.history_page_number::-webkit-outer-spin-button, .history_page_number::-webkit-inner-spin-button{-webkit-appearance: none !important;}`;
+			styleElem.innerHTML = `.history_action_btn_container {margin-right: 5px;}
+								.wait_loading_history {position: absolute; height: 20px; top: 2px;}`;
 			document.body.appendChild(styleElem);
 			document.querySelector("#tabMyMarketHistory").addEventListener("click", showMarketHistory, true);
 		}
@@ -1593,11 +1594,11 @@
 			controlAfter.className = "Listing_page_control";
 			controlAfter.id = "history_page_control_after";
 
-			var html = `<div class="history_action_btn_container control_action_container"><a class="update_market_history market_action_btn pagebtn">刷新</a><a class="goto_history_page market_action_btn pagebtn">转到</a>
-						<input type="number" class="history_page_number" min="1"><span class="history_total_page"></span>
+			var html = `<div class="history_action_btn_container control_action_container"><a class="update_market_history market_action_btn pagebtn">刷新</a>
 						<img class="wait_loading_history" src="https://community.steamstatic.com/public/images/login/throbber.gif" alt="载入中" style="display: none;">
 						<span class="get_history_failed" style="display: none;">Failed</span></div>
-						<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span></div><div style="clear: both;"></div>`;
+						<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span></div>
+						<div class="market_page_number_container"><span style="font-size: 13px;">跳到</span><input type="number" class="market_page_number" min="1" style="color: white;"></div><div style="clear: both;"></div>`;
 			controlBefore.innerHTML = html;
 			controlAfter.innerHTML = html;
 			var marketTable = document.querySelector("#tabContentsMyMarketHistoryTable");
@@ -1607,16 +1608,14 @@
 			controlAfter.querySelector(".market_paging_controls").onclick = historyPageControlClick;
 			controlBefore.querySelector(".history_action_btn_container").onclick = historyActionBtnClick;
 			controlAfter.querySelector(".history_action_btn_container").onclick = historyActionBtnClick;
+			controlBefore.querySelector(".market_page_number").onkeydown = historyPageNumberEnter;
+			controlAfter.querySelector(".market_page_number").onkeydown = historyPageNumberEnter;
 		}
 
 		function historyActionBtnClick(event) {
 			var elem = event.target;
 			if (elem.classList.contains("update_market_history")) {
 				updateMarketHistory(1);
-			} else if (elem.classList.contains("goto_history_page")) {
-				var input = event.currentTarget.querySelector(".history_page_number");
-				var page = isNaN(parseInt(input.value)) ? 0 : parseInt(input.value);
-				updateMarketHistory(page);
 			}
 		}
 
@@ -1628,6 +1627,16 @@
 
 			if (page > 0 && page != cpage && page <= maxPage) {
 				updateMarketHistory(page);
+			}
+		}
+
+		function historyPageNumberEnter(event) {
+			if (event.keyCode == 13) {
+				var nextPage = parseInt(event.target.value);
+				nextPage = isNaN(nextPage) ? 1 : nextPage;
+				if (nextPage > 0) {
+					updateMarketHistory(nextPage);
+				}
 			}
 		}
 
@@ -1646,12 +1655,8 @@
 			document.querySelector(`#history_page_control_before .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
 			document.querySelector(`#history_page_control_after .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
 
-			document.querySelector("#history_page_control_before .history_page_number").value = page.toString();
-			document.querySelector("#history_page_control_after .history_page_number").value = page.toString();
-
-			var content = `/ ${maxPage} 页`;
-			document.querySelector("#history_page_control_before .history_total_page").textContent = content;
-			document.querySelector("#history_page_control_after .history_total_page").textContent = content;
+			document.querySelector("#history_page_control_before .market_page_number").value = page.toString();
+			document.querySelector("#history_page_control_after .market_page_number").value = page.toString();
 		}
 
 		function addBuyOrderActions() {
@@ -1729,7 +1734,8 @@
 			var numAll = numFoilCard + numOther + numTradingCard;
 			var html = `<div class="market_action_btn_container control_action_container"><a class="market_select_all market_action_btn pagebtn">选中全部物品</a><a class="market_remove_listing market_action_btn pagebtn">下架选中物品</a></div>
 						<select class="market_show_filter pagebtn"><option value="All">全部物品 (${numAll})</option><option value="TradingCard">普通卡牌 (${numTradingCard})</option><option value="FoilCard">闪亮卡牌 (${numFoilCard})</option><option value="Other">其他物品 (${numOther})</option></select>
-						<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span></div><div style="clear: both;"></div>`;
+						<div class="market_paging_controls"><span class="pagebtn prev_page"><</span><span class="page_link"></span><span class="pagebtn next_page">></span></div>
+						<div class="market_page_number_container"><span style="font-size: 13px;">跳到</span><input type="number" class="market_page_number" min="1" style="color: white;"></div><div style="clear: both;"></div>`;
 			controlBefore.innerHTML = html;
 			controlAfter.innerHTML = html;
 			var marketTable = document.querySelector("#tabContentsMyActiveMarketListingsTable");
@@ -1741,6 +1747,8 @@
 			controlAfter.querySelector(".market_action_btn_container").onclick = marketActionBtnClick;
 			controlBefore.querySelector(".market_show_filter").onchange = showFilterChanged;
 			controlAfter.querySelector(".market_show_filter").onchange = showFilterChanged;
+			controlBefore.querySelector(".market_page_number").onkeydown = marketPageNumberEnter;
+			controlAfter.querySelector(".market_page_number").onkeydown = marketPageNumberEnter;
 		}
 
 		//更新页面导航中的页面编号
@@ -1752,6 +1760,8 @@
 			document.querySelector("#market_page_control_after .page_link").innerHTML = html;
 			document.querySelector(`#market_page_control_before .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
 			document.querySelector(`#market_page_control_after .page_link .market_paging_pagelink[data-page-num="${page}"]`).classList.add("active");
+			document.querySelector("#market_page_control_before .market_page_number").value = page;
+			document.querySelector("#market_page_control_after .market_page_number").value = page;
 		}
 
 		function marketPageControlClick(event) {
@@ -1816,6 +1826,17 @@
 					}
 					removeSelectedListings(listingsToRemove);
 				});
+			}
+		}
+
+		function marketPageNumberEnter(event) {
+			if (event.keyCode == 13) {
+				var nextPage = parseInt(event.target.value);
+				var maxPage = marketMyListingsPage.length;
+				if (!isNaN(nextPage) && nextPage > 0 && nextPage != currentPage && nextPage <= maxPage) {
+					showMarketPage(nextPage);
+					updateMarketPageControl(nextPage);
+				}
 			}
 		}
 
