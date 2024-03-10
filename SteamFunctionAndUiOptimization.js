@@ -1297,6 +1297,8 @@
 		if (globalSettings.market_adjust_selllistings) {
 			adjustMySellListings();
 			adjustMyBuyOrder();
+			adjustConfirmationListing();
+			showMarketMyListings();
 		}
 
 		if (globalSettings.market_adjust_history) {
@@ -1529,6 +1531,35 @@
 			addBuyOrderActions();
 		}
 
+		//调整确认上架列表
+		function adjustConfirmationListing() {
+			var listingSection = document.querySelectorAll(".my_listing_section");
+			var confirmationListing;
+			for (var section of listingSection) {
+				var button = section.querySelector(".market_listing_cancel_button a.item_market_action_button_edit");
+				if (button && button.href.match(/\bCancelMarketListingConfirmation\b/)) {
+					confirmationListing = section;
+					confirmationListing.classList.add("sfu_my_confirmation_listing");
+					break;
+				}
+			}
+
+			if (!confirmationListing) {
+				return;
+			}
+
+			var confirmationRows = confirmationListing.querySelectorAll(".market_listing_row");
+			for (var row of confirmationRows) {
+				addRowCheckbox(row).addEventListener("click", confirmationListingCheckboxClicked);
+				addGameCardsLink(row);
+				var priceCell = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty)");
+				priceCell.classList.add("market_price_can_click");
+				priceCell.onclick = showListingPriceInfo;
+			}
+
+			addConfirmationListingActions();
+		}
+
 		function showMarketMyListings() {
 			document.querySelector("#tabContentsMyListings").show();
 			document.querySelector("#tabContentsMyMarketHistory").hide();
@@ -1733,6 +1764,66 @@
 						}
 					}
 					cancelSelectedBuyOrder(rowsToCancel);
+				});
+			}
+		}
+
+		function addConfirmationListingActions() {
+			var controlBefore = document.createElement("div");
+			controlBefore.className = "Listing_page_control";
+			controlBefore.id = "confirmation_control_before";
+			var controlAfter = document.createElement("div");
+			controlAfter.className = "Listing_page_control";
+			controlAfter.id = "confirmation_control_after";
+
+			var html = `<div class="control_action_container"><a class="confirmation_select_all market_action_btn pagebtn">全部选中</a><a class="cancel_confirmation market_action_btn pagebtn">取消选中的确认</a></div>`;
+			controlBefore.innerHTML = html;
+			controlAfter.innerHTML = html;
+			var confirmationListing = document.querySelector(".sfu_my_confirmation_listing");
+			confirmationListing.insertBefore(controlBefore, confirmationListing.querySelector(".market_listing_table_header"));
+			confirmationListing.appendChild(controlAfter);
+
+			controlBefore.onclick = confirmationListingActionsClick;
+			controlAfter.onclick = confirmationListingActionsClick;
+		}
+
+		function confirmationListingActionsClick(event) {
+			var elem = event.target;
+			var confirmationRows = document.querySelectorAll(".sfu_my_confirmation_listing .market_listing_row");
+			if (elem.classList.contains("confirmation_select_all")) {
+				var selectBtn0 = document.querySelector("#confirmation_control_before .confirmation_select_all");
+				var selectBtn1 = document.querySelector("#confirmation_control_after .confirmation_select_all");
+
+				if (elem.classList.contains("checked")) {  //取消选中
+					selectBtn0.classList.remove("checked");
+					selectBtn1.classList.remove("checked");
+					selectBtn0.textContent = "全部选中";
+					selectBtn1.textContent = "全部选中";
+
+					for (var row of confirmationRows) {
+						row.querySelector(".market_listing_check").checked = false;
+					}
+				} else {
+					selectBtn0.classList.add("checked");
+					selectBtn1.classList.add("checked");
+					selectBtn0.textContent = "取消选中";
+					selectBtn1.textContent = "取消选中";
+
+					for (var row of confirmationRows) {
+						row.querySelector(".market_listing_check").checked = true;
+					}
+				}
+
+			} else if (elem.classList.contains("cancel_confirmation")) {
+				unsafeWindow.ShowConfirmDialog("取消确认", "确定取消所有选中的待确认物品？").done(function() {
+					var rowsToCancel = [];
+					for (var row of confirmationRows) {
+						var checkbox = row.querySelector(".market_listing_check");
+						if (checkbox.checked && !checkbox.hasAttribute("data-removed")) {
+							rowsToCancel.push(row);
+						}
+					}
+					cancelSelectedConfirmation(rowsToCancel);
 				});
 			}
 		}
@@ -1969,6 +2060,10 @@
 
 		function buyListingCheckboxClicked(event) {
 			checkboxShiftSelected(event, "#tabContentsMyBuyOrders .market_listing_row .market_listing_check");
+		}
+
+		function confirmationListingCheckboxClicked(event) {
+			checkboxShiftSelected(event, ".sfu_my_confirmation_listing .market_listing_row .market_listing_check");
 		}
 
 		//在价格右侧显示最低售价和最高求购价
@@ -3745,6 +3840,21 @@
 
 			var data = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
 			if (data.success == 1) {
+				row.querySelector(".market_listing_check").setAttribute("data-removed", "true");
+				btn.querySelector(".item_market_action_button_contents").textContent = "已取消";
+				btn.style.color = "red";
+			}
+		}
+	}
+
+	//取消待确认物品
+	async function cancelSelectedConfirmation(rowsToCancel) {
+		for (var row of rowsToCancel) {
+			var btn = row.querySelector("a.item_market_action_button_edit");
+			var cid = eval(btn.href.match(/\bCancelMarketListingConfirmation\(([^\(\)]+)\)/)[1].replace(/ /g, "").split(",")[1]);
+
+			var data = await marketRemoveListing(cid, unsafeWindow.g_sessionID);
+			if (data.success) {
 				row.querySelector(".market_listing_check").setAttribute("data-removed", "true");
 				btn.querySelector(".item_market_action_button_contents").textContent = "已取消";
 				btn.style.color = "red";
