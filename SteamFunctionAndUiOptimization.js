@@ -1113,11 +1113,12 @@
 		async function sellAllSameItem(event, item) {
 			var hashName = item.description.market_hash_name;
 			var m_rgAssets = unsafeWindow.g_rgAppContextData[item.appid].rgContexts[parseInt(item.contextid)].inventory.m_rgAssets;
-			if (hashName && m_rgAssets) {
-				var input = event.currentTarget.parentNode.querySelector("input");
-				var amount = isNaN(Number(input.value)) ? 0 : Math.round(Number(input.value) * 100);
-				var price = calculatePriceYouReceive(amount, item);
-				var buyerPay = calculatePriceBuyerPay(price, item);
+			var input = event.currentTarget.parentNode.querySelector("input");
+			var amount = isNaN(Number(input.value)) ? 0 : Math.round(Number(input.value) * 100);
+			var price = calculatePriceYouReceive(amount, item);
+			var buyerPay = calculatePriceBuyerPay(price, item);
+
+			if (hashName && m_rgAssets && price > 0) {
 				let maxNumber = globalSettings.inventory_sell_number;
 				let cnumber = 1;
 				for (let assetid in m_rgAssets) {
@@ -1127,17 +1128,25 @@
 						if (maxNumber > 0 && cnumber > maxNumber) {
 							break;
 						}
-						await sellSelectedItem(0, it, price, buyerPay);
-						cnumber++;
+						let result = await sellSelectedItem(0, it, price, buyerPay);
+
+						if (result && result.success) {
+							cnumber++;
+
+							if (globalSettings.inventory_stop_sell && result.requires_confirmation) {
+								document.querySelector("#sell_log_text").innerHTML += `已停止批量出售<br>`;
+								break;
+							}
+						}
 					}
 				}
 			}
 		}
 
-		async function sellSelectedItem(amount, item, priceReceive=0, pricePay=0) {
+		async function sellSelectedItem(amount, item, priceReceive=0, pricePay=0, quantity=1) {
 			var price = priceReceive || calculatePriceYouReceive(amount, item);
 			if (price > 0) {
-				var data = await sellItem(unsafeWindow.g_sessionID, item.appid, item.contextid, item.assetid, 1, price);
+				var data = await sellItem(unsafeWindow.g_sessionID, item.appid, item.contextid, item.assetid, quantity, price);
 				if (data.success) {
 					item.element.style.background = "green";
 					item.element.setAttribute("data-sold", "1");
@@ -1162,7 +1171,9 @@
 				}
 				document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
 				document.querySelector("#clear_sell_log").style.display = "inline-block";
+				return data;
 			}
+			return null;
 		}
 
 		//在右侧大图片的右边添加链接按键
@@ -3166,7 +3177,8 @@
 							<div class="settings_option"><input id="sfu_inventory_set_filter" type="checkbox" ${settings.inventory_set_filter ? "checked=true" : ""} onclick="window.sfu_settings.inventory_set_filter = this.checked;"></input><label for="sfu_inventory_set_filter" class="margin_right_20">只显示普通卡牌</label></div>
 							<div class="settings_option"><input id="sfu_inventory_append_linkbtn" type="checkbox" ${settings.inventory_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_append_linkbtn = this.checked;"></input><label for="sfu_inventory_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
 							<div class="settings_option"><input id="sfu_inventory_sell_btn" type="checkbox" ${settings.inventory_sell_btn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_sell_btn = this.checked;"></input><label for="sfu_inventory_sell_btn" class="margin_right_20">添加出售按键</label></div>
-							<div class="settings_option"><input id="sfu_inventory_market_info" type="checkbox" ${settings.inventory_market_info ? "checked=true" : ""} onclick="window.sfu_settings.inventory_market_info = this.checked;"></input><label for="sfu_inventory_market_info">自动显示市场价格信息</label></div>
+							<div class="settings_option"><input id="sfu_inventory_market_info" type="checkbox" ${settings.inventory_market_info ? "checked=true" : ""} onclick="window.sfu_settings.inventory_market_info = this.checked;"></input><label for="sfu_inventory_market_info" class="margin_right_20">自动显示市场价格信息</label></div></br>
+							<div class="settings_option"><input id="sfu_inventory_stop_sell" type="checkbox" ${settings.inventory_stop_sell ? "checked=true" : ""} onclick="window.sfu_settings.inventory_stop_sell = this.checked;"></input><label for="sfu_inventory_stop_sell">需要确认时停止批量出售</label></div></br>
 							<div class="settings_option"><label for="sfu_inventory_sell_number">一次批量出售的最大数量(0表示不限)</label><input class="settings_input_number" id="sfu_inventory_sell_number" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.inventory_sell_number}" oninput="window.sfu_settings.inventory_sell_number = Math.max(parseInt(this.value), 0);"></input></div>
 							</div>
 							<div class="settings_page_title">市场页面设置：</div>
@@ -3207,6 +3219,7 @@
 		data.inventory_append_linkbtn ??= true;
 		data.inventory_sell_btn ??= true;
 		data.inventory_market_info ??= true;
+		data.inventory_stop_sell ??= false;
 		data.inventory_sell_number ??= 0;
 		data.marketlisting_set_style ??= true;
 		data.marketlisting_show_priceoverview ??= true;
