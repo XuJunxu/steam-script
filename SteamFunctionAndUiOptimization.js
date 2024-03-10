@@ -1277,7 +1277,7 @@
 		var numFoilCard = 0;
 		var numOther = 0;
 
-		if (globalSettings.market_adjust_selllistings || globalSettings.market_adjust_history) {
+		if (globalSettings.market_adjust_listings) {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `.market_action_btn {padding: 0px 5px; margin-right: 8px; font-size: 12px;} 
 								.control_action_container {padding-left: 6px; display: inline-block; position: relative;}
@@ -1290,23 +1290,21 @@
 								.market_listing_table_header {text-align: center;}
 								.market_listing_game_name_link {color: inherit;} 
 								.market_listing_game_name_link:hover {text-decoration: underline;}
-								.market_price_can_click {cursor: pointer;} .market_price_can_click:hover {background: #324965;}`;
-			document.body.appendChild(styleElem);
-		}
-
-		if (globalSettings.market_adjust_selllistings) {
-			adjustMySellListings();
-			adjustMyBuyOrder();
-			adjustConfirmationListing();
-			showMarketMyListings();
-		}
-
-		if (globalSettings.market_adjust_history) {
-			var styleElem = document.createElement("style");
-			styleElem.innerHTML = `.history_action_btn_container {margin-right: 5px;}
+								.market_price_can_click {cursor: pointer;} .market_price_can_click:hover {background: #324965;}
+								.history_action_btn_container {margin-right: 5px;}
 								.wait_loading_history {position: absolute; height: 20px; top: 2px;}`;
 			document.body.appendChild(styleElem);
+		}
+
+		if (globalSettings.market_adjust_listings) {
+			document.querySelector("#tabMyListings").addEventListener("click", showMarketMyListings, true);
 			document.querySelector("#tabMyMarketHistory").addEventListener("click", showMarketHistory, true);
+			
+			adjustMyBuyOrder();
+			adjustConfirmationListing();
+			
+			adjustMySellListings();
+			showMarketMyListings();
 		}
 
 		//调整出售物品列表
@@ -1315,8 +1313,6 @@
 			if (!marketListings) {
 				return;
 			}
-
-			document.querySelector("#tabMyListings").addEventListener("click", showMarketMyListings);
 
 			marketListings.innerHTML = "<div style='text-align: center;'><img src='https://community.steamstatic.com/public/images/login/throbber.gif' alt='载入中'></div>";
 			
@@ -1560,7 +1556,11 @@
 			addConfirmationListingActions();
 		}
 
-		function showMarketMyListings() {
+		function showMarketMyListings(event) {
+			if (event) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
 			document.querySelector("#tabContentsMyListings").show();
 			document.querySelector("#tabContentsMyMarketHistory").hide();
 			document.querySelector("#tabContentsMyBuyOrders")?.hide();
@@ -3278,8 +3278,7 @@
 							</div>
 							<div class="settings_page_title">市场页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_market_adjust_selllistings" type="checkbox" ${settings.market_adjust_selllistings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_selllistings = this.checked;"></input><label for="sfu_market_adjust_selllistings" class="margin_right_20">调整出售物品表格</label></div>
-							<div class="settings_option"><input id="sfu_market_adjust_history" type="checkbox" ${settings.market_adjust_history ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_history = this.checked;"></input><label for="sfu_market_adjust_history" class="margin_right_20">调整市场历史记录表格</label></div>
+							<div class="settings_option"><input id="sfu_market_adjust_listings" type="checkbox" ${settings.market_adjust_listings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_listings = this.checked;"></input><label for="sfu_market_adjust_listings" class="margin_right_20">调整出售、求购、确认和历史记录列表</label></div>
 							<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">出售物品表格自动显示最低出售和最高求购</label></div>
 							<div class="settings_option"><label for="sfu_market_page_size">出售物品表格每页物品数量</label><input class="settings_input_number" id="sfu_market_page_size" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
 							</div>
@@ -3322,8 +3321,7 @@
 		data.gamecards_set_style ??= true;
 		data.gamecards_show_priceoverview ??= false;
 		data.gamecards_append_linkbtn ??= true;
-		data.market_adjust_selllistings ??= true;
-		data.market_adjust_history ??= true;
+		data.market_adjust_listings ??= true;
 		data.market_show_priceinfo ??= false;
 		data.market_page_size ??= 100;
 
