@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam令牌验证器
 // @namespace    SteamGuardAuthenticator
-// @version      1.0.3
+// @version      1.0.4
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
 // @match        http*://store.steampowered.com/*
@@ -343,12 +343,14 @@
             loadConfirmationInfo(account, modal);
         });
 
-        $content.find('#accept_conf').on('click', function() {
-            sendConfirmationData(account, 'allow', modal)
+        $content.find('#accept_conf').on('click', async function() {
+            await sendConfirmationData(account, 'allow', modal);
+            loadConfirmationInfo(account, modal);
         });
 
-        $content.find('#reject_conf').on('click', function() {
-            sendConfirmationData(account, 'cancel', modal)
+        $content.find('#reject_conf').on('click', async function() {
+            await sendConfirmationData(account, 'cancel', modal);
+            loadConfirmationInfo(account, modal);
         });
 
         loadConfirmationInfo(account, modal);
