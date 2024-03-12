@@ -1120,21 +1120,29 @@
 
 			if (hashName && m_rgAssets && price > 0) {
 				let maxNumber = globalSettings.inventory_sell_number;
-				let cnumber = 1;
+				let cnumber = 0;
+
 				for (let assetid in m_rgAssets) {
 					let it = m_rgAssets[assetid];
 
 					if (it?.description?.marketable && it.description.market_hash_name == hashName && !it.element.getAttribute("data-sold")) {
-						if (maxNumber > 0 && cnumber > maxNumber) {
+						if (maxNumber > 0 && cnumber >= maxNumber) {
 							break;
 						}
-						let result = await sellSelectedItem(0, it, price, buyerPay);
+
+						let quantity = parseInt(it.amount);
+						if (maxNumber > 0) {
+							quantity = Math.min(quantity, maxNumber - cnumber);
+						}
+						
+						let result = await sellSelectedItem(0, it, price, buyerPay, quantity);
 
 						if (result && result.success) {
-							cnumber++;
+							cnumber += quantity;
 
 							if (globalSettings.inventory_stop_sell && result.requires_confirmation) {
 								document.querySelector("#sell_log_text").innerHTML += `已停止批量出售<br>`;
+								document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
 								break;
 							}
 						}
@@ -1147,13 +1155,23 @@
 			var price = priceReceive || calculatePriceYouReceive(amount, item);
 			if (price > 0) {
 				var data = await sellItem(unsafeWindow.g_sessionID, item.appid, item.contextid, item.assetid, quantity, price);
+
+				var strQuantity = "";
+				var strEach = "";
+				if (quantity > 1) {
+					strQuantity = `${quantity}件 `;
+					strEach = "每件";
+				}
+				
 				if (data.success) {
-					item.element.style.background = "green";
-					item.element.setAttribute("data-sold", "1");
+					if (quantity >= item.amount) {
+						item.element.style.background = "green";
+						item.element.setAttribute("data-sold", "1");
+					}
 
 					var buyerPay = pricePay || calculatePriceBuyerPay(price, item);
-					sellTotalPriceBuyerPay += buyerPay;
-					sellTotalPriceReceive += price;
+					sellTotalPriceBuyerPay += buyerPay * quantity;
+					sellTotalPriceReceive += price * quantity;
 					sellCount ++;
 
 					var strPrice = getSymbolStrFromPrice(price, currencyInfo);
@@ -1161,12 +1179,12 @@
 					var strTotalReceive = getSymbolStrFromPrice(sellTotalPriceReceive, currencyInfo);
 					var strTotalBuyerPay = getSymbolStrFromPrice(sellTotalPriceBuyerPay, currencyInfo);
 
-					var logText = `${sellCount} - ${item.description.name} 已在市场上架，售价为 ${strBuyerPay}，将收到 ${strPrice}` + (data.requires_confirmation ? " (需要确认)" : "") + "<br>";
+					var logText = `<${sellCount}> ${strQuantity}${item.description.name} 已在市场上架，${strEach}售价为 ${strBuyerPay}，${strEach}将收到 ${strPrice}` + (data.requires_confirmation ? " (需要确认)" : "") + "<br>";
 					var logTotal = `累计上架物品的总价为 ${strTotalBuyerPay}，将收到 ${strTotalReceive}`;
 					document.querySelector("#sell_log_text").innerHTML += logText;
 					document.querySelector("#sell_log_total").innerHTML = logTotal;
 				} else {
-					var logText = `Failed - ${item.description.name} 上架市场失败，原因：${data.message || errorTranslator(data)}` + "<br>";
+					var logText = `<Failed> ${strQuantity}${item.description.name} 上架市场失败，原因：${data.message || errorTranslator(data)}` + "<br>";
 					document.querySelector("#sell_log_text").innerHTML += logText;
 				}
 				document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
