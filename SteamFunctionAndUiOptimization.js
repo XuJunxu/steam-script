@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.2.0
+// @version      2.2.1
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -1162,7 +1162,7 @@
 					strQuantity = `${quantity}件 `;
 					strEach = "每件";
 				}
-				
+
 				if (data.success) {
 					if (quantity >= item.amount) {
 						item.element.style.background = "green";
