@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.2.1
+// @version      2.2.2
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -2258,7 +2258,8 @@
 									.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
 									#market_page_control_before {margin-top: 10px; user-select: none;}
 									.market_action_btn_container {display: inline-block; padding-left: 6px;}
-									.market_action_btn {margin-right: 10px; font-size: 12px;}`;
+									.market_action_btn {margin-right: 10px; font-size: 12px;}
+									.market_listing_num {font-size: 12px; position: absolute; right: 55px; top: 15px;}`;
 			document.body.appendChild(styleElem);
 		
 			//最新动态移到页面最后
@@ -2275,7 +2276,14 @@
 		function addRowCheckbox() {
 			var listingRows = document.querySelector("#tabContentsMyActiveMarketListingsTable #tabContentsMyActiveMarketListingsRows");
 			if (listingRows) {
+				var num = 1;
 				for (var elem of listingRows.querySelectorAll(".market_listing_row")) {
+					var numLabel = document.createElement("span");
+					numLabel.className = "market_listing_num";
+					numLabel.textContent = num;
+					elem.querySelector(".market_listing_cancel_button").appendChild(numLabel);
+					num++;
+
 					var checkbox = document.createElement("input");
 					checkbox.setAttribute("type", "checkbox");
 					checkbox.className = "market_listing_check";
