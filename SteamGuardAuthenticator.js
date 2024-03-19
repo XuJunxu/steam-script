@@ -343,8 +343,11 @@
             } else if (elem.classList.contains('mobile_conf_item_info')) {
                 var cid = elem.getAttribute('data-cid');
                 var url = 'https://steamcommunity.com/mobileconf/detailspage/' + cid + '?' + generateConfirmationQueryParams(account, 'details' + cid, timeOffset);
-                ShowDialog('确认交易和市场', `<iframe src="${url}" style="height: 600px; width: 600px;"></iframe>`);
-                //unsafeWindow.open('https://steamcommunity.com/mobileconf/detailspage/' + cid + '?' + generateConfirmationQueryParams(account, 'details' + cid, timeOffset), '_blank', 'height=790,width=600,resize=yes,scrollbars=yes');
+                if (unsafeWindow.location.hostname == 'steamcommunity.com') {
+                    ShowDialog('确认交易和市场', `<iframe src="${url}" style="height: 600px; width: 600px;"></iframe>`);
+                } else {
+                    unsafeWindow.open(url, '_blank', 'height=790,width=600,resize=yes,scrollbars=yes');
+                }
             }
         });
 
