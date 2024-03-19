@@ -15,6 +15,7 @@
 // @exclude      http*://help.steampowered.com/login/logout/
 // @exclude      http*://steamcommunity.com/login/logout/
 // @exclude      http*://store.steampowered.com/widget/*
+// @exclude      http*://steamcommunity.com/mobileconf/detailspage/*
 // @grant        unsafeWindow
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -257,7 +258,7 @@
                 account_list = [];
                 ShowAlertDialog('导入错误', '数据格式有误，请检查后再试。<br>' + acct.replace(/\n/g, '<br>'), '确定');
             }
-            
+
             if (account_list.length) {
                 var results = '';
                 for (var acct of account_list) {
@@ -277,7 +278,7 @@
             return '失败，无效的 64 位 Steam ID。';
         }
         ACCOUNTS.push(account);
-        //GM_setValue('SG_ACCOUNTS', ACCOUNTS);
+        GM_setValue('SG_ACCOUNTS', ACCOUNTS);
         if (account.steamid && account.identity_secret) {
             return '成功，该账号支持确认交易和市场。';
         } else {
@@ -341,7 +342,9 @@
                 modal.refreshBottons();
             } else if (elem.classList.contains('mobile_conf_item_info')) {
                 var cid = elem.getAttribute('data-cid');
-                unsafeWindow.open('https://steamcommunity.com/mobileconf/detailspage/' + cid + '?' + generateConfirmationQueryParams(account, 'details' + cid, timeOffset), '_blank', 'height=790,width=600,resize=yes,scrollbars=yes');
+                var url = 'https://steamcommunity.com/mobileconf/detailspage/' + cid + '?' + generateConfirmationQueryParams(account, 'details' + cid, timeOffset);
+                ShowDialog('确认交易和市场', `<iframe src="${url}" style="height: 600px; width: 600px;"></iframe>`);
+                //unsafeWindow.open('https://steamcommunity.com/mobileconf/detailspage/' + cid + '?' + generateConfirmationQueryParams(account, 'details' + cid, timeOffset), '_blank', 'height=790,width=600,resize=yes,scrollbars=yes');
             }
         });
 
