@@ -224,7 +224,8 @@
                 steamid: $content.find('#steamid').val().trim(),
                 identity_secret: $content.find('#identity_secret').val().trim()
             };
-            appendAccount('添加账号', account);
+            var res = appendAccount(account);
+            ShowAlertDialog('添加账号', res, '确定');
         });
     }
 
@@ -234,36 +235,53 @@
         var $textarea = $content.find('textarea');
         $textarea.attr('placeholder', '将要导入的数据粘贴于此');
         modal.done(function(text) {
+            var account_list = [];
+            var accounts_text = text.match(/\"\d{17}\"\s*\:\s*\{[^\{\}]+\}/g) || text.match(/\{[^\{\}]+\}/g) || [text];
             try {
-                var data = JSON.parse(text);
-                var account = {
-                    account_name: data.account_name || 'unknown',
-                    shared_secret: data.shared_secret,
-                    steamid: (data.steamid || data.Session?.SteamID || '').toString(),
-                    identity_secret: data.identity_secret
-                };
-                appendAccount('导入账号', account);
+                for (var acct of accounts_text) {
+                    var steamid = '';
+                    if (acct[0] == '\"') {
+                        steamid = acct.match(/^\"(\d{17})\"/)[1];
+                        acct = acct.match(/(\{[^\{\}]+\})/)[1];
+                    }
+                    var data = JSON.parse(acct);
+                    var account = {
+                        account_name: data.account_name || 'unknown',
+                        shared_secret: data.shared_secret,
+                        steamid: (data.steamid || steamid || '').toString(),
+                        identity_secret: data.identity_secret
+                    };
+                    account_list.push(account);
+                }
             } catch(err) {
-                ShowAlertDialog('错误', '数据格式有误，请检查后再试。', '确定');
+                account_list = [];
+                ShowAlertDialog('导入错误', '数据格式有误，请检查后再试。<br>' + acct.replace(/\n/g, '<br>'), '确定');
+            }
+            
+            if (account_list.length) {
+                var results = '';
+                for (var acct of account_list) {
+                    var res = appendAccount(acct);
+                    results += `${acct.account_name || acct.steamid || 'unknown'} ${res} <br>`;
+                }
+                ShowAlertDialog('导入账号', results, '确定');
             }
         });
     }
 
-    function appendAccount(title, account) {
+    function appendAccount(account) {
         if (!account.shared_secret) {
-            ShowAlertDialog('错误', '缺少有效的共享密钥(shared_secret)。', '确定');
-            return;
+            return '失败，缺少有效的共享密钥(shared_secret)。';
         }
         if (account.steamid && account.steamid.search(/^7656\d{13}$/) != 0) {
-            ShowAlertDialog('错误', '无效的 64 位 Steam ID。', '确定');
-            return;
+            return '失败，无效的 64 位 Steam ID。';
         }
         ACCOUNTS.push(account);
-        GM_setValue('SG_ACCOUNTS', ACCOUNTS);
+        //GM_setValue('SG_ACCOUNTS', ACCOUNTS);
         if (account.steamid && account.identity_secret) {
-            ShowAlertDialog(title, title + '成功，该账号支持确认交易和市场。', '确定');
+            return '成功，该账号支持确认交易和市场。';
         } else {
-            ShowAlertDialog(title, title + '成功，该账号不支持确认交易和市场。', '确定');
+            return '成功，该账号不支持确认交易和市场。';
         }
     }
 
