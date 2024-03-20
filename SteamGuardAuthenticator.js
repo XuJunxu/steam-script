@@ -116,7 +116,7 @@
         var dropdown = document.createElement('div');
         dropdown.className = 'popup_block_new';
         dropdown.id = 'SG_Authenticator_dropdown';
-        dropdown.setAttribute('style', 'display: none; position: fixed; top: 50%; right: 52px; overflow: hidden; z-index: 500;');
+        dropdown.setAttribute('style', 'display: none; position: fixed; top: 50%; right: 50px; z-index: 500; user-select: none;');
         document.body.appendChild(dropdown);
 
         var popupMenu = document.createElement('div');
@@ -124,12 +124,33 @@
         popupMenu.setAttribute('style', 'overflow-y: auto; max-height: calc(100vh - 50px);');
         dropdown.appendChild(popupMenu);
 
+        popupMenu.innerHTML = `<a class="popup_menu_item" id="SG_manage_account">管理账号</a>
+                               <a class="popup_menu_item" id="SG_auto_input_code" style="position: relative; padding: 0;">
+                               <label class="for_right_btn" for="auto_input_code_checkbox" style="cursor: pointer;">自动输入验证码</label>
+                               <input id="auto_input_code_checkbox" type="checkbox" style="vertical-align: middle; right: 7.5px; margin: 0px;" ${AUTOCODE ? "checked=true" : ""}></a>
+                               <div id="account_list_container"></div>`;
+
+        var accountDropdown = document.createElement('div');
+        accountDropdown.className = 'popup_block_new';
+        accountDropdown.id = 'SG_manage_account_dropdown';
+        accountDropdown.setAttribute('style', 'display: none; position: absolute; user-select: none;');
+        dropdown.appendChild(accountDropdown);
+
+        var accountMenu = document.createElement('div');
+        accountMenu.className = 'popup_body popup_menu';
+        accountMenu.setAttribute('style', 'overflow-y: auto; max-height: calc(100vh - 50px);');
+        accountDropdown.appendChild(accountMenu);
+
+        accountMenu.innerHTML = `<a class="popup_menu_item" id="SG_add_account">添加账号</a>
+                                 <a class="popup_menu_item" id="SG_import_account">导入账号</a>
+                                 <a class="popup_menu_item" id="SG_delete_account">删除账号</a>`;
+
         buttons.querySelector('#guard_confirmation').onclick = function() {
             showConfirmationDialog();
         };
 
         buttons.querySelector('#guard_auth_code').onclick = function() { 
-            showAuthenticatorPopupMenu(this);
+            showAuthenticatorPopupMenu();
         };
 
         buttons.querySelector('#guard_reload_page').onclick = function() {
@@ -140,28 +161,52 @@
             unsafeWindow.scroll(0, 0);
         };
 
-        popupMenu.onclick = function(e) {
+        unsafeWindow.onresize = function() {
+            var $elem = $J(dropdown);
+            $elem.css('top', `calc(50% - ${$elem.height() / 2}px)`);
+        };
+
+        popupMenu.querySelector('#SG_manage_account').onclick = function() {
+            showManageAccountPopupMenu();
+        };
+
+        popupMenu.querySelector('#account_list_container').onclick = function(e) {
             var elem = e.target;
             if (elem.classList.contains('account_name')) {
                 copyAuthCode(elem);
             } else if (elem.classList.contains('remove_account')) {
                 removeAccount(elem);
-            } else if (elem.id == 'add_account') {
-                showAddAccountDialog();
-            } else if (elem.id == 'import_account') {
-                showImportAccountDialog();
             }
         };
+
+        popupMenu.querySelector('#auto_input_code_checkbox').onchange = function() {
+            AUTOCODE = this.checked;
+            GM_setValue('SG_AUTO_INPUT_CODE', AUTOCODE);
+        };
+
+        accountMenu.onclick = function(e) {
+            var elem = e.target;
+            if (elem.id == 'SG_add_account') {
+                showAddAccountDialog();
+                hideAuthenticatorPopupMenu();
+            } else if (elem.id == 'SG_import_account') {
+                showImportAccountDialog();
+                hideAuthenticatorPopupMenu();
+            } else if (elem.id == 'SG_delete_account') {
+                showDeleteAccountDialog();
+                hideAuthenticatorPopupMenu();
+            }
+        }
 
         buttons.style.marginTop = `calc(-${unsafeWindow.getComputedStyle(buttons).height} / 2)`;
     }
 
-    function showAuthenticatorPopupMenu(elemLink) {
-        var $Link = $JFromIDOrElement(elemLink);
+    function showAuthenticatorPopupMenu() {
+        var $Link = $J('#guard_auth_code');
         var $popup = $J('#SG_Authenticator_dropdown');
 
         if ($Link.hasClass('focus')) {
-            HideMenu(elemLink, $popup);
+            hideAuthenticatorPopupMenu();
             return;
         }
 
@@ -172,12 +217,9 @@
         var time = Date.now();
         popupMenu.setAttribute('data-time', time);
 
-        var html = `<a class="popup_menu_item" id="add_account">添加账号</a>
-                    <a class="popup_menu_item" id="import_account">导入账号</a>
-                    <a class="popup_menu_item" id="auto_input_code" style="position: relative; padding: 0;">
-                    <label for="auto_input_code_checkbox" style="cursor: pointer;">自动输入验证码</label>
-                    <input id="auto_input_code_checkbox" type="checkbox" style="vertical-align: middle; right: 7.5px; margin: 0px;" ${AUTOCODE ? "checked=true" : ""}></a>`;
-
+        popupMenu.querySelector('#auto_input_code_checkbox').checked = AUTOCODE;
+       
+        var html = '';
         for (var i=0; i<getFileAccounts().length; i++) {
             var account = getFileAccounts()[i];
             html += `<a class="popup_menu_item" style="position: relative; padding: 0;">
@@ -188,21 +230,46 @@
             var account = ACCOUNTS[i];
             html += `<a class="popup_menu_item" style="position: relative; padding: 0;">
                      <span class="account_name" data-tooltip-text="点击复制该账号的验证码" data-id=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span>
-                     <span class="remove_account" data-tooltip-text="删除该账号" data-id=${i} data-name=${account.account_name}></span></a>`;
+                     <span class="remove_account" data-tooltip-text="删除该账号" data-id=${i} data-name=${account.account_name} style="display: none;"></span></a>`;
         }
         
-        popupMenu.innerHTML = html;
-        setupTooltips($J(popupMenu));
+        var accountList = popupMenu.querySelector('#account_list_container');
+        accountList.innerHTML = html;
+        setupTooltips($J(accountList));
 
-        popupMenu.querySelector('#auto_input_code_checkbox').onchange = function() {
-            AUTOCODE = this.checked;
-            GM_setValue('SG_AUTO_INPUT_CODE', AUTOCODE);
-        };
-
-        $popup.css('margin-top', `${-$popup.height() / 2}px`);
+        $popup.css('top', `calc(50% - ${$popup.height() / 2}px)`);
         ShowWithFade($popup);
         $Link.addClass('focus');
-        RegisterPopupDismissal(function() { HideMenu(elemLink, $popup); }, $popup);
+        RegisterPopupDismissal(function() { hideAuthenticatorPopupMenu(); }, $popup);
+    }
+
+    function hideAuthenticatorPopupMenu() {
+        HideMenu('guard_auth_code', 'SG_Authenticator_dropdown');
+        hideManageAccountPopupMenu();
+    }
+
+    function showManageAccountPopupMenu() {
+        var $Link = $J('#SG_manage_account');
+        var $popup = $J('#SG_manage_account_dropdown');
+
+        if ($Link.hasClass('focus')) {
+            hideManageAccountPopupMenu();
+            return;
+        }
+
+        var pos = $Link.position();
+
+        $popup.css('left', `${pos.left - $popup.width() - 1}px`);
+        $popup.css('top', `${pos.top}px`);
+        ShowWithFade($popup);
+        $Link.addClass('focus');
+    }
+
+    function hideManageAccountPopupMenu() {
+        var $Link = $J('#SG_manage_account');
+        var $popup = $J('#SG_manage_account_dropdown');
+        HideWithFade($popup);
+        $Link.removeClass('focus');
     }
 
     function showAddAccountDialog() {
@@ -220,7 +287,7 @@
         setupTooltips($content);
         modal.done(function() {
             var account = {
-                account_name: $content.find('#account_name').val().trim() || 'unknown',
+                account_name: $content.find('#account_name').val().trim(),
                 shared_secret: $content.find('#shared_secret').val().trim(),
                 steamid: $content.find('#steamid').val().trim(),
                 identity_secret: $content.find('#identity_secret').val().trim()
@@ -247,7 +314,7 @@
                     }
                     var data = JSON.parse(acct);
                     var account = {
-                        account_name: data.account_name || 'unknown',
+                        account_name: data.account_name,
                         shared_secret: data.shared_secret,
                         steamid: (data.steamid || steamid || '').toString(),
                         identity_secret: data.identity_secret
@@ -277,6 +344,7 @@
         if (account.steamid && account.steamid.search(/^7656\d{13}$/) != 0) {
             return '失败，无效的 64 位 Steam ID。';
         }
+        account.account_name = account.account_name || account.steamid || 'unknown';
         ACCOUNTS.push(account);
         GM_setValue('SG_ACCOUNTS', ACCOUNTS);
         if (account.steamid && account.identity_secret) {
@@ -284,6 +352,66 @@
         } else {
             return '成功，该账号不支持确认交易和市场。';
         }
+    }
+
+    function showDeleteAccountDialog() {
+        var content = `<div id="SG_action_container"><a class="SG_action_btn" id="SG_select_all_btn">全选</a>
+                       <a class="SG_action_btn" id="SG_reverse_select_btn">反选</a>
+                       <a class="SG_action_btn" id="SG_delete_account_btn">删除</a></div>
+                       <div id="SG_edit_accounts_container"></div>`;
+
+
+        var modal = ShowConfirmDialog('删除账号', content, '保存', '取消');
+        var $content = modal.GetContent();
+        var $accounts = $content.find('#SG_edit_accounts_container');
+
+        ACCOUNTS = getLocalAccounts();
+        
+        for (var account of ACCOUNTS) {
+            var elemAcct = document.createElement('div');
+            elemAcct.className = 'edit_account_item';
+            elemAcct.innerHTML = `<span class="account_item_name">${account.account_name}</span><input type="checkbox"  class="account_item_checkbox">`;
+            elemAcct.account = account;
+            $accounts.append(elemAcct);
+        }
+
+        $content.find('#SG_select_all_btn').on('click', function() {
+            var checkboxs = $content.find('.edit_account_item .account_item_checkbox');
+            for (var i=0; i<checkboxs.length; i++) {
+                checkboxs[i].checked = true;
+            }
+        });
+
+        $content.find('#SG_reverse_select_btn').on('click', function() {
+            var checkboxs = $content.find('.edit_account_item .account_item_checkbox');
+            for (var i=0; i<checkboxs.length; i++) {
+                checkboxs[i].checked = !checkboxs[i].checked;
+            }
+        });
+
+        $content.find('#SG_delete_account_btn').on('click', function() {
+            var accountItems = $content.find('.edit_account_item');
+            for (var i=0; i<accountItems.length; i++) {
+                if (accountItems[i].querySelector('.account_item_checkbox').checked) {
+                    $J(accountItems[i]).remove();
+                }
+            }
+        });
+
+        modal.OnResize(function(maxWidth, maxHeight) {
+			$content.find('#SG_edit_accounts_container').css('max-height', (maxHeight - 104) + "px");
+		});
+        
+        modal.done(function() {
+            var accountItems = $content.find('.edit_account_item');
+            var accounts_list = [];
+            for (var i=0; i<accountItems.length; i++) {
+                accounts_list.push(accountItems[i].account);
+            }
+            ACCOUNTS = accounts_list;
+            GM_setValue('SG_ACCOUNTS', ACCOUNTS);
+        });
+        modal.AdjustSizing();
     }
 
     function showConfirmationDialog() {
@@ -525,7 +653,7 @@
             document.body.removeChild(input);
         }
         
-        elem.style.with = unsafeWindow.getComputedStyle(elem).width;
+        elem.style.width = unsafeWindow.getComputedStyle(elem).width;
         elem.textContent = '复制成功';
         elem.classList.add('copy_code_success');
         setTimeout(function() {
@@ -674,13 +802,12 @@
             padding: 5px 0px;
             font-family: "Motiva Sans",Arial,Helvetica,sans-serif;
         }
-        #SG_Authenticator_dropdown .account_name, #auto_input_code label {
+        #SG_Authenticator_dropdown .account_name, #SG_auto_input_code label {
             display: block; 
-            padding: 5px 0 5px 12px; 
-            margin-right: 27px; 
+            padding: 5px 12px 5px 12px; 
             min-width: 50px;
         }
-        #SG_Authenticator_dropdown .remove_account, #auto_input_code input {
+        #SG_Authenticator_dropdown .remove_account, #SG_auto_input_code input {
             position: absolute;
             right: 0;
             top: 0;
@@ -692,6 +819,9 @@
             background-repeat: no-repeat;
             background-origin: content-box;
             cursor: pointer;
+        }
+        #SG_Authenticator_dropdown .for_right_btn {
+            padding: 5px 27px 5px 12px; 
         }
         .copy_code_success {
             color: #57cbde !important;
@@ -771,6 +901,43 @@
         }
         #confirmation_actions input:focus {
             outline: none;
+        }
+        #SG_action_container {
+            margin-bottom: 10px;
+        }
+        .SG_action_btn {
+            color: white;
+            padding: 5px 10px;
+            margin-right: 5px;
+            background: #464d58;
+            user-select: none;
+            border-radius: 4px;
+            box-shadow: 0px 0px 5px #00000066;
+            font-size: 12px;
+        }
+        .SG_action_btn:hover {
+            box-shadow: 0px 0px 1px #FFFFFFAA;
+        }
+        #SG_edit_accounts_container {
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+            min-height: 100px;
+        }
+        #SG_edit_accounts_container .edit_account_item {
+            display: flex;
+            color: white;
+            background: #00000055;
+            margin: 3px 0 3px 0;
+            padding: 5px;
+        }
+        #SG_edit_accounts_container .account_item_name {
+            flex: auto;
+        }
+        #SG_edit_accounts_container .account_item_checkbox {
+            cursor: pointer;
+            flex: none;
+            transform: scale(1.5);
         }
     `;
     
