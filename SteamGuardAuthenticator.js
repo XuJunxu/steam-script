@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam令牌验证器
 // @namespace    SteamGuardAuthenticator
-// @version      1.0.4
+// @version      1.1.0
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
 // @match        http*://store.steampowered.com/*
