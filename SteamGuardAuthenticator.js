@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         Steam令牌验证器
-// @namespace    SteamGuardAuthenticator
-// @version      1.1.0
+// @namespace    https://github.com/XuJunxu/steam-script
+// @version      1.1.1
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
+// @updateURL    https://github.com/XuJunxu/steam-script/raw/master/SteamGuardAuthenticator.js
+// @downloadURL  https://github.com/XuJunxu/steam-script/raw/master/SteamGuardAuthenticator.js
 // @match        http*://store.steampowered.com/*
 // @match        http*://help.steampowered.com/*
 // @match        http*://checkout.steampowered.com/*
