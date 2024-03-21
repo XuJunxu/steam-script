@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
-// @namespace    SteamFunctionAndUiOptimization
-// @version      2.2.3
+// @namespace    https://github.com/XuJunxu/steam-script
+// @version      2.2.4
 // @description  Steam功能和界面优化
 // @author       Nin9
+// @updateURL    https://github.com/XuJunxu/steam-script/raw/master/SteamFunctionAndUiOptimization.js
+// @downloadURL  https://github.com/XuJunxu/steam-script/raw/master/SteamFunctionAndUiOptimization.js
 // @match        http*://store.steampowered.com/search*
 // @match        http*://store.steampowered.com/wishlist/*
 // @match        http*://store.steampowered.com/app/*
