@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    SteamFunctionAndUiOptimization
-// @version      2.2.2
+// @version      2.2.3
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @match        http*://store.steampowered.com/search*
@@ -3278,7 +3278,7 @@
 							.settings_input_number::-webkit-outer-spin-button, .settings_input_number::-webkit-inner-spin-button {-webkit-appearance: none !important;}
 							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
 							<div class="settings_container">
-							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min)：</span>
+							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min): </span>
 							<input class="settings_input_number" style="color: #EBEBEB;" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = Math.max(parseInt(this.value), 60);">
 							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
 							<span id="show_update_time" style="margin-left: 20px;">${new Date(exchangeRate.last_update).toLocaleString()}</span></div>
@@ -3300,13 +3300,13 @@
 							<div class="settings_option"><input id="sfu_inventory_sell_btn" type="checkbox" ${settings.inventory_sell_btn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_sell_btn = this.checked;"></input><label for="sfu_inventory_sell_btn" class="margin_right_20">添加出售按键</label></div>
 							<div class="settings_option"><input id="sfu_inventory_market_info" type="checkbox" ${settings.inventory_market_info ? "checked=true" : ""} onclick="window.sfu_settings.inventory_market_info = this.checked;"></input><label for="sfu_inventory_market_info" class="margin_right_20">自动显示市场价格信息</label></div></br>
 							<div class="settings_option"><input id="sfu_inventory_stop_sell" type="checkbox" ${settings.inventory_stop_sell ? "checked=true" : ""} onclick="window.sfu_settings.inventory_stop_sell = this.checked;"></input><label for="sfu_inventory_stop_sell">需要确认时停止批量出售</label></div></br>
-							<div class="settings_option"><label for="sfu_inventory_sell_number">一次批量出售的最大数量(0表示不限)</label><input class="settings_input_number" id="sfu_inventory_sell_number" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.inventory_sell_number}" oninput="window.sfu_settings.inventory_sell_number = Math.max(parseInt(this.value), 0);"></input></div>
+							<div class="settings_option"><span>一次批量出售的最大数量(0表示不限): </span><input class="settings_input_number" id="sfu_inventory_sell_number" style="color: #EBEBEB;" type="number" step="1" min="0" value="${settings.inventory_sell_number}" oninput="window.sfu_settings.inventory_sell_number = Math.max(parseInt(this.value), 0);"></input></div>
 							</div>
 							<div class="settings_page_title">市场页面设置：</div>
 							<div class="settings_row">
 							<div class="settings_option"><input id="sfu_market_adjust_listings" type="checkbox" ${settings.market_adjust_listings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_listings = this.checked;"></input><label for="sfu_market_adjust_listings" class="margin_right_20">调整出售、求购、确认和历史记录列表</label></div>
 							<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">出售物品表格自动显示最低出售和最高求购</label></div>
-							<div class="settings_option"><label for="sfu_market_page_size">出售物品表格每页物品数量</label><input class="settings_input_number" id="sfu_market_page_size" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
+							<div class="settings_option"><span>出售物品表格每页物品数量: </span><input class="settings_input_number" id="sfu_market_page_size" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
 							</div>
 							<div class="settings_page_title">市场物品页面设置：</div>
 							<div class="settings_row">
