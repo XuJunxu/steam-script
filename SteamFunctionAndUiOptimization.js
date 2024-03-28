@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      2.2.4
+// @version      2.2.5
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @updateURL    https://github.com/XuJunxu/steam-script/raw/master/SteamFunctionAndUiOptimization.js
@@ -3373,31 +3373,47 @@
 
 	//获取并计算汇率
 	async function getCurrencyRate(wallet_code, second_code, start) {
-		var flag = false;
+		var appid = "570";
+		var marketHashName = "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard";
+		var count = 10;
+		var language = "english";
+		var listingid = "4524490729968947472";
+		var start = 0;
 		var wallet_currency = getCurrencyInfo(wallet_code, true);
 		var second_currency = getCurrencyInfo(second_code, true);
-		var data = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, wallet_currency.country, "english", wallet_currency.eCurrencyCode);
-		if (data.success && data.listinginfo["4524490729968947472"]) {
-			await sleep(5000);
-			var data2 = await getMarketListings("570", "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard", start, 100, second_currency.country, "english", second_currency.eCurrencyCode);
-			if (data2.success && data2.listinginfo["4524490729968947472"]) {
+		await sleep(1000);
+		var data = await getMarketListings(appid, marketHashName, start, count, wallet_currency.country, language, wallet_currency.eCurrencyCode);
+		if (data.success && data.total_count > 0) {
+			var data1 = data;
+			if (!data.listinginfo[listingid]) {
+				for (var i = 0; i < parseInt(data.total_count / count); i++) {
+					await sleep(1000);
+					start = (parseInt(data.total_count / count) - i) * count;
+					data1 = await getMarketListings(appid, marketHashName, start, count, wallet_currency.country, language, wallet_currency.eCurrencyCode);
+					if (data1.success) {
+						if (data1.listinginfo[listingid]) {
+							break;
+						}
+					} else {
+						console.log("getCurrencyRate failed");
+						return;
+					}
+				}
+			}
+			await sleep(1000);
+			var data2 = await getMarketListings(appid, marketHashName, start, count, second_currency.country, language, second_currency.eCurrencyCode);
+			if (data2.success && data2.listinginfo[listingid]) {
 				var rate = {
-					listings_start: Math.max((data2.total_count - 50), 0),
 					wallet_code: wallet_code,
 					second_code: second_code,
-					wallet_rate: (data.listinginfo["4524490729968947472"].converted_price / data.listinginfo["4524490729968947472"].price).toFixed(6),
-					second_rate: (data2.listinginfo["4524490729968947472"].converted_price / data2.listinginfo["4524490729968947472"].price).toFixed(6),
-					wallet_second_rate: (data2.listinginfo["4524490729968947472"].converted_price / data.listinginfo["4524490729968947472"].converted_price).toFixed(6),
+					wallet_rate: (data1.listinginfo[listingid].converted_price / data1.listinginfo[listingid].price).toFixed(6),
+					second_rate: (data2.listinginfo[listingid].converted_price / data2.listinginfo[listingid].price).toFixed(6),
+					wallet_second_rate: (data2.listinginfo[listingid].converted_price / data1.listinginfo[listingid].converted_price).toFixed(6),
 					last_update: Date.now()
 				};
 				globalCurrencyRate = rate;
 				saveCurrencyRate(rate);
-				flag = true;
 			}
-		}
-		if (!flag && data.success && data.total_count > 0) {
-			globalCurrencyRate.listings_start = Math.max((data.total_count - 50), 0);
-			saveCurrencyRate(globalCurrencyRate);
 		}
 	}
 
