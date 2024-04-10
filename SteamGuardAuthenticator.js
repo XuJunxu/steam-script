@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Steam令牌验证器
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      1.1.1
+// @version      1.1.2
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
+// @iconURL      https://store.steampowered.com/favicon.ico
 // @updateURL    https://github.com/XuJunxu/steam-script/raw/master/SteamGuardAuthenticator.js
 // @downloadURL  https://github.com/XuJunxu/steam-script/raw/master/SteamGuardAuthenticator.js
 // @match        http*://store.steampowered.com/*
@@ -126,10 +127,10 @@
         popupMenu.setAttribute('style', 'overflow-y: auto; max-height: calc(100vh - 50px);');
         dropdown.appendChild(popupMenu);
 
-        popupMenu.innerHTML = `<a class="popup_menu_item" id="SG_manage_account">管理账号</a>
-                               <a class="popup_menu_item" id="SG_auto_input_code" style="position: relative; padding: 0;">
-                               <label class="for_right_btn" for="auto_input_code_checkbox" style="cursor: pointer;">自动输入验证码</label>
-                               <input id="auto_input_code_checkbox" type="checkbox" style="vertical-align: middle; right: 7.5px; margin: 0px;" ${AUTOCODE ? "checked=true" : ""}></a>
+        popupMenu.innerHTML = `<a class="SG_popup_menu_item" id="SG_manage_account"><span class="SG_popup_menu_item_name">管理账号</span></a>
+                               <a class="SG_popup_menu_item" id="SG_auto_input_code">
+                               <label class="SG_popup_menu_item_name has_right_btn" for="auto_input_code_checkbox">自动输入验证码</label>
+                               <input class="SG_popup_menu_item_btn" id="auto_input_code_checkbox" type="checkbox" ${AUTOCODE ? "checked=true" : ""}></a>
                                <div id="account_list_container"></div>`;
 
         var accountDropdown = document.createElement('div');
@@ -143,9 +144,9 @@
         accountMenu.setAttribute('style', 'overflow-y: auto; max-height: calc(100vh - 50px);');
         accountDropdown.appendChild(accountMenu);
 
-        accountMenu.innerHTML = `<a class="popup_menu_item" id="SG_add_account">添加账号</a>
-                                 <a class="popup_menu_item" id="SG_import_account">导入账号</a>
-                                 <a class="popup_menu_item" id="SG_delete_account">删除账号</a>`;
+        accountMenu.innerHTML = `<a class="SG_popup_menu_item"><span class="SG_popup_menu_item_name" id="SG_add_account">添加账号</span></a>
+                                 <a class="SG_popup_menu_item"><span class="SG_popup_menu_item_name" id="SG_import_account">导入账号</span></a>
+                                 <a class="SG_popup_menu_item"><span class="SG_popup_menu_item_name" id="SG_delete_account">删除账号</span></a>`;
 
         buttons.querySelector('#guard_confirmation').onclick = function() {
             showConfirmationDialog();
@@ -224,15 +225,15 @@
         var html = '';
         for (var i=0; i<getFileAccounts().length; i++) {
             var account = getFileAccounts()[i];
-            html += `<a class="popup_menu_item" style="position: relative; padding: 0;">
-                     <span class="account_name" data-tooltip-text="点击复制该账号的验证码" data-gid=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span></a>`;
+            html += `<a class="SG_popup_menu_item">
+                     <span class="account_name SG_popup_menu_item_name" data-tooltip-text="点击复制该账号的验证码" data-gid=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span></a>`;
         }
 
         for (var i=0; i<ACCOUNTS.length; i++) {
             var account = ACCOUNTS[i];
-            html += `<a class="popup_menu_item" style="position: relative; padding: 0;">
-                     <span class="account_name" data-tooltip-text="点击复制该账号的验证码" data-id=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span>
-                     <span class="remove_account" data-tooltip-text="删除该账号" data-id=${i} data-name=${account.account_name} style="display: none;"></span></a>`;
+            html += `<a class="SG_popup_menu_item">
+                     <span class="account_name SG_popup_menu_item_name" data-tooltip-text="点击复制该账号的验证码" data-id=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span>
+                     <span class="remove_account SG_popup_menu_item_btn" data-tooltip-text="删除该账号" data-id=${i} data-name=${account.account_name}></span></a>`;
         }
         
         var accountList = popupMenu.querySelector('#account_list_container');
@@ -275,17 +276,18 @@
     }
 
     function showAddAccountDialog() {
-        var content = `<div class="newmodal_prompt_description">Steam 帐号名称<span data-tooltip-text="非个人资料名称，用于自动填写 Steam 令牌验证码。"> (?)</span></div>
-                    <div class="newmodal_prompt_input gray_bevel for_text_input fullwidth"><input type="text" id="account_name"></div>
-                    <div class="newmodal_prompt_description" style="margin-top: 8px;">共享密钥<span data-tooltip-text="即 shared secret，用于生成 Steam 令牌验证码。"> (?)</span></div>
-                    <div class="newmodal_prompt_input gray_bevel for_text_input fullwidth"><input type="text" id="shared_secret"></div>
-                    <div class="newmodal_prompt_description" style="margin-top: 8px;">64 位 Steam ID<span data-tooltip-text="以“7656”开头的 17 位数字，用于确认交易和市场。"> (?)</span></div>
-                    <div class="newmodal_prompt_input gray_bevel for_text_input fullwidth"><input type="text" id="steamid"></div>
-                    <div class="newmodal_prompt_description" style="margin-top: 8px;">身份密钥<span data-tooltip-text="即 identity secret，用于确认交易和市场。"> (?)</span></div>
-                    <div class="newmodal_prompt_input gray_bevel for_text_input fullwidth"><input type="text" id="identity_secret"></div>`;
+        var content = `<div class="SG_add_account_description">Steam 帐号名称<span data-tooltip-text="非个人资料名称，用于自动填写 Steam 令牌验证码。"> (?)</span></div>
+                    <div><input class="SG_add_account_input" type="text" id="account_name"></div>
+                    <div class="SG_add_account_description">共享密钥<span data-tooltip-text="即 shared secret，用于生成 Steam 令牌验证码。"> (?)</span></div>
+                    <div><input class="SG_add_account_input" type="text" id="shared_secret"></div>
+                    <div class="SG_add_account_description">64 位 Steam ID<span data-tooltip-text="以“7656”开头的 17 位数字，用于确认交易和市场。"> (?)</span></div>
+                    <div><input class="SG_add_account_input" type="text" id="steamid"></div>
+                    <div class="SG_add_account_description">身份密钥<span data-tooltip-text="即 identity secret，用于确认交易和市场。"> (?)</span></div>
+                    <div><input class="SG_add_account_input" type="text" id="identity_secret"></div>`;
 
         var modal = ShowConfirmDialog('添加账号', content, '确定', '取消');
         var $content = modal.GetContent();
+        $content[0].id = 'SG_add_account_dialog';
         setupTooltips($content);
         modal.done(function() {
             var account = {
@@ -297,11 +299,14 @@
             var res = appendAccount(account);
             ShowAlertDialog('添加账号', res, '确定');
         });
+
+        modal.AdjustSizing();
     }
 
     function showImportAccountDialog() {
-        var modal = ShowPromptWithTextAreaDialog('导入账号', '', '确定', '取消');
+        var modal = ShowConfirmDialog('导入账号', '<textarea></textarea>', '确定', '取消');
         var $content = modal.GetContent();
+        $content[0].id = 'SG_import_account_dialog';
         var $textarea = $content.find('textarea');
         $textarea.attr('placeholder', '将要导入的数据粘贴于此');
         modal.done(function(text) {
@@ -337,6 +342,8 @@
                 ShowAlertDialog('导入账号', results, '确定');
             }
         });
+
+        modal.AdjustSizing();
     }
 
     function appendAccount(account) {
@@ -804,35 +811,63 @@
             padding: 5px 0px;
             font-family: "Motiva Sans",Arial,Helvetica,sans-serif;
         }
-        #SG_Authenticator_dropdown .account_name, #SG_auto_input_code label {
+        #SG_Authenticator_dropdown .SG_popup_menu_item {
+            display: block;
+            text-decoration: none;
+            position: relative; 
+            padding: 0;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #SG_Authenticator_dropdown .SG_popup_menu_item_name {
             display: block; 
             padding: 5px 12px 5px 12px; 
             min-width: 50px;
+            font-size: 12px;
+            color: #dcdedf;
+            line-height: normal;
+            vertical-align: middle;
+            text-decoration: none;
+            font-family: "Motiva Sans",Arial,Helvetica,sans-serif;
+            cursor: pointer;
         }
-        #SG_Authenticator_dropdown .remove_account, #SG_auto_input_code input {
+        #SG_Authenticator_dropdown .SG_popup_menu_item_btn {
             position: absolute;
-            right: 0;
             top: 0;
+            vertical-align: middle; 
             padding: 0 7.5px;
             width: 12px;
             height: 100%;
+            margin: 0;
+            cursor: pointer;
+        }
+        #SG_Authenticator_dropdown span.SG_popup_menu_item_btn {
+            right: 0;
             background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAQAAAD8fJRsAAAAkElEQVR4AXWQxWEDMRBFJ6AWArqGmW7G12HMDN0ZFmr4dqKF00rDPGPhycnr/vi9nJVPl2qI7Dd0WZpZEyFEygKhy1CkPsX4JCLlB6OP6jo3eRHxhh3xA+OBLULedCtExDOGcRvM6DZzpP/RxgtR4fDKat/ylPUKpZwao1A769VBDbls3H5WO6KfjVu5YOVJDkyDcoTnvnKRAAAAAElFTkSuQmCC);
             background-position: center;
             background-repeat: no-repeat;
             background-origin: content-box;
-            cursor: pointer;
         }
-        #SG_Authenticator_dropdown .for_right_btn {
+        #SG_Authenticator_dropdown input.SG_popup_menu_item_btn {
+            right: 7.5px; 
+        }
+        #SG_Authenticator_dropdown .SG_popup_menu_item_name.has_right_btn {
             padding: 5px 27px 5px 12px; 
+        }
+        #SG_Authenticator_dropdown .SG_popup_menu_item.focus, #SG_Authenticator_dropdown .SG_popup_menu_item.focus .SG_popup_menu_item_name, #SG_Authenticator_dropdown .SG_popup_menu_item:hover, #SG_Authenticator_dropdown .SG_popup_menu_item:hover .SG_popup_menu_item_name {
+            color: #171d25;
+            background: #dcdedf;
+        }
+        #SG_Authenticator_dropdown .remove_account.SG_popup_menu_item_btn {
+            display: none;
         }
         .copy_code_success {
             color: #57cbde !important;
         }
         .show_auth_code {
             background: linear-gradient(#1a73e8cc, #1a73e8cc) no-repeat;
-        }
-        #SG_Authenticator_dropdown .popup_menu_item {
-            font-size: 12px;
         }
         .mobile_conf_item {
             display: flex;
@@ -940,6 +975,33 @@
             cursor: pointer;
             flex: none;
             transform: scale(1.5);
+        }
+        #SG_add_account_dialog .SG_add_account_description {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        #SG_add_account_dialog .SG_add_account_input, #SG_import_account_dialog textarea {
+            font-family: Arial, Helvetica, Verdana, sans-serif;
+            font-size: 13px;
+            color: #C6D4DF;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+            border: 1px solid #000;
+            margin-bottom: 8px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        #SG_add_account_dialog .SG_add_account_input {
+            width: 100%;
+            line-height: 22px;
+            padding: 6px 8px 2px 8px;
+        }
+        #SG_import_account_dialog textarea {
+            width: 500px;
+            height: 400px;
+            padding: 6px 8px 6px 8px;
+            resize: none;
+            margin-bottom: 2px;
         }
     `;
     
