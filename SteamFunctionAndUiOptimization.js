@@ -1027,22 +1027,14 @@
 					if (data.lowest_sell_order) {
 						container0.querySelector(".sell_price_input").value = (data.lowest_sell_order / 100.0).toFixed(2);
 						container1.querySelector(".sell_price_input").value = (data.lowest_sell_order / 100.0).toFixed(2);
-						if (data.price_prefix) {
-							var priceStr0 = data.price_prefix + " " + (data.lowest_sell_order / 100.0).toFixed(2);
-							var priceStr1 = data.price_prefix + " " + ((data.lowest_sell_order - 1) / 100.0).toFixed(2);
-						} else {
-							var priceStr0 = (data.lowest_sell_order / 100.0).toFixed(2) + " " + data.price_suffix;
-							var priceStr1 = ((data.lowest_sell_order - 1) / 100.0).toFixed(2) + " " + data.price_suffix;
-						}
+
+						var priceStr0 = getSymbolStrFromPrice(parseInt(data.lowest_sell_order), currencyInfo);
+						var priceStr1 = getSymbolStrFromPrice(parseInt(data.lowest_sell_order - 1), currencyInfo);
 						btnHtml += `<a class="btn_small btn_green_white_innerfade quick_sell_btn" data-price="${data.lowest_sell_order}"><span>${priceStr0}</span></a>`;
 						btnHtml += `<a class="btn_small btn_green_white_innerfade quick_sell_btn" data-price="${data.lowest_sell_order - 1}"><span>${priceStr1}</span></a>`;
 					}
 					if (data.highest_buy_order) {
-						if (data.price_prefix) {
-							var priceStr2 = data.price_prefix + " " + (data.highest_buy_order / 100.0).toFixed(2);
-						} else {
-							var priceStr2 = (data.highest_buy_order / 100.0).toFixed(2) + " " + data.price_suffix;
-						}
+						var priceStr2 = getSymbolStrFromPrice(parseInt(data.highest_buy_order), currencyInfo);
 						btnHtml += `<a class="btn_small btn_green_white_innerfade quick_sell_btn" data-price="${data.highest_buy_order}"><span>${priceStr2}</span></a>`;
 					}
 	
@@ -2122,23 +2114,22 @@
 
 		//在价格右侧显示最低售价和最高求购价
 		function addPriceLabel(listing, data) {
-			if (listing.querySelector(".market_price_container")) {
-				return;
+			var elem = listing.querySelector(".market_price_container");
+			if (!elem) {
+				elem = document.createElement("div");
+				elem.className = "market_price_container";
+				listing.querySelector(".market_listing_my_price").appendChild(elem);
 			}
 			var sellPrice = "null";
 			var buyPrice = "null";
 			if (data.lowest_sell_order) {
-				sellPrice = (parseInt(data.lowest_sell_order) / 100.0).toFixed(2);
-				sellPrice = data.price_prefix ? `${data.price_prefix} ${sellPrice}` : `${sellPrice} ${data.price_suffix}`;
+				sellPrice = getSymbolStrFromPrice(parseInt(data.lowest_sell_order), currencyInfo);
 			}
 			if (data.highest_buy_order) {
-				buyPrice = (parseInt(data.highest_buy_order) / 100.0).toFixed(2);
-				buyPrice = data.price_prefix ? `${data.price_prefix} ${buyPrice}` : `${buyPrice} ${data.price_suffix}`;
+				buyPrice = getSymbolStrFromPrice(parseInt(data.highest_buy_order), currencyInfo);
 			}
-			var elem = document.createElement("div");
-			elem.className = "market_price_container";
+
 			elem.innerHTML = `<div class="market_price_label" title="最低出售价格">${sellPrice}</div><div class="market_price_label" title="最高求购价格">${buyPrice}</div>`;
-			listing.querySelector(".market_listing_my_price").appendChild(elem);
 		}
 
 		//点击表头排序
@@ -2957,7 +2948,7 @@
 								var pay = getPriceFromSymbolStr(text);
 								var price = calculatePriceYouReceive(pay);
 								var [pay2, price2] = calculateSecondPrice(price);
-								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${(data.price_prefix + " " + (price / 100.0).toFixed(2) + " " + data.price_suffix).trim()})</div>`;
+								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price, currencyInfo)})</div>`;
 								var td = document.createElement("td");
 								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 								rows[i].insertBefore(td, rows[i].lastElementChild);
@@ -2973,7 +2964,7 @@
 								var pay = getPriceFromSymbolStr(text);
 								var price = calculatePriceYouReceive(pay);
 								var [pay2, price2] = calculateSecondBuyPrice(price);
-								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${(data.price_prefix + " " + (price / 100.0).toFixed(2) + " " + data.price_suffix).trim()})</div>`;
+								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price, currencyInfo)})</div>`;
 								var td = document.createElement("td");
 								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 								rows[i].insertBefore(td, rows[i].lastElementChild);
