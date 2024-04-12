@@ -902,9 +902,10 @@
 		function appendPriceGramAndSellBtn() {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `.price_gram_table {display: flex; margin: 5px 10px; cursor: pointer;} .price_gram_table>div:first-child {margin-right: 5px;} .price_gram_table>div {border: 1px solid #000000;} 
-									.table_title {text-align: center; font-size: 12px;} th, td {background: #00000066; width: 80px; text-align: center; font-size: 12px; line-height: 18px;} .price_overview {margin-left: 10px; white-space: nowrap;} 
+									.price_gram_table .table_title {text-align: center; font-size: 12px;} .price_gram_table th, .price_gram_table td {width: 80px; text-align: center; font-size: 12px; line-height: 18px;} 
+									.price_gram_table tr:nth-child(odd) {background: #00000066;} .price_gram_table tr:nth-child(even) {background: #00000033;} .price_overview {margin-left: 10px; white-space: nowrap;} 
 									.price_overview>span {margin-right: 20px; font-size: 12px;} .sell_price_input {text-align: center; margin-right: 2px; width: 100px;} .sell_btn_container {margin: 5px 10px;} 
-									.quick_sell_btn {margin: 5px 5px 0px 0px;} .quick_sell_btn > span {padding: 0px 5px; pointer-events: none;} .price_receive, .price_receive_2 {margin: 0 20px 0 0; font-size: 12px; white-space: nowrap;}
+									.quick_sell_btn {margin: 5px 5px 0px 0px;} .quick_sell_btn>span {padding: 0px 5px; pointer-events: none;} .price_receive, .price_receive_2 {margin: 0 20px 0 0; font-size: 12px; white-space: nowrap;}
 									.show_market_info {border-radius: 2px; background: #000000; color: #FFFFFF; margin: 10px 0px 0px 10px; cursor: pointer; padding: 2px 15px; display: inline-block;} 
 									.show_market_info:hover {background: rgba(102, 192, 244, 0.4)} .price_gram, .price_gram div{font-size: 12px; font-weight: normal;}`;
 			document.body.appendChild(styleElem);
@@ -2430,7 +2431,8 @@
 				var appid = assetInfo.market_fee_app;
 				var link = gameCardsLink(assetInfo) || ("https://steamcommunity.com/my/gamecards/" + appid);
 				var linkElem = document.createElement("div");
-				linkElem.innerHTML = `<style>.page_link_btn {border-radius: 2px; cursor: pointer; background: black; color: white; margin: 10px 0px 0px 0px; display: inline-block;} .page_link_btn > span {padding: 0px 15px; font-size: 14px; line-height: 25px;} .page_link_btn:hover {background: rgba(102, 192, 244, 0.4)}</style>
+				linkElem.style.marginLeft = "10px";
+				linkElem.innerHTML = `<style>.page_link_btn {border-radius: 2px; cursor: pointer; background: black; color: white; margin: 10px 5px 0px 0px; display: inline-block;} .page_link_btn > span {padding: 0px 15px; font-size: 14px; line-height: 25px;} .page_link_btn:hover {background: rgba(102, 192, 244, 0.4)}</style>
 										<a href="${link}" class="page_link_btn" target="_blank"><span>打开徽章页面</span></a>
 										<a href="https://store.steampowered.com/app/${appid}" class="page_link_btn" target="_blank"><span>打开商店页面</span></a>
 										<a href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" class="page_link_btn" target="_blank"><span>打开Exchange页面</span></a>
@@ -2851,36 +2853,37 @@
 	//市场价格信息的弹窗
 	var dialogPriceInfo = {
 		init: function(appid, marketHashName, currencyInfo) {
-			var html = `<style>#market_info_group {display: flex; margin: 0px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
-						#market_info_group .table_action_button, #market_info_group th, #market_info_group td {text-align: center; font-size: 14px;} .table_action_button {padding: 3px 0;}
+			var html = `<style>#market_info_group {display: flex; margin: 8px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
+						#market_info_group .table_action_button, #market_info_group th, #market_info_group td {text-align: center; font-size: 14px;} .table_action_button {padding: 2px 0;}
 						#market_info_group th, #market_info_group td {min-width: 100px; background: transparent; width: auto; line-height: normal;} 
-						#card_price_overview>span {margin-right: 30px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
+						#market_info_price_overview>span {margin-right: 30px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
 						#market_info_group .market_commodity_orders_table tr:nth-child(even) {background: #00000033;} #market_info_group .market_commodity_orders_table tr:nth-child(odd) {background: #00000066;}
-						.orders_price_receive {font-size: 80%; color: #7f7f7f;} #card_price_overview {margin: 0 30px 15px 0; text-wrap: nowrap; line-height: 22px;} .market_listings_table {min-width: 208px; min-height: 192px;}
+						.orders_price_receive {font-size: 80%; color: #7f7f7f;} #market_info_price_overview {margin: 0 30px 8px 0; text-wrap: nowrap; line-height: 22px;} .market_listings_table {min-width: 208px; min-height: 192px;}
 						.inline_black_btn {display: inline-block; line-height: 22px; color: #ebebeb; padding: 0px 8px; background: #00000066; font-size: 12px; user-select: none;} 
 						.float_right_btn {float: right;} .table_action_button .inline_black_btn {padding: 0 20px;} .inline_black_btn:hover {background: #464646;} 
 						.inline_black_btn[disabled="disabled"] {pointer-events: none; background: #4b4b4b66; box-shadow: none; color: #adadad;}
-						.create_buy_order_container {margin-top: 15px;} .create_buy_order_inline {display: inline-block; line-height: 26px;} .create_buy_order_cell {position: relative;}
-						#create_buy_order_price {width: 100px; color: #acb2b8;} #create_buy_order_quantity{width: 50px; color: #acb2b8;} #create_buy_order_total {width: 100px; text-wrap: nowrap;}
+						.create_buy_order_container {margin: 0px;} .create_buy_order_inline {display: inline-block; line-height: 26px;} .create_buy_order_cell {position: relative;}
+						#create_buy_order_price {width: 100px; color: #acb2b8;} #create_buy_order_quantity{width: 60px; color: #acb2b8;} #create_buy_order_total {width: 100px; text-wrap: nowrap; font-size: 13px;}
 						#create_buy_order_second_price, #create_buy_order_second_total {position: absolute; font-size: 80%; color: #888888; width: 100px; text-wrap: nowrap;}
-						#current_buy_order {margin-top: 15px; line-height: 22px;} #current_buy_order .order_info {margin: 0 20px;} .create_buy_order_inline .order_second_price {line-height: normal;}</style>
+						#current_buy_order {margin: 0px; line-height: 22px;} #current_buy_order .order_info {margin: 0 20px;} .create_buy_order_inline .order_second_price {line-height: normal;}
+						.market_info_dialog_separator {height: 1px; background: #1D1D1D; border-bottom: 1px solid #3B3B3B;}</style>
 						<div style="min-height: 230px;" id="dialog_price_info">
-						<a id="update_button" class="inline_black_btn float_right_btn">更新</a><div id="card_price_overview">Loading...</div><div style="clear: both;"></div>
+						<a id="update_button" class="inline_black_btn float_right_btn">更新</a><div id="market_info_price_overview">Loading...</div><div style="clear: both;"></div><div class="market_info_dialog_separator"></div>
 						<div id="market_info_group">
 						<div class="sell_order_table market_listings_table"><div class="table_action_button"><a id="market_buy_button" class="inline_black_btn">购买</a></div><div class="table_content">Loading...</div></div>
 						<div class="buy_order_table market_listings_table"><div class="table_action_button"><a id="market_buy_order_button" class="inline_black_btn">求购</a></div><div class="table_content">Loading...</div></div></div>
-						<div id="current_buy_order" style="display: none;">
-						<span>订购单：</span><span><数量></span><span id="order_quantity" class="order_info"></span><span><价格></span><span id="order_price" class="order_info"></span><a id="cancel_current_buy_order" class="inline_black_btn float_right_btn">取消</a></div>
-						<div class="create_buy_order_container" style="display: none;">
-						<div class="create_buy_order_inline">单价:</div>
-						<div class="create_buy_order_inline create_buy_order_cell"><input id="create_buy_order_price" type="number" step="0.01" min="0.03"><div id="create_buy_order_second_price" class="order_second_price"></div></div>
-						<div class="create_buy_order_inline" style="margin-left: 15px;">数量:</div>
+						<div id="current_buy_order" style="display: none;"><div class="market_info_dialog_separator"></div>
+						<div style="margin: 8px 0px;"><span>订购单：</span><span><数量></span><span id="order_quantity" class="order_info"></span><span><价格></span><span id="order_price" class="order_info"></span>
+						<a id="cancel_current_buy_order" class="inline_black_btn float_right_btn">取消</a></div></div>
+						<div class="create_buy_order_container" style="display: none;"><div class="market_info_dialog_separator"></div><div style="margin-top: 8px;">
+						<div class="create_buy_order_inline">数量：</div>
 						<div class="create_buy_order_inline"><input id="create_buy_order_quantity" type="number" step="1" min="1"></div>
-						<div class="create_buy_order_inline" style="margin-left: 15px;">总价:</div>
+						<div class="create_buy_order_inline" style="margin-left: 15px;">单价：</div>
+						<div class="create_buy_order_inline create_buy_order_cell"><input id="create_buy_order_price" type="number" step="0.01" min="0.03"><div id="create_buy_order_second_price" class="order_second_price"></div></div>
+						<div class="create_buy_order_inline" style="margin-left: 15px;">总价：</div>
 						<div class="create_buy_order_inline create_buy_order_cell"><div id="create_buy_order_total">--</div><div id="create_buy_order_second_total" class="order_second_price"></div></div>
 						<div class="create_buy_order_inline" style="float: right;"><a id="create_buy_order_purchase" class="inline_black_btn float_right_btn" style="position: relative; z-index: 9;">提交订单</a></div>
-						<div id="create_buy_order_message" style="margin-top: 15px; color: #FFFFFF; width: 490px;"></div>
-						</div></div>`;
+						<div id="create_buy_order_message" style="margin-top: 15px; color: #FFFFFF;"></div></div></div></div>`;
 			this.cmodel = ShowDialogBetter(decodeURIComponent(marketHashName), html);
 			this.model = this.cmodel.GetContent()[0];
 
@@ -2902,7 +2905,7 @@
 			this.init(appid, marketHashName, currencyInfo);
 
 			this.model.querySelector("#update_button").onclick = event => {
-				this.model.querySelector("#card_price_overview").innerHTML = "Loading...";
+				this.model.querySelector("#market_info_price_overview").innerHTML = "Loading...";
 				this.model.querySelector("#market_info_group .sell_order_table .table_content").innerHTML = "Loading...";
 				this.model.querySelector("#market_info_group .buy_order_table .table_content").innerHTML = "Loading...";
 
@@ -2997,7 +3000,7 @@
 		},
 		updatePriceOverview: function(data) {
 			if (this.model) {
-				var elem = this.model.querySelector("#card_price_overview");
+				var elem = this.model.querySelector("#market_info_price_overview");
 				if (elem) {
 					if (data.success) {
 						var html2 = "";
@@ -3020,6 +3023,7 @@
 				myBuyOrder.querySelector("#order_quantity").innerHTML = buyOrder.quantity + " 个";
 				myBuyOrder.querySelector("#order_price").innerHTML = buyOrder.price;
 				myBuyOrder.querySelector("#cancel_current_buy_order").setAttribute("data-buy-orderid", buyOrder.buy_orderid);
+				this.cmodel.AdjustSizing();
 			}
 		},
 		confirmCancelBuyOrder: function(event) {
@@ -3085,16 +3089,20 @@
 			var amount = this.calculatePriceTotal();
 			if (amount.price_total > 0 && amount.quantity > 0) {
 				var result = await createBuyOrder(unsafeWindow.g_sessionID, this.currencyInfo.eCurrencyCode, this.appid, this.marketHashName, amount.price_total, amount.quantity);
+
+				var elemMsg = this.model.querySelector("#create_buy_order_message");
+				elemMsg.style.width = window.getComputedStyle(elemMsg.parentNode).width;
 				if (result.success == "1") {
 					allMyBuyOrders.add(this.appid, this.marketHashName, {appid: this.appid, market_hash_name: this.marketHashName, quantity: amount.quantity, price: getSymbolStrFromPrice(amount.price, this.currencyInfo), buy_orderid: result.buy_orderid});
-					this.model.querySelector("#create_buy_order_message").textContent = "您已成功提交订购单！";
+					elemMsg.textContent = "您已成功提交订购单！";
 				} else if (result.message) {
-					this.model.querySelector("#create_buy_order_message").textContent = result.message;
+					elemMsg.textContent = result.message;
 				} else {
-					this.model.querySelector("#create_buy_order_message").textContent = "抱歉！我们无法从 Steam 服务器获得关于您订单的信息。请再次检查您的订单是否确已创建或填写。如没有，请稍后再试。";
+					elemMsg.textContent = "抱歉！我们无法从 Steam 服务器获得关于您订单的信息。请再次检查您的订单是否确已创建或填写。如没有，请稍后再试。";
 				}
 			}
 			event.target.setAttribute("disabled", "");
+			this.cmodel.AdjustSizing();
 		}
 	};
 
@@ -3105,14 +3113,14 @@
 			html += `<tr class="multi_order_row" data-hash-name="${encodeURIComponent(asset.market_hash_name)}" data-appid="${asset.appid}">
 					 <td><div class="multi_order_name multi_order_cell"><img class="multi_order_item_img" src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}">
 					 <a class="multi_order_name_link" href="https://steamcommunity.com/market/listings/${asset.appid}/${encodeURIComponent(asset.market_hash_name)}" target="_blank">${asset.market_name || asset.name}</a></div></td>
-					 <td><div class="multi_order_cell"><input class="multi_order_price" type="number" step="0.01" min="0.03"><div class="multi_order_second_price multi_order_second"></div></div></td>
 					 <td><div class="multi_order_cell"><input class="multi_order_quantity" type="number" step="1" min="0"></div></td>
+					 <td><div class="multi_order_cell"><input class="multi_order_price" type="number" step="0.01" min="0.03"><div class="multi_order_second_price multi_order_second"></div></div></td>
 					 <td><div class="multi_order_cell"><div class="multi_order_total" data-price-total="0">--</div><div class="multi_order_second_total multi_order_second" data-price-total="0"></div></div></td>
 					 <td><div class="multi_order_status multi_order_cell"><span class="multi_order_success" style="display: none;">✔️</span><span class="multi_order_warning" style="display: none;">⚠️</span></div></td></tr>`;
 		}
 		html = `<style>.multi_order_table {border-spacing: 0 5px; margin-bottom: 10px; width: 855px;} .multi_order_cell {position: relative; width: 100%; display: inline-block; line-height: normal;}
 				.multi_order_table td {padding: 0 5px; box-sizing: border-box; display: inline-block;} .multi_order_item_img {width: 48px; height: 48px; margin-right: 5px; cursor: pointer;}
-				.multi_order_table td:nth-child(1) {width: 430px;} .multi_order_table td:nth-child(2) {width: 156px;} .multi_order_table td:nth-child(3) {width: 76px;} .multi_order_table td:nth-child(4) {width: 136px;} .multi_order_table td:nth-child(5) {width: 42px;}
+				.multi_order_table td:nth-child(1) {width: 430px;} .multi_order_table td:nth-child(2) {width: 80px;} .multi_order_table td:nth-child(3) {width: 152px;} .multi_order_table td:nth-child(4) {width: 136px;} .multi_order_table td:nth-child(5) {width: 42px;}
 				.multi_order_table tr {background-color: #00000033;} .multi_order_table thead td {height: 30px; line-height: 30px;} .multi_order_table tbody td {height: 58px; line-height: 58px;} 
 				.multi_order_cell input {box-sizing: border-box; width: 100%; color: #acb2b8;} .multi_order_name {display: flex; align-items: center; margin: 5px 0px; overflow: hidden; text-wrap: nowrap;}
 				#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
@@ -3121,7 +3129,7 @@
 				#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name_link {overflow: hidden; text-overflow: ellipsis; font-weight: bold; color: inherit;}
 				#multi_order_all_price {text-wrap: nowrap;} .multi_order_table tbody {display: inline-block; overflow-x: hidden; overflow-y: auto; min-height: 130px;}</style>
 				<table class="multi_order_table">
-				<thead style="display: inline-block;"><tr><td style="border-right: 1px solid #404040;">物品名称</td><td style="border-right: 1px solid #404040;">价格</td><td style="border-right: 1px solid #404040;">数量</td><td style="width: 178px;">总价</td></tr></thead>
+				<thead style="display: inline-block;"><tr><td style="border-right: 1px solid #404040;">物品名称</td><td style="border-right: 1px solid #404040;">数量</td><td style="border-right: 1px solid #404040;">价格</td><td style="width: 178px;">总价</td></tr></thead>
 				<tbody>${html}</tbody></table>
 				<div style="width: 840px;"><div id="multi_order_purchase">提交订单</div><div style="white-space: nowrap;"><span>订购单的总价：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
 				<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div></div>`;
@@ -3158,6 +3166,7 @@
 				if (amount.price_total > 0 && amount.quantity > 0) {
 					var result = await createBuyOrder(sessionid, currency, appid, hashName, amount.price_total, amount.quantity);
 					if (result.success == "1") {
+						allMyBuyOrders.add(appid, hashName, {appid: appid, market_hash_name: hashName, quantity: amount.quantity, price: getSymbolStrFromPrice(amount.price, currencyInfo), buy_orderid: result.buy_orderid});
 						elem.querySelector(".multi_order_success").style.display = null;
 						elem.querySelector(".multi_order_success").title = "您已成功提交订购单！";
 					} else if (result.message) {
@@ -3402,6 +3411,8 @@
 		var start = 0;
 		var wallet_currency = getCurrencyInfo(wallet_code, true);
 		var second_currency = getCurrencyInfo(second_code, true);
+		await sleep(1000);
+		var doc = getHtmlDocument("https://steamcommunity.com/market/listings/570/" + marketHashName + "/?l=english");
 		await sleep(1000);
 		var data = await getMarketListings(appid, marketHashName, start, count, wallet_currency.country, language, wallet_currency.eCurrencyCode);
 		if (data.success && data.total_count > 0) {
@@ -3858,7 +3869,7 @@
 	var allMyBuyOrders = {
 		data: {},
 		load: async function(doc) {
-			doc ??= await getMyBuyOrders();
+			doc ??= await getHtmlDocument("https://steamcommunity.com/market/");
 			if (!doc) {
 				return;
 			}
@@ -4085,10 +4096,9 @@
 		});	
 	}
 
-	//获取所有求购订单
-	function getMyBuyOrders() {
+	//获取网页
+	function getHtmlDocument(url) {
 		return new Promise(function(resolve, reject) {
-			var url = `https://steamcommunity.com/market/`;
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
@@ -4098,16 +4108,16 @@
 				if (e.target.status == 200) {
 					resolve(e.target.response);
 				} else {
-					console.log("getMyBuyOrders failed");
+					console.log("getHtmlDocument failed", `"${url}"`);
 					resolve(null);
 				}
 			};
 			xhr.onerror = function(error) {
-				console.log("getMyBuyOrders error");
+				console.log("getHtmlDocument error", `"${url}"`);
 				resolve(null);
 			};
 			xhr.ontimeout = function() {
-				console.log("getMyBuyOrders timeout");
+				console.log("getHtmlDocument timeout", `"${url}"`);
 				resolve(null);
 			};
 			xhr.send();
