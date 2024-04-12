@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      2.2.5
+// @version      2.2.6
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @iconURL      https://store.steampowered.com/favicon.ico
@@ -2935,6 +2935,7 @@
 						elem1.querySelector(".buy_order_table .table_content").innerHTML = data.buy_order_table || data.buy_order_summary;
 					} else {
 						elem1.querySelector(".sell_order_table .table_content").innerHTML = `${errorTranslator(data)}`
+						elem1.querySelector(".buy_order_table .table_content").innerHTML = `${errorTranslator(data)}`
 					}
 					if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
 						var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
