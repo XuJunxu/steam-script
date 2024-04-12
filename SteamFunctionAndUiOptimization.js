@@ -3404,10 +3404,10 @@
 	//获取并计算汇率
 	async function getCurrencyRate(wallet_code, second_code, start) {
 		var appid = "570";
-		var marketHashName = "Auspicious%20Pauldron%20of%20the%20Chiseled%20Guard";
-		var count = 10;
+		var marketHashName = "Inscribed%20Bracers%20of%20Impending%20Transgressions";
+		var count = 100;
 		var language = "english";
-		var listingid = "4524490729968947472";
+		var listingid = "6244878730659628396";
 		var start = 0;
 		var wallet_currency = getCurrencyInfo(wallet_code, true);
 		var second_currency = getCurrencyInfo(second_code, true);
