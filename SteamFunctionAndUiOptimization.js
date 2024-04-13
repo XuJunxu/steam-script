@@ -3032,7 +3032,11 @@
 				myBuyOrder.style.display = null;
 				myBuyOrder.querySelector("#order_quantity").innerHTML = buyOrder.quantity + " 个";
 				myBuyOrder.querySelector("#order_price").innerHTML = buyOrder.price;
-				myBuyOrder.querySelector("#cancel_current_buy_order").setAttribute("data-buy-orderid", buyOrder.buy_orderid);
+
+				var button = myBuyOrder.querySelector("#cancel_current_buy_order");
+				button.setAttribute("data-buy-orderid", buyOrder.buy_orderid);
+				button.textContent = "取消";
+				button.style.color = null;
 				this.cmodel.AdjustSizing();
 			}
 		},
@@ -3050,12 +3054,14 @@
 				var res = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
 				if (res.success == 1) {
 					button.textContent = "已取消";
+					button.style.color = "red";
 					allMyBuyOrders.delete(order.appid, order.market_hash_name);
 				}
 			} else {
 				button.textContent = "已取消";
+				button.style.color = "red";
 			}
-
+			this.cmodel.AdjustSizing();
 		},
 		showCreateBuyOrder: function(event) {
 			if (this.histogram) {
@@ -3112,6 +3118,7 @@
 				if (result.success == "1") {
 					allMyBuyOrders.add(this.appid, this.marketHashName, {appid: this.appid, market_hash_name: this.marketHashName, quantity: amount.quantity, price: getSymbolStrFromPrice(amount.price, this.currencyInfo), buy_orderid: result.buy_orderid});
 					elemMsg.textContent = "您已成功提交订购单！";
+					this.showCurrentBuyOrder(this.appid, this.marketHashName);
 				} else if (result.message) {
 					elemMsg.textContent = result.message;
 				} else {
