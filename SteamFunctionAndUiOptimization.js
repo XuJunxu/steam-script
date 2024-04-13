@@ -1054,22 +1054,13 @@
 		}
 
 		function updatePriceOverview(appid, marketHashName, item, data) {
+			var container0 = document.querySelector("#price_gram_container0");
+			var container1 = document.querySelector("#price_gram_container1");
+			var html = "";
 			if (data.success && item.assetid == unsafeWindow.g_ActiveInventory.selectedItem.assetid) {
-				var container0 = document.querySelector("#price_gram_container0");
-				var container1 = document.querySelector("#price_gram_container1");
-
-				var html = "";
 				html += data.lowest_price ? `<span title="最低售价">${data.lowest_price}</span>` : "";
 				html += data.volume ? `<span title="24小时内销量">${data.volume} 个</span>` : "";
 				html += data.median_price ? `<span title="上一小时售价中位数">${data.median_price}</span>` : "";
-
-				var buyOrder = allMyBuyOrders.get(appid, marketHashName);
-				if (buyOrder) {
-					html += `<span>求购：${buyOrder.quantity} 个 -- ${buyOrder.price}</span>`;
-				}
-				
-				container0.querySelector(".price_overview").innerHTML = html;
-				container1.querySelector(".price_overview").innerHTML = html;
 				
 				if (globalSettings.inventory_sell_btn && !priceGramLoaded && data.lowest_price && item.description.marketable) {
 					container0.querySelector(".sell_price_input").value = (getPriceFromSymbolStr(data.lowest_price) / 100.0).toFixed(2);
@@ -1078,6 +1069,14 @@
 					container1.querySelector(".sell_price_input").dispatchEvent(new Event("input"));
 				}
 			}
+
+			var buyOrder = allMyBuyOrders.get(appid, marketHashName);
+			if (buyOrder) {
+				html += `<span>求购：${buyOrder.quantity} 个 -- ${buyOrder.price}</span>`;
+			}
+
+			container0.querySelector(".price_overview").innerHTML = html;
+			container1.querySelector(".price_overview").innerHTML = html;
 		}
 
 		function showPriceReceive(event, item) {
@@ -1643,7 +1642,7 @@
 				document.querySelector("#history_page_control_before .wait_loading_history").style.display = null;
 				document.querySelector("#history_page_control_after .wait_loading_history").style.display = null;
 				document.querySelector("#history_page_control_before .get_history_failed").style.display = "none";
-					document.querySelector("#history_page_control_after .get_history_failed").style.display = "none";
+				document.querySelector("#history_page_control_after .get_history_failed").style.display = "none";
 				var start = (page - 1) * pageSize;
 				var res = await getMarketMyHistory(start, pageSize);
 				if (res.success) {
@@ -2044,6 +2043,7 @@
 			return page;
 		}
 
+		//市场历史记录添加链接
 		function addMarketLink(data) {
 			if (data.assets) {
 				var assets = [];
@@ -2069,7 +2069,7 @@
 						}
 
 						if (assetInfo) {
-							var hashName = encodeURIComponent(assetInfo.market_hash_name);
+							var hashName = getMarketHashName(assetInfo);
 							nameElem.innerHTML = `<a class="market_listing_item_name_link" href="https://steamcommunity.com/market/listings/${assetInfo.appid}/${hashName}" target="_blank">${nameElem.innerHTML}</a>`;
 							
 							var priceElem = row.querySelector(".market_listing_their_price");
@@ -2185,7 +2185,7 @@
 			var listing = event.currentTarget.parentNode;
 			var res = listing.querySelector("a.market_listing_item_name_link").href.match(/steamcommunity\.com\/market\/listings\/(\d+)\/([^\/\?\&\#\=]+)/);
 			var appid = res[1];
-			var marketHashName = res[2];
+			var marketHashName = encodeMarketHashName(res[2]);
 			dialogPriceInfo.show(appid, marketHashName, currencyInfo, function(data) {
 				if (add) {
 					addPriceLabel(listing, data);
@@ -2420,7 +2420,8 @@
 
 			if (assetInfo && assetInfo.appid == 753) {
 				var appid = assetInfo.market_fee_app;
-				var link = gameCardsLink(assetInfo) || ("https://steamcommunity.com/my/gamecards/" + appid);
+				var isFoil = location.href.search(/(%28Foil%29|%28Foil%20Trading%20Card%29|\(Foil\)|\(Foil%20Trading%20Card\))/i) > 0;
+				var link = gameCardsLink(assetInfo) || `https://steamcommunity.com/my/gamecards/${appid}/${isFoil? "?border=1" : ""}`;
 				var linkElem = document.createElement("div");
 				linkElem.style.marginLeft = "10px";
 				linkElem.innerHTML = `<style>.page_link_btn {border-radius: 2px; cursor: pointer; background: black; color: white; margin: 10px 5px 0px 0px; display: inline-block;} .page_link_btn > span {padding: 0px 15px; font-size: 14px; line-height: 25px;} .page_link_btn:hover {background: rgba(102, 192, 244, 0.4)}</style>
@@ -2554,7 +2555,7 @@
 			if (hashNameList && hashNameList.length > 0 && hashNameList.length == cardElems.length) {
 				for (var i = 0; i < cardElems.length; i++) {
 					var cardElem = cardElems[i];
-					var hashName = hashNameList[i];
+					var hashName = encodeMarketHashName(hashNameList[i]);
 
 					var icon = cardElem.querySelector("img.gamecard").src;
 					var title1 = cardElem.querySelector(".badge_card_set_title").textContent.replace(cardElem.querySelector(".badge_card_set_text_qty")?.textContent, "").trim();
@@ -2614,8 +2615,7 @@
 				for (let card of marketItems) {
 					if (image.includes(card.asset_description.icon_url)) {
 						cardElem.asset = card.asset_description;
-						let hashName = card.asset_description.market_hash_name || card.hash_name;
-						hashName = encodeURIComponent(hashName);
+						let hashName = getMarketHashName(card.asset_description);
 						let html = `<a class="market_link open_market_page" href="https://steamcommunity.com/market/listings/753/${hashName}" target="_blank">打开市场页面</a>
 									<a class="market_link show_market_info" data-market-hash-name="${hashName}" style="margin-top: 5px;">起价：${card.sell_price_text}</a>`;
 
@@ -3026,11 +3026,18 @@
 		cancelCurrentBuyOrder: async function(event) {
 			var button = event.target;
 			var buyOrderId = button.getAttribute("data-buy-orderid");
-			var res = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
-			if (res.success == 1) {
+			var order = allMyBuyOrders.getByOrderid(buyOrderId);
+
+			if (order) {
+				var res = await cancelBuyOrder(buyOrderId, unsafeWindow.g_sessionID);
+				if (res.success == 1) {
+					button.textContent = "已取消";
+					allMyBuyOrders.delete(order.appid, order.market_hash_name);
+				}
+			} else {
 				button.textContent = "已取消";
-				allMyBuyOrders.delete(this.appid, this.marketHashName);
 			}
+
 		},
 		showCreateBuyOrder: function(event) {
 			if (this.histogram) {
@@ -3102,9 +3109,9 @@
 	function dialogMultiCreateBuyOrder(assets, currencyInfo) {
 		var html = "";
 		for (var asset of assets) {
-			html += `<tr class="multi_order_row" data-hash-name="${encodeURIComponent(asset.market_hash_name)}" data-appid="${asset.appid}">
+			html += `<tr class="multi_order_row" data-hash-name="${getMarketHashName(asset)}" data-appid="${asset.appid}">
 					 <td><div class="multi_order_name multi_order_cell"><img class="multi_order_item_img" src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}">
-					 <a class="multi_order_name_link" href="https://steamcommunity.com/market/listings/${asset.appid}/${encodeURIComponent(asset.market_hash_name)}" target="_blank">${asset.market_name || asset.name}</a></div></td>
+					 <a class="multi_order_name_link" href="https://steamcommunity.com/market/listings/${asset.appid}/${getMarketHashName(asset)}" target="_blank">${asset.market_name || asset.name}</a></div></td>
 					 <td><div class="multi_order_cell"><input class="multi_order_quantity" type="number" step="1" min="0"></div></td>
 					 <td><div class="multi_order_cell"><input class="multi_order_price" type="number" step="0.01" min="0.03"><div class="multi_order_second_price multi_order_second"></div></div></td>
 					 <td><div class="multi_order_cell"><div class="multi_order_total" data-price-total="0">--</div><div class="multi_order_second_total multi_order_second" data-price-total="0"></div></div></td>
@@ -3687,11 +3694,13 @@
 		if (appid == "753") {
 			var gameid = nameLink.match(/\/market\/listings\/\d+\/(\d+)-/)[1];
 			var storeLink = "https://store.steampowered.com/app/" + gameid;
+			var cardLink;
 			if (asset) {
-				var cardLink = gameCardsLink(asset) || ("https://steamcommunity.com/my/gamecards/" + gameid);
-			} else {   //求购订单无法获取物品的asset
-				var isFoil = nameLink.search(/(28Foil%29|%28Foil%20Trading%20Card%29)/) > 0;
-				var cardLink = `https://steamcommunity.com/my/gamecards/${gameid}/${isFoil? "?border=1" : ""}`;
+				cardLink = gameCardsLink(asset);
+			} 
+			if (!cardLink) {   //求购订单无法获取物品的asset
+				var isFoil = nameLink.search(/(%28Foil%29|%28Foil%20Trading%20Card%29|\(Foil\)|\(Foil%20Trading%20Card\))/i) > 0;
+				cardLink = `https://steamcommunity.com/my/gamecards/${gameid}/${isFoil? "?border=1" : ""}`;
 			}
 			
 			gameNameElem.innerHTML = `<a class="market_listing_game_name_link" href="${storeLink}" target="_blank" title="打开商店页面">${gameNameElem.innerHTML}</a>`;
@@ -3708,8 +3717,14 @@
 	}
 
 	function getMarketHashName(assetInfo) {
-		var marketHashName = assetInfo.market_hash_name || assetInfo.market_name || assetInfo.name;
+		var marketHashName = assetInfo.market_hash_name || assetInfo.hash_name || assetInfo.market_name || assetInfo.name;
 		return encodeURIComponent(marketHashName); 
+	}
+
+	function encodeMarketHashName(hashName) {
+		//encodeURIComponent不会编码!()'等符号，导致从url中获取的MarketHashName与encodeURIComponent编码的不同
+		//从url中获取的MarketHashName要先解码再编码才能保证相同
+		return encodeURIComponent(decodeURIComponent(hashName));
 	}
 
 	function getPriceFromSymbolStr(str) {
@@ -3882,7 +3897,7 @@
 				var gameName = row.querySelector(".market_listing_game_name").textContent.trim();
 				var marketLink = row.querySelector("a.market_listing_item_name_link").href;
 				var appid = marketLink.match(/\/market\/listings\/(\d+)\//)[1];
-				var hashName = marketLink.match(/\/market\/listings\/\d+\/([^\/\?\&\#\=]+)/)[1];
+				var hashName = encodeMarketHashName(marketLink.match(/\/market\/listings\/\d+\/([^\/\?\&\#\=]+)/)[1]);
 				var quantity = row.querySelector(".market_listing_buyorder_qty .market_listing_price").textContent.trim();
 				var qty = row.querySelector(".market_listing_inline_buyorder_qty").textContent.trim();
 				var price = row.querySelector(".market_listing_my_price:not(.market_listing_buyorder_qty) .market_listing_price").textContent.replace(qty, "").trim();
