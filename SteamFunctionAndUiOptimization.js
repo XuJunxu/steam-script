@@ -776,29 +776,21 @@
 		//修改页面布局
 		function changeInventoryPage() {  
 			var styleElem = document.createElement("style");
-			styleElem.innerHTML = `div#inventory_logos {margin: 10px; padding: 0px; width: 500px;} 
+			styleElem.innerHTML = `div#inventory_logos, div#tabcontent_inventory .filter_label {display: none;} 
 									div#tabcontent_inventory {padding-top: 12px;}
+									.profile_small_header_texture .inventory_links {position: absolute; right: 20px; bottom: 0px;}
 									div.inventory_rightnav {margin: 0px 12px 12px auto; display: flex;}
 									div.inventory_rightnav>a, div.inventory_rightnav>div {flex: 0 0 auto; overflow: hidden; margin-bottom: auto;}
-									a.btn_medium>span, div#inventory_more_link>span {line-height: 22px;}
-									.btn_reload_inventory {margin-right: 12px;}
 									.tabitems_ctn>.games_list_separator.responsive_hidden {display: none;}
 									.btn_small>span {user-select: none;}`;
 			document.body.appendChild(styleElem);
 		
+			var header = document.querySelector("div.profile_small_header_texture");
 			var inventory_links = document.querySelector("div.inventory_links");
-			var inventory_rightnav = document.querySelector("div.inventory_rightnav");
-			var tabcontent_inventory = document.querySelector("#tabcontent_inventory");
-			if (inventory_links && inventory_rightnav && tabcontent_inventory) {
+			if (header && inventory_links) {
 				//调整交易报价按键的位置
-				inventory_links.style.margin = "0px";
-				inventory_rightnav.style.marginRight = "12px";
-				tabcontent_inventory.insertBefore(inventory_rightnav, tabcontent_inventory.firstElementChild);
+				header.appendChild(inventory_links);
 			}
-
-			//调整LOGO的位置
-			var inventory_logos = document.querySelector("div#inventory_logos");
-			document.querySelector("div#active_inventory_page>div.inventory_page_left")?.insertBefore(inventory_logos, document.querySelector("div#inventory_pagecontrols").nextElementSibling);
 		}
 		
 		//等待物品加载完设置过滤
@@ -988,14 +980,17 @@
 				}
 			});
 
-			//将logo替换成上架日志
-			var logHtml = `<style>#inventory_logos {height: auto;} #inventory_applogo {display: none;} #sell_log_text {font-size: 12px; max-height: 200px; overflow-y: auto; margin-top: 10px;} 
-							#sell_log_total {font-weight: bold; margin-top: 5px}</style>
-							<div id="sell_log_text"></div><div id="sell_log_total"></div><div><a id="clear_sell_log" style="display: none; margin-top: 10px" class="pagecontrol_element pagebtn">清空</a></div>`;
+			//添加上架日志显示区
+			var logHtml = `<style>#sell_log_container {width: 100%; overflow: hidden;}  
+						   #sell_log_text {font-size: 12px; max-height: 300px; overflow-y: auto; margin-top: 10px;} 
+						   #sell_log_total {font-weight: bold; margin-top: 5px}</style>
+						   <div id="sell_log_text"></div><div id="sell_log_total"></div><div>
+						   <a id="clear_sell_log" style="display: none; margin-top: 10px" class="pagecontrol_element pagebtn">清空</a></div>`;
 			var logContainer = document.createElement("div");
+			logContainer.id = "sell_log_container";
 			logContainer.innerHTML = logHtml;
 
-			document.querySelector("#inventory_logos").appendChild(logContainer);
+			document.querySelector("div#active_inventory_page>div.inventory_page_left")?.insertBefore(logContainer, document.querySelector("div#inventory_pagecontrols").nextElementSibling);
 			document.querySelector("#clear_sell_log").onclick = function() {
 				sellTotalPriceReceive = 0;
 				sellTotalPriceBuyerPay = 0;
