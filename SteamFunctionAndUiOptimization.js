@@ -746,6 +746,7 @@
 		var priceGramLoaded = false;
 		var inventoryAppidForSell = 0;
 		var inventoryAppidForLink = 0;
+		var inventoryAppidForFilter = 0;
 
 		//修改页面布局
 		if (globalSettings.inventory_set_style) {
@@ -755,6 +756,12 @@
 
 		//只显示普通卡牌
 		if (globalSettings.inventory_set_filter) {
+			document.querySelector("#games_list_public .games_list_tabs").addEventListener("click", function(event) {
+				if (inventoryAppidForFilter != unsafeWindow.g_ActiveInventory.appid) {
+					inventoryAppidForFilter = unsafeWindow.g_ActiveInventory.appid;
+					waitLoadInventory();
+				}
+			});
 			waitLoadInventory();
 		}
 
@@ -796,11 +803,16 @@
 		
 		//等待物品加载完设置过滤
 		function waitLoadInventory(load=true) {  
+			var selectElem = document.querySelector("select#market_item_filter");
+
 			var isLoaded = true;
 			if (typeof unsafeWindow.g_ActiveInventory === "undefined" || unsafeWindow.g_ActiveInventory == null || !unsafeWindow.g_ActiveInventory.appid) {
 				isLoaded = false;
 			}
 			if (isLoaded && unsafeWindow.g_ActiveInventory.appid != 753) {
+				if (selectElem) {
+					selectElem.style.display = "none";
+				}
 				return;
 			}
 			if (isLoaded && !unsafeWindow.g_ActiveInventory.BIsFullyLoaded()) {
@@ -817,56 +829,62 @@
 				return;
 			}
 
-			var hasMarketableCards = false;
-			var restriction = {};
-			var ItemElements = unsafeWindow.g_ActiveInventory.m_rgItemElements;
-			if (unsafeWindow.g_ActiveInventory.m_rgChildInventories?.[6]?.m_rgItemElements) {
-				ItemElements = unsafeWindow.g_ActiveInventory.m_rgChildInventories[6].m_rgItemElements;
-			}
-			for (let itemHolder of ItemElements) {
-				var itemElem = itemHolder[0];
-				var desc = itemElem?.rgItem?.description;
-				if (desc === undefined || desc === null) {
-					continue;
-				}
+			if (!selectElem) {
+				selectElem = document.createElement("select");
+				selectElem.id = "market_item_filter";
+				selectElem.style = "background: #000; color: #ebebeb; cursor: pointer; padding: 3px; font-size: 12px;";
+				selectElem.onchange = showRestrictedItems;
 
-				if (!desc.marketable) {		//按照可交易时间分类
-					var restrictedTime = desc.owner_descriptions?.[0]?.value?.match(/\[date\](\d+)\[\/date\]/)?.[1];
-					if (restrictedTime) {
-						desc.tags ??= [];
-						desc.tags.push({category: "restrictedTime", internal_name: restrictedTime});
-						restriction[restrictedTime] = (restriction[restrictedTime] ?? 0) + 1;
+				var container = document.createElement("div");
+				container.style = "float: right; margin-left: 20px;"
+
+				container.appendChild(selectElem);
+				document.querySelector(".inventory_filters .filter_tag_button_ctn").appendChild(container);
+				document.querySelector("#filter_tag_hide").addEventListener("click", function() { selectElem.value = "0";});
+			
+				var hasMarketableCards = false;
+				var restriction = {};
+				var inventory = unsafeWindow.g_ActiveInventory.m_rgChildInventories?.[6] || unsafeWindow.g_ActiveInventory;
+				var descriptions = inventory.m_rgDescriptions;
+
+				for (var key in descriptions) {  //按照可出售时间分类
+					var desc = descriptions[key];
+					if (!desc.marketable) {		
+						var restrictedTime = desc.owner_descriptions?.[0]?.value?.match(/\[date\](\d+)\[\/date\]/)?.[1];
+						if (restrictedTime) {
+							desc.tags ??= [];
+							desc.tags.push({category: "restrictedTime", internal_name: restrictedTime});
+							restriction[restrictedTime] = (restriction[restrictedTime] ?? 0) + desc.use_count;
+						}
+					}
+
+					if (!hasMarketableCards && desc.marketable && getCardBorder(desc) == "cardborder_0") {  //判断是否有可交易的普通卡牌
+						hasMarketableCards = true;
 					}
 				}
+
+				//可选择只显示指定可交易时间的物品
+				var restrictionList = Object.keys(restriction);
+				restrictionList.sort();
+				var html = `<option value="0">全部物品</option><option value="1">现在可出售的普通卡牌</option><option value="2">现在可出售的全部物品</option>`;
+				for (var time of restrictionList) {
+					var localTime = new Date(time * 1000).toLocaleString();
+					html += `<option value="${time}">${localTime} 后可出售 (${restriction[time]})</option>`;
+				}
+
+				selectElem.innerHTML = html;
 				
-				if (!hasMarketableCards && desc.marketable && getCardBorder(desc) == "cardborder_0") {  //判断是否有可交易的普通卡牌
-					hasMarketableCards = true;
+				if (hasMarketableCards) {
+					selectElem.setAttribute("has-marketable-cards", "true");
 				}
 			}
 
-			//可选择只显示指定可交易时间的物品
-			var restrictionList = Object.keys(restriction);
-			restrictionList.sort();
-			var html = `<option value="0">全部物品</option><option value="1">现在可出售的普通卡牌</option><option value="2">现在可出售的全部物品</option>`;
-			for (var time of restrictionList) {
-				var localTime = new Date(time * 1000).toLocaleString();
-				html += `<option value="${time}">${localTime} 后可出售 (${restriction[time]})</option>`;
-			}
-			var selectElem = document.createElement("select");
-			selectElem.innerHTML = html;
-			selectElem.style = "background: #000; color: #ebebeb; cursor: pointer; padding: 3px; font-size: 12px;";
-			selectElem.onchange = showRestrictedItems;
+			selectElem.style.display = null;
+			selectElem.value = "0";
 
-			var container = document.createElement("div");
-			container.style = "float: right; margin-left: 20px;"
-
-			container.appendChild(selectElem);
-			document.querySelector(".inventory_filters .filter_tag_button_ctn").appendChild(container);
-			document.querySelector("#filter_tag_hide").addEventListener("click", function() { selectElem.value = "0";});
-
-			if (hasMarketableCards) {
+			if (selectElem.getAttribute("has-marketable-cards") == "true") {
 				selectElem.value = "1";
-				Filter.UpdateTagFiltering({"cardborder": ["cardborder_0"], "misc": ["marketable"]});
+				selectElem.dispatchEvent(new Event("change"));
 			}
 		}
 
