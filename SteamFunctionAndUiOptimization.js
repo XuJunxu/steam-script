@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      2.2.7
+// @version      2.2.8
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @iconURL      https://store.steampowered.com/favicon.ico
@@ -3342,7 +3342,7 @@
 			var exchangeRate = readCurrencyRate();
 			unsafeWindow.sfu_settings = settings;
 			unsafeWindow.sfu_update_currency_rate = function() {
-				getCurrencyRate(settings.currency_code, settings.second_currency_code, exchangeRate.listings_start);
+				getCurrencyRate(settings.currency_code, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
 			};
 			var selectOptions = "";
 			var selectOptions2 = "";
@@ -3353,7 +3353,7 @@
 			var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} 
 							.settings_select, .settings_row input[type="checkbox"], .settings_row label, input[type="button"] {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} 
 							.settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;} .settings_input_number {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} 
-							.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} 
+							.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;}  .currency_rate {margin-left: 15px;}
 							.settings_input_number::-webkit-outer-spin-button, .settings_input_number::-webkit-inner-spin-button {-webkit-appearance: none !important;}
 							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
 							<div class="settings_container">
@@ -3361,15 +3361,17 @@
 							<input class="settings_input_number" style="color: #EBEBEB;" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = Math.max(parseInt(this.value), 60);">
 							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
 							<span id="show_update_time" style="margin-left: 20px;">${new Date(exchangeRate.last_update).toLocaleString()}</span></div>
+							<div style="margin-bottom: 5px;"><span>用于更新汇率的物品的url: <span><input type="text" style="color: #EBEBEB; width: 300px;" value="${settings.rate_item_url}" oninput="window.sfu_settings.rate_item_url = this.value;"></div>
+							<div style="margin-bottom: 5px;"><span>用于更新汇率的物品的listingid: <span><input type="text" style="color: #EBEBEB; width: 170px;" value="${settings.rate_item_listingid}" oninput="window.sfu_settings.rate_item_listingid = this.value;"></div>
 							<div style="margin-bottom: 10px; display: flex;">
 							<div class="settings_currency" style="margin-right: 40px;">
 							<div><span>钱包货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;" title="用于无法获取货币信息的页面，包括徽章页面和消费历史页面">${selectOptions}</select></div>
-							<div id="show_wallet_rate">USD 1 = ${exchangeRate.wallet_code} ${exchangeRate.wallet_rate > 0? exchangeRate.wallet_rate: "??"}</div>
-							<div>${exchangeRate.wallet_code} 1 = ${exchangeRate.second_code} ${exchangeRate.wallet_second_rate > 0? exchangeRate.wallet_second_rate: "??"}</div></div>
+							<div class="currency_rate">1 ${exchangeRate.correlation_code} = ${exchangeRate.wallet_rate > 0? exchangeRate.wallet_rate: "??"} ${exchangeRate.wallet_code}</div>
+							<div class="currency_rate">1 ${exchangeRate.wallet_code} = ${exchangeRate.wallet_second_rate > 0? exchangeRate.wallet_second_rate: "??"} ${exchangeRate.second_code}</div></div>
 							<div class="settings_currency">
 							<div><span>第二货币：</span><select class="settings_select"; onchange="window.sfu_settings.second_currency_code = this.value;" title="">${selectOptions2}</select></div>
-							<div id="show_second_rate">USD 1 = ${exchangeRate.second_code} ${exchangeRate.second_rate > 0? exchangeRate.second_rate: "??"}</div>
-							<div>${exchangeRate.second_code} 1 = ${exchangeRate.wallet_code} ${exchangeRate.wallet_second_rate > 0? (1.0 / exchangeRate.wallet_second_rate).toFixed(6): "??"}</div></div>
+							<div class="currency_rate">1 ${exchangeRate.correlation_code} = ${exchangeRate.second_rate > 0? exchangeRate.second_rate: "??"} ${exchangeRate.second_code}</div>
+							<div class="currency_rate">1 ${exchangeRate.second_code} = ${exchangeRate.wallet_second_rate > 0? (1.0 / exchangeRate.wallet_second_rate).toFixed(6): "??"} ${exchangeRate.wallet_code}</div></div>
 							</div>
 							<div class="settings_page_title">库存页面设置：</div>
 							<div class="settings_row">
@@ -3413,6 +3415,8 @@
 		data.currency_code ??= "CNY";
 		data.second_currency_code ??= "USD";
 		data.rate_update_interval ??= 360;
+		data.rate_item_url ??= "https://steamcommunity.com/market/listings/570/Inscribed%20Bracers%20of%20Impending%20Transgressions";
+		data.rate_item_listingid ??= "6394623418832328659";
 		data.inventory_set_style ??= true;
 		data.inventory_set_filter ??= true;
 		data.inventory_append_linkbtn ??= true;
@@ -3444,31 +3448,28 @@
 	function checkUpdateCurrencyRate(settings, currencyRate) {
 		if (settings.currency_code != currencyRate.wallet_code || settings.second_currency_code != currencyRate.second_code || 
 			currencyRate.wallet_rate <= 0 || currencyRate.second_rate <= 0 || (Date.now() - currencyRate.last_update) > settings.rate_update_interval * 60000) {
-			getCurrencyRate(settings.currency_code, settings.second_currency_code, currencyRate.listings_start);
+			getCurrencyRate(settings.currency_code, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
 		}
 	}
 
 	//获取并计算汇率
-	async function getCurrencyRate(wallet_code, second_code, start) {
-		var appid = "570";
-		var marketHashName = "Inscribed%20Bracers%20of%20Impending%20Transgressions";
+	async function getCurrencyRate(wallet_code, second_code, market_url, listingid) {
 		var count = 100;
 		var language = "english";
-		var listingid = "6244878730659628396";
 		var start = 0;
 		var wallet_currency = getCurrencyInfo(wallet_code, true);
 		var second_currency = getCurrencyInfo(second_code, true);
 		await sleep(1000);
-		var doc = getHtmlDocument("https://steamcommunity.com/market/listings/570/" + marketHashName + "/?l=english");
+		var doc = getHtmlDocument(market_url + "/?l=english");
 		await sleep(1000);
-		var data = await getMarketListings(appid, marketHashName, start, count, wallet_currency.country, language, wallet_currency.eCurrencyCode);
+		var data = await getMarketListings(market_url, start, count, wallet_currency.country, language, wallet_currency.eCurrencyCode);
 		if (data.success && data.total_count > 0) {
 			var data1 = data;
 			if (!data.listinginfo[listingid]) {
 				for (var i = 0; i < parseInt(data.total_count / count); i++) {
 					await sleep(1000);
 					start = (parseInt(data.total_count / count) - i) * count;
-					data1 = await getMarketListings(appid, marketHashName, start, count, wallet_currency.country, language, wallet_currency.eCurrencyCode);
+					data1 = await getMarketListings(market_url, start, count, wallet_currency.country, language, wallet_currency.eCurrencyCode);
 					if (data1.success) {
 						if (data1.listinginfo[listingid]) {
 							break;
@@ -3480,11 +3481,12 @@
 				}
 			}
 			await sleep(1000);
-			var data2 = await getMarketListings(appid, marketHashName, start, count, second_currency.country, language, second_currency.eCurrencyCode);
+			var data2 = await getMarketListings(market_url, start, count, second_currency.country, language, second_currency.eCurrencyCode);
 			if (data2.success && data2.listinginfo[listingid]) {
 				var rate = {
 					wallet_code: wallet_code,
 					second_code: second_code,
+					correlation_code: getCurrencyCode(data1.listinginfo[listingid].currencyid % 2000),
 					wallet_rate: (data1.listinginfo[listingid].converted_price / data1.listinginfo[listingid].price).toFixed(6),
 					second_rate: (data2.listinginfo[listingid].converted_price / data2.listinginfo[listingid].price).toFixed(6),
 					wallet_second_rate: (data2.listinginfo[listingid].converted_price / data1.listinginfo[listingid].converted_price).toFixed(6),
@@ -3499,9 +3501,9 @@
 	//获取本地的汇率数据
 	function readCurrencyRate() {
 		var data = getStorageValue("SFU_CURRENCY_RATE") || {};
-		data.listings_start = Math.max((data.listings_start ?? 40), 0);
-		data.wallet_code ??= "??";
-		data.second_code ??= "??";
+		data.wallet_code ??= "???";
+		data.second_code ??= "???";
+		data.correlation_code ??= "???";
 		data.wallet_rate ??= "-1";
 		data.second_rate ??= "-1";
 		data.wallet_second_rate ??= "-1";
@@ -4290,9 +4292,9 @@
 		});
 	}
 
-	function getMarketListings(appid, hashName, start, count, country, language, currency) {
+	function getMarketListings(market_url, start, count, country, language, currency) {
 		return new Promise(function(resolve, reject) {
-			var url = `https://steamcommunity.com/market/listings/${appid}/${hashName}/render/?query=&start=${start}&count=${count}&country=${country}&language=${language}&currency=${currency}`;
+			var url = `${market_url}/render/?query=&start=${start}&count=${count}&country=${country}&language=${language}&currency=${currency}`;
 			var xhr = new XMLHttpRequest();
 			xhr.timeout = TIMEOUT;
 			xhr.open("GET", url, true);
@@ -5037,7 +5039,7 @@
 			if (currencyData[code].eCurrencyCode == currencyId )
 				return code;
 		}
-		return 'Unknown';
+		return '???';
 	}
 
 	function getCurrencyCodeByCountry(country) {
