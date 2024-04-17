@@ -226,13 +226,13 @@
         for (var i=0; i<getFileAccounts().length; i++) {
             var account = getFileAccounts()[i];
             html += `<a class="SG_popup_menu_item">
-                     <span class="account_name SG_popup_menu_item_name" data-tooltip-text="点击复制该账号的验证码" data-gid=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span></a>`;
+                     <span class="account_name SG_popup_menu_item_name" data-tooltip-text="点击复制该账号的验证码" data-gid=${i} data-name=${account.account_name} data-time=${time}>${account.account_name || account.steamid || '???'}</span></a>`;
         }
 
         for (var i=0; i<ACCOUNTS.length; i++) {
             var account = ACCOUNTS[i];
             html += `<a class="SG_popup_menu_item">
-                     <span class="account_name SG_popup_menu_item_name" data-tooltip-text="点击复制该账号的验证码" data-id=${i} data-name=${account.account_name} data-time=${time}>${account.account_name}</span>
+                     <span class="account_name SG_popup_menu_item_name" data-tooltip-text="点击复制该账号的验证码" data-id=${i} data-name=${account.account_name} data-time=${time}>${account.account_name || account.steamid || '???'}</span>
                      <span class="remove_account SG_popup_menu_item_btn" data-tooltip-text="删除该账号" data-id=${i} data-name=${account.account_name}></span></a>`;
         }
         
@@ -285,7 +285,7 @@
                     <div class="SG_add_account_description">身份密钥<span data-tooltip-text="即 identity_secret，用于确认交易和市场。"> (?)</span></div>
                     <div><input class="SG_add_account_input" type="text" id="identity_secret"></div>`;
 
-        var modal = ShowConfirmDialog('添加账号', content, '确定', '取消');
+        var modal = unsafeWindow.ShowConfirmDialog('添加账号', content, '确定', '取消');
         var $content = modal.GetContent();
         $content[0].id = 'SG_add_account_dialog';
         setupTooltips($content);
@@ -326,10 +326,10 @@
                     }
                     var data = JSON.parse(acct);
                     var account = {
-                        account_name: data.account_name,
-                        shared_secret: data.shared_secret,
+                        account_name: data.account_name ?? '',
+                        shared_secret: data.shared_secret ?? '',
                         steamid: (data.steamid || steamid || '').toString(),
-                        identity_secret: data.identity_secret
+                        identity_secret: data.identity_secret ?? ''
                     };
                     account_list.push(account);
                 }
@@ -342,7 +342,7 @@
                 var results = '';
                 for (var acct of account_list) {
                     var res = appendAccount(acct);
-                    results += `${acct.account_name || acct.steamid || 'unknown'} ${res} <br>`;
+                    results += `${acct.account_name || acct.steamid || '???'} ${res} <br>`;
                 }
                 ShowAlertDialog('导入账号', results, '确定');
             }
@@ -362,14 +362,30 @@
         if (account.steamid && account.steamid.search(/^7656\d{13}$/) != 0) {
             return '失败，无效的 64 位 Steam ID。';
         }
-        account.account_name = account.account_name || account.steamid || 'unknown';
-        ACCOUNTS.push(account);
-        GM_setValue('SG_ACCOUNTS', ACCOUNTS);
+
+        if (!checkAccountExisted(account)) {
+            ACCOUNTS.push(account);
+            GM_setValue('SG_ACCOUNTS', ACCOUNTS);
+        } else {
+            return '失败，已存在相同的账号名称。';
+        }
+
         if (account.steamid && account.identity_secret) {
             return '成功，该账号支持确认交易和市场。';
         } else {
             return '成功，该账号不支持确认交易和市场。';
         }
+    }
+
+    function checkAccountExisted(account) {
+        if (account.account_name) {
+            for (var acc of ACCOUNTS) {
+                if (acc.account_name == account.account_name) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     function showManageAccountDialog() {
@@ -509,7 +525,9 @@
                 var lineHeight = 40;
                 var elemAcct = document.createElement('div');
                 elemAcct.className = 'edit_account_item';
-                elemAcct.innerHTML = `<div draggable="true" class="account_sort_handle"><img src="${sortImg}"></div><span class="account_item_name">${account.account_name}</span><input type="checkbox"  class="account_item_checkbox">`;
+                elemAcct.innerHTML = `<div draggable="true" class="account_sort_handle"><img src="${sortImg}"></div>
+                                      <span class="account_item_name">${account.account_name || account.steamid || '???'}</span>
+                                      <input type="checkbox"  class="account_item_checkbox">`;
                 elemAcct.account = account;
                 elemAcct.style.top = `${itemTop}px`;
                 itemTop += lineHeight;
