@@ -2260,7 +2260,7 @@
 
 		if (!(Object.prototype.toString.call(unsafeWindow.g_rgAssets) === "[object Object]")) {  //在获取该物品的列表时发生了一个错误。请稍后再试。
 			if (document.body.innerHTML.match(/Market_LoadOrderSpread\(\s?\d+\s?\)/)) {
-				location.reload();
+				setTimeout(function() { location.reload(); }, 1000);
 			}
 		}
 
@@ -2467,25 +2467,18 @@
 	}
 
 	//steam徽章界面
-	function steamGameCardsPage() {  
+	async function steamGameCardsPage() {  
 		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/gamecards\b/)) {
 			return;
 		}
 
-		addSteamCommunitySetting();
-
-		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
-
+		var marketPage = await getHtmlDocument("https://steamcommunity.com/market/");
 		if (!unsafeWindow.g_rgWalletInfo) {
-			unsafeWindow.g_rgWalletInfo = {
-				wallet_fee: "1",
-				wallet_fee_base: "0",
-				wallet_fee_minimum: "1",
-				wallet_fee_percent: "0.05",
-				wallet_max_balance: "12500000",
-				wallet_publisher_fee_percent_default: "0.10",
-			}
+			unsafeWindow.g_rgWalletInfo = await getWalletInfo(marketPage);
 		}
+
+		addSteamCommunitySetting();
+		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
 
 		//修改页面布局
 		if (globalSettings.gamecards_set_style) {
@@ -2496,7 +2489,7 @@
 		if (globalSettings.gamecards_show_priceoverview || globalSettings.gamecards_append_linkbtn) {
 			appendCardsPageLinkBtn();
 			cardsAddInfoBtn();
-			appendMyBuyOrders();
+			appendMyBuyOrders(marketPage);
 		}
 
 		//修改页面布局
@@ -2655,7 +2648,7 @@
 		}
 
 		//添加显示该游戏的所有求购订单
-		async function appendMyBuyOrders() {
+		async function appendMyBuyOrders(doc) {
 			var container = document.querySelector("#my_buy_order_container");
 			if (!container) {
 				container = document.createElement("div");
@@ -2685,7 +2678,7 @@
 			container.querySelector("#my_buy_order_number").textContent = "（0）";
 			container.querySelector("#my_buy_order_section").innerHTML = "";
 
-			var myOrders = await allMyBuyOrders.load();
+			var myOrders = await allMyBuyOrders.load(doc);
 			if (myOrders && myOrders.length > 0) {
 				var gameid = getGameId();
 				var gameOrders = [];
@@ -3292,21 +3285,21 @@
 							<div class="settings_container">
 							<div class="settings_page_title">商店搜索页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_search_click_picture" type="checkbox" onclick="window.sfu_settings.search_click_picture = this.checked;" ${settings.search_click_picture ? "checked=true" : ""}></input><label for="sfu_search_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
-							<div class="settings_option"><input id="sfu_search_click_title" type="checkbox" onclick="window.sfu_settings.search_click_title = this.checked;" ${settings.search_click_title ? "checked=true" : ""}></input><label for="sfu_search_click_title" class="margin_right_20">点击游戏名时选中并复制</label></div>
-							<div class="settings_option"><input id="sfu_search_click_price" type="checkbox" onclick="window.sfu_settings.search_click_price = this.checked;" ${settings.search_click_price ? "checked=true" : ""}></input><label for="sfu_search_click_price" class="margin_right_20">点击游戏价格时添加到购物车</label></div>
-							<div class="settings_option"><input id="sfu_search_set_filter" type="checkbox" onclick="window.sfu_settings.search_set_filter = this.checked;" ${settings.search_set_filter ? "checked=true" : ""}></input><label for="sfu_search_set_filter">价格由低到高显示有卡牌的游戏</label></div>
+							<div class="settings_option"><input id="sfu_search_click_picture" type="checkbox" onclick="window.sfu_settings.search_click_picture = this.checked;" ${settings.search_click_picture ? "checked=true" : ""}><label for="sfu_search_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
+							<div class="settings_option"><input id="sfu_search_click_title" type="checkbox" onclick="window.sfu_settings.search_click_title = this.checked;" ${settings.search_click_title ? "checked=true" : ""}><label for="sfu_search_click_title" class="margin_right_20">点击游戏名时选中并复制</label></div>
+							<div class="settings_option"><input id="sfu_search_click_price" type="checkbox" onclick="window.sfu_settings.search_click_price = this.checked;" ${settings.search_click_price ? "checked=true" : ""}><label for="sfu_search_click_price" class="margin_right_20">点击游戏价格时添加到购物车</label></div>
+							<div class="settings_option"><input id="sfu_search_set_filter" type="checkbox" onclick="window.sfu_settings.search_set_filter = this.checked;" ${settings.search_set_filter ? "checked=true" : ""}><label for="sfu_search_set_filter">价格由低到高显示有卡牌的游戏</label></div>
 							</div>
 							<div class="settings_page_title">愿望单页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_wishlist_click_picture" type="checkbox" onclick="window.sfu_settings.wishlist_click_picture = this.checked;" ${settings.wishlist_click_picture ? "checked=true" : ""}></input><label for="sfu_wishlist_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
-							<div class="settings_option"><input id="sfu_wishlist_click_title" type="checkbox" onclick="window.sfu_settings.wishlist_click_title = this.checked;" ${settings.wishlist_click_title ? "checked=true" : ""}></input><label for="sfu_wishlist_click_title" class="margin_right_20">点击游戏名时选中并复制</label></div>
-							<div class="settings_option"><input id="sfu_wishlist_click_price" type="checkbox" onclick="window.sfu_settings.wishlist_click_price = this.checked;" ${settings.wishlist_click_price ? "checked=true" : ""}></input><label for="sfu_wishlist_click_price">点击游戏价格时打开商店页面</label></div>
+							<div class="settings_option"><input id="sfu_wishlist_click_picture" type="checkbox" onclick="window.sfu_settings.wishlist_click_picture = this.checked;" ${settings.wishlist_click_picture ? "checked=true" : ""}><label for="sfu_wishlist_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
+							<div class="settings_option"><input id="sfu_wishlist_click_title" type="checkbox" onclick="window.sfu_settings.wishlist_click_title = this.checked;" ${settings.wishlist_click_title ? "checked=true" : ""}><label for="sfu_wishlist_click_title" class="margin_right_20">点击游戏名时选中并复制</label></div>
+							<div class="settings_option"><input id="sfu_wishlist_click_price" type="checkbox" onclick="window.sfu_settings.wishlist_click_price = this.checked;" ${settings.wishlist_click_price ? "checked=true" : ""}><label for="sfu_wishlist_click_price">点击游戏价格时打开商店页面</label></div>
 							</div>
 							<div class="settings_page_title">消费历史记录页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_history_append_filter" type="checkbox" onclick="window.sfu_settings.history_append_filter = this.checked;" ${settings.history_append_filter ? "checked=true" : ""}></input><label for="sfu_history_append_filter" class="margin_right_20">添加筛选栏和统计栏</label></div>
-							<div class="settings_option"><input id="sfu_history_change_onclick" type="checkbox" onclick="window.sfu_settings.history_change_onclick = this.checked;" ${settings.history_change_onclick ? "checked=true" : ""}></input><label for="sfu_history_change_onclick">修改日期和物品的点击效果</label></div>
+							<div class="settings_option"><input id="sfu_history_append_filter" type="checkbox" onclick="window.sfu_settings.history_append_filter = this.checked;" ${settings.history_append_filter ? "checked=true" : ""}><label for="sfu_history_append_filter" class="margin_right_20">添加筛选栏和统计栏</label></div>
+							<div class="settings_option"><input id="sfu_history_change_onclick" type="checkbox" onclick="window.sfu_settings.history_change_onclick = this.checked;" ${settings.history_change_onclick ? "checked=true" : ""}><label for="sfu_history_change_onclick">修改日期和物品的点击效果</label></div>
 							<div class="settings_option"><span>货币：</span><select class="settings_select"; onchange="window.sfu_settings.history_currency_code = this.value;" title>${selectOptions}</select></div>
 							</div>
 							</div>`);
@@ -3338,22 +3331,24 @@
 		settingBtn.setAttribute("style", "position: absolute; background-color: #3b4b5f; right: 10px; top: 10px; border-radius: 2px; box-shadow: 0px 0px 2px 0px #00000099");
 		settingBtn.innerHTML = "<a style='cursor: pointer; padding: 3px 15px; line-height: 24px; font-size: 12px; color: #b8b6b4;'>设置</a>";
 		settingBtn.onclick = function() {
+			var walletCurrencyCode = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency);
 			var settings = getSteamCommunitySettings();
 			var exchangeRate = readCurrencyRate();
 			unsafeWindow.sfu_settings = settings;
 			unsafeWindow.sfu_update_currency_rate = function() {
-				getCurrencyRate(settings.currency_code, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
+				getCurrencyRate(walletCurrencyCode, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
 			};
+			
 			var selectOptions = "";
 			var selectOptions2 = "";
 			for (var code in currencyData) {
-				selectOptions += `<option value="${code}" ${code == settings.currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
+				selectOptions += `<option value="${code}" ${code == walletCurrencyCode ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 				selectOptions2 += `<option value="${code}" ${code == settings.second_currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 			}
-			var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} 
+			var options = (`<style>.settings_container {user-select: none; width: 540px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} 
 							.settings_select, .settings_row input[type="checkbox"], .settings_row label, input[type="button"] {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} 
 							.settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;} .settings_input_number {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} 
-							.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;}  .currency_rate {margin-left: 15px;}
+							.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;}  .currency_rate {margin-left: 15px; font-size: 13px;}
 							.settings_input_number::-webkit-outer-spin-button, .settings_input_number::-webkit-inner-spin-button {-webkit-appearance: none !important;}
 							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
 							<div class="settings_container">
@@ -3361,45 +3356,47 @@
 							<input class="settings_input_number" style="color: #EBEBEB;" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = Math.max(parseInt(this.value), 60);">
 							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
 							<span id="show_update_time" style="margin-left: 20px;">${new Date(exchangeRate.last_update).toLocaleString()}</span></div>
-							<div style="margin-bottom: 5px;"><span>用于更新汇率的物品的url: <span><input type="text" style="color: #EBEBEB; width: 300px;" value="${settings.rate_item_url}" oninput="window.sfu_settings.rate_item_url = this.value;"></div>
+							<div style="margin-bottom: 5px;"><span>用于更新汇率的物品的url: <span><input type="text" style="color: #EBEBEB; width: 320px;" value="${settings.rate_item_url}" oninput="window.sfu_settings.rate_item_url = this.value;"></div>
 							<div style="margin-bottom: 5px;"><span>用于更新汇率的物品的listingid: <span><input type="text" style="color: #EBEBEB; width: 170px;" value="${settings.rate_item_listingid}" oninput="window.sfu_settings.rate_item_listingid = this.value;"></div>
-							<div style="margin-bottom: 10px; display: flex;">
+							<div style="margin-bottom: 10px; display: flex; position: relative;">
 							<div class="settings_currency" style="margin-right: 40px;">
-							<div><span>钱包货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;" title="用于无法获取货币信息的页面，包括徽章页面和消费历史页面">${selectOptions}</select></div>
+							<div><span>钱包货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;" disabled="disabled">${selectOptions}</select></div>
 							<div class="currency_rate">1 ${exchangeRate.correlation_code} = ${exchangeRate.wallet_rate > 0? exchangeRate.wallet_rate: "??"} ${exchangeRate.wallet_code}</div>
 							<div class="currency_rate">1 ${exchangeRate.wallet_code} = ${exchangeRate.wallet_second_rate > 0? exchangeRate.wallet_second_rate: "??"} ${exchangeRate.second_code}</div></div>
 							<div class="settings_currency">
 							<div><span>第二货币：</span><select class="settings_select"; onchange="window.sfu_settings.second_currency_code = this.value;" title="">${selectOptions2}</select></div>
 							<div class="currency_rate">1 ${exchangeRate.correlation_code} = ${exchangeRate.second_rate > 0? exchangeRate.second_rate: "??"} ${exchangeRate.second_code}</div>
 							<div class="currency_rate">1 ${exchangeRate.second_code} = ${exchangeRate.wallet_second_rate > 0? (1.0 / exchangeRate.wallet_second_rate).toFixed(6): "??"} ${exchangeRate.wallet_code}</div></div>
+							<div class="settings_row" style="position: absolute; right: 20px;" title="显示市场价格信息时以第二货币获取数据">
+							<input id="sfu_use_second_currency" type="checkbox" ${settings.use_second_currency ? "checked=true" : ""} onclick="window.sfu_settings.use_second_currency = this.checked;"><label for="sfu_use_second_currency">使用第二货币</label></div>
 							</div>
 							<div class="settings_page_title">库存页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_inventory_set_style" type="checkbox" ${settings.inventory_set_style ? "checked=true" : ""} onclick="window.sfu_settings.inventory_set_style = this.checked;"></input><label for="sfu_inventory_set_style" class="margin_right_20">修改页面布局</label></div>
-							<div class="settings_option"><input id="sfu_inventory_set_filter" type="checkbox" ${settings.inventory_set_filter ? "checked=true" : ""} onclick="window.sfu_settings.inventory_set_filter = this.checked;"></input><label for="sfu_inventory_set_filter" class="margin_right_20">只显示普通卡牌</label></div>
-							<div class="settings_option"><input id="sfu_inventory_append_linkbtn" type="checkbox" ${settings.inventory_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_append_linkbtn = this.checked;"></input><label for="sfu_inventory_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
-							<div class="settings_option"><input id="sfu_inventory_sell_btn" type="checkbox" ${settings.inventory_sell_btn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_sell_btn = this.checked;"></input><label for="sfu_inventory_sell_btn" class="margin_right_20">添加出售按键</label></div>
-							<div class="settings_option"><input id="sfu_inventory_market_info" type="checkbox" ${settings.inventory_market_info ? "checked=true" : ""} onclick="window.sfu_settings.inventory_market_info = this.checked;"></input><label for="sfu_inventory_market_info" class="margin_right_20">自动显示市场价格信息</label></div></br>
-							<div class="settings_option"><input id="sfu_inventory_stop_sell" type="checkbox" ${settings.inventory_stop_sell ? "checked=true" : ""} onclick="window.sfu_settings.inventory_stop_sell = this.checked;"></input><label for="sfu_inventory_stop_sell">需要确认时停止批量出售</label></div></br>
-							<div class="settings_option"><span>一次批量出售的最大数量(0表示不限): </span><input class="settings_input_number" id="sfu_inventory_sell_number" style="color: #EBEBEB;" type="number" step="1" min="0" value="${settings.inventory_sell_number}" oninput="window.sfu_settings.inventory_sell_number = Math.max(parseInt(this.value), 0);"></input></div>
+							<div class="settings_option"><input id="sfu_inventory_set_style" type="checkbox" ${settings.inventory_set_style ? "checked=true" : ""} onclick="window.sfu_settings.inventory_set_style = this.checked;"><label for="sfu_inventory_set_style" class="margin_right_20">修改页面布局</label></div>
+							<div class="settings_option"><input id="sfu_inventory_set_filter" type="checkbox" ${settings.inventory_set_filter ? "checked=true" : ""} onclick="window.sfu_settings.inventory_set_filter = this.checked;"><label for="sfu_inventory_set_filter" class="margin_right_20">只显示普通卡牌</label></div>
+							<div class="settings_option"><input id="sfu_inventory_append_linkbtn" type="checkbox" ${settings.inventory_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_append_linkbtn = this.checked;"><label for="sfu_inventory_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
+							<div class="settings_option"><input id="sfu_inventory_sell_btn" type="checkbox" ${settings.inventory_sell_btn ? "checked=true" : ""} onclick="window.sfu_settings.inventory_sell_btn = this.checked;"><label for="sfu_inventory_sell_btn" class="margin_right_20">添加出售按键</label></div>
+							<div class="settings_option"><input id="sfu_inventory_market_info" type="checkbox" ${settings.inventory_market_info ? "checked=true" : ""} onclick="window.sfu_settings.inventory_market_info = this.checked;"><label for="sfu_inventory_market_info" class="margin_right_20">自动显示市场价格信息</label></div>
+							<div class="settings_option"><input id="sfu_inventory_stop_sell" type="checkbox" ${settings.inventory_stop_sell ? "checked=true" : ""} onclick="window.sfu_settings.inventory_stop_sell = this.checked;"><label for="sfu_inventory_stop_sell">需要确认时停止批量出售</label></div></br>
+							<div class="settings_option"><span>一次批量出售的最大数量(0表示不限): </span><input class="settings_input_number" id="sfu_inventory_sell_number" style="color: #EBEBEB;" type="number" step="1" min="0" value="${settings.inventory_sell_number}" oninput="window.sfu_settings.inventory_sell_number = Math.max(parseInt(this.value), 0);"></div>
 							</div>
 							<div class="settings_page_title">市场页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_market_adjust_listings" type="checkbox" ${settings.market_adjust_listings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_listings = this.checked;"></input><label for="sfu_market_adjust_listings" class="margin_right_20">调整出售、求购、确认和历史记录列表</label></div>
-							<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"></input><label for="sfu_market_show_priceinfo" class="margin_right_20">出售物品表格自动显示最低出售和最高求购</label></div>
-							<div class="settings_option"><span>出售物品表格每页物品数量: </span><input class="settings_input_number" id="sfu_market_page_size" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></input></div>
+							<div class="settings_option"><input id="sfu_market_adjust_listings" type="checkbox" ${settings.market_adjust_listings ? "checked=true" : ""} onclick="window.sfu_settings.market_adjust_listings = this.checked;"><label for="sfu_market_adjust_listings" class="margin_right_20">调整出售、求购、确认和历史记录列表</label></div>
+							<div class="settings_option"><input id="sfu_market_show_priceinfo" type="checkbox" ${settings.market_show_priceinfo ? "checked=true" : ""} onclick="window.sfu_settings.market_show_priceinfo = this.checked;"><label for="sfu_market_show_priceinfo" class="margin_right_20">出售物品表格自动显示最低出售和最高求购</label></div>
+							<div class="settings_option"><span>出售物品表格每页物品数量: </span><input class="settings_input_number" id="sfu_market_page_size" style="color: #EBEBEB;" type="number" step="1" min="1" value="${settings.market_page_size}" oninput="window.sfu_settings.market_page_size = Math.max(parseInt(this.value), 10);"></div>
 							</div>
 							<div class="settings_page_title">市场物品页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_marketlisting_set_style" type="checkbox" ${settings.marketlisting_set_style ? "checked=true" : ""} onclick="window.sfu_settings.marketlisting_set_style = this.checked;"></input><label for="sfu_marketlisting_set_style" class="margin_right_20">修改页面布局</label></div>
-							<div class="settings_option"><input id="sfu_marketlisting_show_priceoverview" type="checkbox" ${settings.marketlisting_show_priceoverview ? "checked=true" : ""} onclick="window.sfu_settings.marketlisting_show_priceoverview = this.checked;"></input><label for="sfu_marketlisting_show_priceoverview" class="margin_right_20">显示销售信息</label></div>
-							<div class="settings_option"><input id="sfu_marketlisting_append_linkbtn" type="checkbox" ${settings.marketlisting_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.marketlisting_append_linkbtn = this.checked;"></input><label for="sfu_marketlisting_append_linkbtn">添加链接按键</label></div>
+							<div class="settings_option"><input id="sfu_marketlisting_set_style" type="checkbox" ${settings.marketlisting_set_style ? "checked=true" : ""} onclick="window.sfu_settings.marketlisting_set_style = this.checked;"><label for="sfu_marketlisting_set_style" class="margin_right_20">修改页面布局</label></div>
+							<div class="settings_option"><input id="sfu_marketlisting_show_priceoverview" type="checkbox" ${settings.marketlisting_show_priceoverview ? "checked=true" : ""} onclick="window.sfu_settings.marketlisting_show_priceoverview = this.checked;"><label for="sfu_marketlisting_show_priceoverview" class="margin_right_20">显示销售信息</label></div>
+							<div class="settings_option"><input id="sfu_marketlisting_append_linkbtn" type="checkbox" ${settings.marketlisting_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.marketlisting_append_linkbtn = this.checked;"><label for="sfu_marketlisting_append_linkbtn">添加链接按键</label></div>
 							</div>
 							<div class="settings_page_title">徽章页面设置：</div>
 							<div class="settings_row">
-							<div class="settings_option"><input id="sfu_gamecards_set_style" type="checkbox" ${settings.gamecards_set_style ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_set_style = this.checked;"></input><label for="sfu_gamecards_set_style" class="margin_right_20">修改页面布局</label></div>
-							<div class="settings_option"><input id="sfu_gamecards_append_linkbtn" type="checkbox" ${settings.gamecards_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_append_linkbtn = this.checked;"></input><label for="sfu_gamecards_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
-							<div class="settings_option"><input id="sfu_gamecards_show_priceoverview" type="checkbox" ${settings.gamecards_show_priceoverview ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_show_priceoverview = this.checked;"></input><label for="sfu_gamecards_show_priceoverview">自动显示市场价格信息</label></div>
+							<div class="settings_option"><input id="sfu_gamecards_set_style" type="checkbox" ${settings.gamecards_set_style ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_set_style = this.checked;"><label for="sfu_gamecards_set_style" class="margin_right_20">修改页面布局</label></div>
+							<div class="settings_option"><input id="sfu_gamecards_append_linkbtn" type="checkbox" ${settings.gamecards_append_linkbtn ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_append_linkbtn = this.checked;"><label for="sfu_gamecards_append_linkbtn" class="margin_right_20">添加链接按键</label></div>
+							<div class="settings_option"><input id="sfu_gamecards_show_priceoverview" type="checkbox" ${settings.gamecards_show_priceoverview ? "checked=true" : ""} onclick="window.sfu_settings.gamecards_show_priceoverview = this.checked;"><label for="sfu_gamecards_show_priceoverview">自动显示市场价格信息</label></div>
 							</div>
 							</div>`);
 			unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
@@ -3417,6 +3414,7 @@
 		data.rate_update_interval ??= 360;
 		data.rate_item_url ??= "https://steamcommunity.com/market/listings/570/Inscribed%20Bracers%20of%20Impending%20Transgressions";
 		data.rate_item_listingid ??= "6394623418832328659";
+		data.use_second_currency ??= false;
 		data.inventory_set_style ??= true;
 		data.inventory_set_filter ??= true;
 		data.inventory_append_linkbtn ??= true;
@@ -3446,9 +3444,10 @@
 
 	//检查是否更新汇率
 	function checkUpdateCurrencyRate(settings, currencyRate) {
-		if (settings.currency_code != currencyRate.wallet_code || settings.second_currency_code != currencyRate.second_code || 
+		var walletCurrencyCode = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency);
+		if (walletCurrencyCode != currencyRate.wallet_code || settings.second_currency_code != currencyRate.second_code || 
 			currencyRate.wallet_rate <= 0 || currencyRate.second_rate <= 0 || (Date.now() - currencyRate.last_update) > settings.rate_update_interval * 60000) {
-			getCurrencyRate(settings.currency_code, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
+			getCurrencyRate(walletCurrencyCode, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
 		}
 	}
 
@@ -3712,11 +3711,11 @@
 			form.setAttribute("action", "https://store.steampowered.com/cart/");
 			form.setAttribute("method", "POST");
 			form.style.display = "none";
-			form.innerHTML = `<input type="hidden" name="snr" value="${snr}"></input>
-								<input type="hidden" name="originating_snr" value="${orgsnr}"></input>
-								<input type="hidden" name="action" value="add_to_cart"></input>
-								<input type="hidden" name="sessionid" value="${sessionid}"></input>
-								<input type="hidden" name="subid" value="${subid}"></input>`;
+			form.innerHTML = `<input type="hidden" name="snr" value="${snr}">
+								<input type="hidden" name="originating_snr" value="${orgsnr}">
+								<input type="hidden" name="action" value="add_to_cart">
+								<input type="hidden" name="sessionid" value="${sessionid}">
+								<input type="hidden" name="subid" value="${subid}">`;
 			document.body.appendChild(form);
 			return form;
 		} catch (e) {
@@ -4151,6 +4150,37 @@
 			};
 			xhr.send();
 		});	
+	}
+
+	//获取账号钱包信息
+	async function getWalletInfo(doc) {
+		doc ??= await getHtmlDocument("https://steamcommunity.com/market/");
+		if (doc) {
+			for (var script of doc.querySelectorAll("script")) {
+				var text = script.textContent;
+				if (text.match(/\bg_rgWalletInfo\b/)) {
+					try {
+						return eval(text.match(/\b(var g_rgWalletInfo\b.+?\;)/)[1] + "g_rgWalletInfo;");
+					} catch (err) { 
+						console.log(err);
+					}
+				}
+			}
+		}
+		return {
+			wallet_balance: "0",
+			wallet_country: "CN",
+			wallet_currency: 23,
+			wallet_delayed_balance: "0",
+			wallet_fee: "1",
+			wallet_fee_base: "0",
+			wallet_fee_minimum: "1",
+			wallet_fee_percent: "0.05",
+			wallet_max_balance: "1300000",
+			wallet_publisher_fee_percent_default: "0.10",
+			wallet_state: "",
+			wallet_trade_max_balance: "1170000"
+		};
 	}
 
 	//获取网页
@@ -5072,25 +5102,30 @@
 		return currencyData[code] || currencyData[defaultCode];
 	}
 
-	if (location.href.match(/^https?\:\/\/store\.steampowered\.com\b/)) {
-		globalSettings = getStoreSettings();
-	} else if (location.href.match(/^https?\:\/\/steamcommunity\.com\b/)) {
-		globalSettings = getSteamCommunitySettings();
-		globalCurrencyRate = readCurrencyRate();
-		checkUpdateCurrencyRate(globalSettings, globalCurrencyRate);
-	}
+	(async function (){
+		if (location.href.match(/^https?\:\/\/store\.steampowered\.com\b/)) {
+			globalSettings = getStoreSettings();
+		} else if (location.href.match(/^https?\:\/\/steamcommunity\.com\b/)) {
+			globalSettings = getSteamCommunitySettings();
+			globalCurrencyRate = readCurrencyRate();
+		}
+	
+		steamStorePage();
+		steamWishlistPage();
+		steamAppStorePage();
+		steamExplorePage();
+		steamTradeOfferPage();
+		steamInventoryPage();
+		steamMarketListingPage();
+		await steamGameCardsPage();
+		steamMarketPage();
+		steamAccountHistory();
+		steamWorkshopImageRepair();
+	
+		if (location.href.match(/^https?\:\/\/steamcommunity\.com\b/)) {
+			checkUpdateCurrencyRate(globalSettings, globalCurrencyRate);
+		}
 
-	steamStorePage();
-	steamWishlistPage();
-	steamAppStorePage();
-	steamExplorePage();
-	steamTradeOfferPage();
-	steamInventoryPage();
-	steamMarketListingPage();
-	steamGameCardsPage();
-	steamMarketPage();
-	steamAccountHistory();
-	steamWorkshopImageRepair();
-
+	})();
 })();
 
