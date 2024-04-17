@@ -100,7 +100,7 @@
 		function ComputeAndModifyHistory() {
 			var walletHistory = document.querySelectorAll("tr.wallet_table_row");
 			if (walletHistory.length > 0) {
-				var currencyInfo = getCurrencyInfo(globalSettings.history_currency_code, true);
+				var currencyInfo = getCurrencyInfo(globalSettings.history_currency_code);
 				var currencySymbol = currencyInfo.strSymbol;
 
 				var transactionTypes = {};
@@ -738,7 +738,7 @@
 
 		allMyBuyOrders.load();
 
-		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
+		var currencyInfo = getCurrencyInfo();
 		var sellTotalPriceReceive = 0;
 		var sellTotalPriceBuyerPay = 0;
 		var sellCount = 0;
@@ -1103,7 +1103,7 @@
 
 			if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
 				var [pay2, price2] = calculateSecondPrice(price, item);
-				var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
+				var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code);
 				label2.innerHTML = `${getSymbolStrFromPrice(pay2, currencyInfo2)} (${getSymbolStrFromPrice(price2, currencyInfo2)})`;
 			} else {
 				label2.innerHTML = "";
@@ -1293,7 +1293,7 @@
 		addSteamCommunitySetting();
 		allMyBuyOrders.load(document);
 
-		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
+		var currencyInfo = getCurrencyInfo();
 		var marketMyListings = {};
 		var marketMyListingsPage = [];  //各页列表
 
@@ -2414,7 +2414,7 @@
 
 			var appid = assetInfo.appid;
 			var marketHashName = getMarketHashName(assetInfo);
-			var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
+			var currencyInfo = getCurrencyInfo();
 		
 			var data = await getCurrentPriceOverview(currencyInfo.country, currencyInfo.eCurrencyCode, appid, marketHashName, true);
 			if (data.success) {
@@ -2478,7 +2478,7 @@
 		}
 
 		addSteamCommunitySetting();
-		var currencyInfo = getCurrencyInfo(globalSettings.currency_code);
+		var currencyInfo = getCurrencyInfo();
 
 		//修改页面布局
 		if (globalSettings.gamecards_set_style) {
@@ -2944,7 +2944,7 @@
 						elem1.querySelector(".buy_order_table .table_content").innerHTML = `${errorTranslator(data)}`
 					}
 					if (currencyInfo.strCode == globalCurrencyRate.wallet_code && currencyInfo.strCode != globalCurrencyRate.second_code) {
-						var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
+						var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code);
 						if (data.sell_order_table) {
 							var rows = elem1.querySelectorAll(".sell_order_table tr");
 							var th = document.createElement("th");
@@ -3079,7 +3079,7 @@
 				this.model.querySelector("#create_buy_order_total").textContent = "--";
 			}
 
-			var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
+			var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code);
 			var price2 = getSymbolStrFromPrice(amount.price_2, currencyInfo2);
 			var total2 = getSymbolStrFromPrice(amount.price_total_2, currencyInfo2);
 			
@@ -3234,7 +3234,7 @@
 				elem.querySelector(".multi_order_total").textContent = "--";
 			}
 
-			var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code, true);
+			var currencyInfo2 = getCurrencyInfo(globalCurrencyRate.second_code);
 			var price2 = getSymbolStrFromPrice(amount.price_2, currencyInfo2);
 			var total2 = getSymbolStrFromPrice(amount.price_total_2, currencyInfo2);
 			
@@ -3306,6 +3306,7 @@
 			unsafeWindow.ShowConfirmDialog("Steam功能和界面优化", options).done(function() {
 				settings = unsafeWindow.sfu_settings;
 				setStorageValue("SFU_STORE_SETTINGS", settings);
+				window.location.reload();
 			});
 		};
 	}
@@ -3360,7 +3361,7 @@
 							<div style="margin-bottom: 5px;"><span>用于更新汇率的物品的listingid: <span><input type="text" style="color: #EBEBEB; width: 170px;" value="${settings.rate_item_listingid}" oninput="window.sfu_settings.rate_item_listingid = this.value;"></div>
 							<div style="margin-bottom: 10px; display: flex; position: relative;">
 							<div class="settings_currency" style="margin-right: 40px;">
-							<div><span>钱包货币：</span><select class="settings_select"; onchange="window.sfu_settings.currency_code = this.value;" disabled="disabled">${selectOptions}</select></div>
+							<div><span>钱包货币：</span><select class="settings_select"; disabled="disabled">${selectOptions}</select></div>
 							<div class="currency_rate">1 ${exchangeRate.correlation_code} = ${exchangeRate.wallet_rate > 0? exchangeRate.wallet_rate: "??"} ${exchangeRate.wallet_code}</div>
 							<div class="currency_rate">1 ${exchangeRate.wallet_code} = ${exchangeRate.wallet_second_rate > 0? exchangeRate.wallet_second_rate: "??"} ${exchangeRate.second_code}</div></div>
 							<div class="settings_currency">
@@ -3409,7 +3410,6 @@
 
 	function getSteamCommunitySettings() {
 		var data = getStorageValue("SFU_COMMUNITY_SETTINGS") || {};
-		data.currency_code ??= "CNY";
 		data.second_currency_code ??= "USD";
 		data.rate_update_interval ??= 360;
 		data.rate_item_url ??= "https://steamcommunity.com/market/listings/570/Inscribed%20Bracers%20of%20Impending%20Transgressions";
@@ -3456,8 +3456,8 @@
 		var count = 100;
 		var language = "english";
 		var start = 0;
-		var wallet_currency = getCurrencyInfo(wallet_code, true);
-		var second_currency = getCurrencyInfo(second_code, true);
+		var wallet_currency = getCurrencyInfo(wallet_code);
+		var second_currency = getCurrencyInfo(second_code);
 		await sleep(1000);
 		var doc = getHtmlDocument(market_url + "/?l=english");
 		await sleep(1000);
@@ -5082,8 +5082,8 @@
 	}
 
 	//获取钱包货币信息
-	function getCurrencyInfo(code, set=false, defaultCode="CNY") {
-		if (!set) {
+	function getCurrencyInfo(code, defaultCode="CNY") {
+		if (!code) {
 			if (unsafeWindow.g_rgWalletInfo?.wallet_currency) {
 				var code1 = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency)
 				if (currencyData[code1]) {
