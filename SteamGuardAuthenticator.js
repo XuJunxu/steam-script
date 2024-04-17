@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam令牌验证器
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      1.1.2
+// @version      1.1.3
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
 // @iconURL      https://store.steampowered.com/favicon.ico
