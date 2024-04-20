@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      2.2.8
+// @version      2.2.9
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @iconURL      https://store.steampowered.com/favicon.ico
@@ -1011,7 +1011,7 @@
 			var appid = item.appid;
 			var hashName = getMarketHashName(item.description);
 			dialogPriceInfo.show(appid, hashName, currencyInfo, null, function(data2, currency) { 
-				updatePriceGram(appid, hashName, item, data2, currency); 
+				updatePriceGram(item, data2, currency); 
 			}, function(data3, currency) { 
 				updatePriceOverview(item, data3, currency); 
 			});
@@ -1032,10 +1032,10 @@
 
 		async function showPriceGram(appid, hashName, item) {
 			var data = await getCurrentItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, appid, hashName, true);
-			updatePriceGram(appid, hashName, item, data, currencyInfo);
+			updatePriceGram(item, data, currencyInfo);
 		}
 
-		function updatePriceGram(appid, hashName, item, data, currencyInf) {
+		function updatePriceGram(item, data, currencyInf) {
 			if (data && item.assetid == unsafeWindow.g_ActiveInventory.selectedItem.assetid && currencyInf.strCode == currencyInfo.strCode) {
 				var container0 = document.querySelector("#price_gram_container0");
 				var container1 = document.querySelector("#price_gram_container1");
@@ -1339,19 +1339,30 @@
 		if (globalSettings.market_adjust_listings) {
 			var styleElem = document.createElement("style");
 			styleElem.innerHTML = `.market_action_btn {padding: 0px 5px; margin-right: 8px; font-size: 12px;} 
-								.control_action_container {padding-left: 6px; display: inline-block; position: relative;}
-								.Listing_page_control {margin-top: 10px; user-select: none;}
-								.Listing_page_control .market_paging_controls {margin-top: 2px;}
-								.market_page_number_container {float: right; margin-top: 1px;}
-								.market_page_number {margin: 0 15px 0 5px; width: 35px; background: transparent; box-shadow: none;}
-								.market_page_number::-webkit-outer-spin-button, .market_page_number::-webkit-inner-spin-button{-webkit-appearance: none !important;}
-								.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
-								.market_listing_table_header {text-align: center;}
-								.market_listing_game_name_link {color: inherit;} 
-								.market_listing_game_name_link:hover {text-decoration: underline;}
-								.market_price_can_click {cursor: pointer;} .market_price_can_click:hover {background: #324965;}
-								.history_action_btn_container {margin-right: 5px;}
-								.wait_loading_history {position: absolute; height: 20px; top: 2px;}`;
+								   .control_action_container {padding-left: 6px; display: inline-block; position: relative;}
+								   .Listing_page_control {margin-top: 10px; user-select: none;}
+								   .Listing_page_control .market_paging_controls {margin-top: 2px;}
+								   .market_page_number_container {float: right; margin-top: 1px;}
+								   .market_page_number {margin: 0 15px 0 5px; width: 35px; background: transparent; box-shadow: none;}
+								   .market_page_number::-webkit-outer-spin-button, .market_page_number::-webkit-inner-spin-button{-webkit-appearance: none !important;}
+								   .market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5); }
+								   .market_listing_table_header {text-align: center;}
+								   .market_listing_game_name_link {color: inherit;} 
+								   .market_listing_game_name_link:hover {text-decoration: underline;}
+								   .market_price_can_click {cursor: pointer;} .market_price_can_click:hover {background: #324965;}
+								   .history_action_btn_container {margin-right: 5px;}
+								   .wait_loading_history {position: absolute; height: 20px; top: 2px;}
+								   #tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
+								   #tabContentsMyActiveMarketListingsTable .market_listing_table_header {display: flex; flex-direction: row-reverse;}
+								   #tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
+								   #tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
+								   #tabContentsMyActiveMarketListingsTable .market_listing_table_header > span:hover {background: #324965;}
+								   #tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price {cursor: pointer; position: relative;}
+								   #tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price:hover {background: #324965;}
+								   .market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
+								   .market_price_label {line-height: normal;}
+								   .market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px; margin-left: -5px;}
+								   .market_show_filter > option {color: #ffffff; background-color: #333333;}`;
 			document.body.appendChild(styleElem);
 		}
 
@@ -1374,20 +1385,6 @@
 			}
 
 			marketListings.innerHTML = "<div style='text-align: center;'><img src='https://community.steamstatic.com/public/images/login/throbber.gif' alt='载入中'></div>";
-			
-			var styleElem = document.createElement("style");
-			styleElem.innerHTML = `#tabContentsMyListings .market_pagesize_options, #tabContentsMyListings #tabContentsMyActiveMarketListings_ctn {display: none;}
-									#tabContentsMyActiveMarketListingsTable .market_listing_table_header {display: flex; flex-direction: row-reverse;}
-									#tabContentsMyActiveMarketListingsTable .market_listing_table_header span:last-child {flex: 1 1 auto; text-align: center;}
-									#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span {cursor: pointer;}
-									#tabContentsMyActiveMarketListingsTable .market_listing_table_header > span:hover {background: #324965;}
-									#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price {cursor: pointer; position: relative;}
-									#tabContentsMyActiveMarketListingsRows .market_listing_row .market_listing_my_price:hover {background: #324965;}
-									.market_price_container {display: inline-block; vertical-align: middle; font-size: 85.7%;}
-									.market_price_label {line-height: normal;}
-									.market_show_filter {font-size: 12px; height: 24px; padding: 0px 5px; margin-left: -5px;}
-									.market_show_filter > option {color: #ffffff; background-color: #333333;}`;
-			document.body.appendChild(styleElem);
 
 			//使表头可点击排序
 			var tableHeader = document.querySelector("#tabContentsMyActiveMarketListingsTable .market_listing_table_header");
@@ -2319,7 +2316,7 @@
 									div#largeiteminfo_item_descriptors {overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0px;}
 									div#largeiteminfo_warning {margin: 0px 18px;}
 									div#largeiteminfo_item_actions > a {margin-bottom: 0px;}
-									.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(2); }
+									.market_listing_check {position: absolute; top: 15px; right: 20px; cursor: pointer; transform: scale(1.5); }
 									#market_page_control_before {margin-top: 10px; user-select: none;}
 									.market_action_btn_container {display: inline-block; padding-left: 6px;}
 									.market_action_btn {margin-right: 10px; font-size: 12px;}
