@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      2.2.9
+// @version      2.2.10
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @iconURL      https://store.steampowered.com/favicon.ico
@@ -2872,7 +2872,7 @@
 	//市场价格信息的弹窗
 	var dialogPriceInfo = {
 		init: function(appid, marketHashName, currencyInfo) {
-			var html = `<style>#market_info_group {display: flex; margin: 8px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
+			var html = `<style>#dialog_price_info {font-size: 14px;} #market_info_group {display: flex; margin: 8px auto;} #market_info_group>div:first-child {margin-right: 20px;} #market_info_group>div {border: 1px solid #000000;} 
 						#market_info_group .table_action_button, #market_info_group th, #market_info_group td {text-align: center; font-size: 14px;} .table_action_button {padding: 2px 0;}
 						#market_info_group th, #market_info_group td {min-width: 100px; background: transparent; width: auto; line-height: normal;} 
 						#market_info_price_overview>span {margin-right: 30px;} #market_info_group .market_commodity_orders_table {margin: 0px auto;} 
@@ -3206,6 +3206,7 @@
 								<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div></div>`;
 		
 				this.container = document.createElement("div");
+				this.container.style.fontSize = "14px";
 				this.container.innerHTML = modelHtml;
 	
 				var tableRows = this.container.querySelectorAll(".multi_order_row");
@@ -3334,9 +3335,9 @@
 			for (var code in currencyData) {
 				selectOptions += `<option value="${code}" ${code == settings.history_currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 			}
-			var options = (`<style>.settings_container {user-select: none; width: 500px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_row input[type="checkbox"], .settings_row label, .settings_select {cursor: pointer;}
+			var options = (`<style>.sfu_settings_container {user-select: none; width: 500px; font-size: 14px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} .settings_row input[type="checkbox"], .settings_row label, .settings_select {cursor: pointer;}
 							.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;} .settings_row input[type="checkbox"] {margin: 0 2px; vertical-align: middle;} .settings_select {color: #EBEBEB; background: #1F1F1F;} </style>
-							<div class="settings_container">
+							<div class="sfu_settings_container">
 							<div class="settings_page_title">商店搜索页面设置：</div>
 							<div class="settings_row">
 							<div class="settings_option"><input id="sfu_search_click_picture" type="checkbox" onclick="window.sfu_settings.search_click_picture = this.checked;" ${settings.search_click_picture ? "checked=true" : ""}><label for="sfu_search_click_picture" class="margin_right_20">点击游戏图片打开徽章页面</label></div>
@@ -3400,13 +3401,13 @@
 				selectOptions += `<option value="${code}" ${code == walletCurrencyCode ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 				selectOptions2 += `<option value="${code}" ${code == settings.second_currency_code ? "selected='selected'": ""}>${code} ( ${currencyData[code].strSymbol} )</option>`;
 			}
-			var options = (`<style>.settings_container {user-select: none; width: 540px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} 
+			var options = (`<style>.sfu_settings_container {user-select: none; width: 540px; font-size: 14px;} .settings_page_title {margin-bottom: 5px;} .settings_row {margin-left: 15px; margin-bottom: 10px;} 
 							.settings_select, .settings_row input[type="checkbox"], .settings_row label, input[type="button"] {cursor: pointer;} .settings_select {color: #EBEBEB; background: #1F1F1F;} 
 							.settings_row input[type="checkbox"] {vertical-align: middle; margin: 0 2px;} .settings_input_number {color: #EBEBEB; background: #1F1F1F; width: 60px; margin-left: 5px;} 
 							.margin_right_20 {margin-right: 20px;} .settings_option {display: inline-block; margin-bottom: 5px;}  .currency_rate {margin-left: 15px; font-size: 13px;}
 							.settings_input_number::-webkit-outer-spin-button, .settings_input_number::-webkit-inner-spin-button {-webkit-appearance: none !important;}
 							.settings_currency {display: inline-block;} .settings_currency > div:first-child {margin-bottom: 5px;}</style>
-							<div class="settings_container">
+							<div class="sfu_settings_container">
 							<div style="margin-bottom: 5px; display: flex; align-items: center;"><span>汇率更新间隔(min): </span>
 							<input class="settings_input_number" style="color: #EBEBEB;" type="number" min="1" step="1" value="${settings.rate_update_interval}" oninput="window.sfu_settings.rate_update_interval = Math.max(parseInt(this.value), 60);">
 							<input type="button" value="立即更新" style="margin-left: 5px; padding: 2px 7px; background: #555555;" class="btn_grey_steamui" onclick="window.sfu_update_currency_rate();">
