@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam令牌验证器
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      1.1.3
+// @version      1.1.4
 // @description  生成Steam令牌、确认报价、市场上架
 // @author       Nin9
 // @iconURL      https://store.steampowered.com/favicon.ico
@@ -297,7 +297,7 @@
                 identity_secret: $content.find('#identity_secret').val().trim()
             };
             var res = appendAccount(account);
-            ShowAlertDialog('添加账号', res, '确定');
+            unsafeWindow.ShowAlertDialog('添加账号', res, '确定');
 
             if (typeof func === 'function') {
                 func();
@@ -335,7 +335,7 @@
                 }
             } catch(err) {
                 account_list = [];
-                ShowAlertDialog('导入错误', '数据格式有误，请检查后再试。<br>' + acct.replace(/\n/g, '<br>'), '确定');
+                unsafeWindow.ShowAlertDialog('导入错误', '数据格式有误，请检查后再试。<br>' + acct.replace(/\n/g, '<br>'), '确定');
             }
 
             if (account_list.length) {
@@ -344,7 +344,7 @@
                     var res = appendAccount(acct);
                     results += `${acct.account_name || acct.steamid || '???'} ${res} <br>`;
                 }
-                ShowAlertDialog('导入账号', results, '确定');
+                unsafeWindow.ShowAlertDialog('导入账号', results, '确定');
             }
 
             if (typeof func === 'function') {
@@ -574,7 +574,7 @@
 
     function showConfirmationDialog() {
         if (!userSteamID) {
-            ShowAlertDialog('确认交易和市场', '当前页面不支持确认交易和市场。', '确定');
+            unsafeWindow.ShowAlertDialog('确认交易和市场', '当前页面不支持确认交易和市场。', '确定');
             return;
         }
 
@@ -586,10 +586,10 @@
             }
         }
         if (!account) {
-            ShowAlertDialog('确认交易和市场', '当前账号不支持确认交易和市场。', '确定');
+            unsafeWindow.ShowAlertDialog('确认交易和市场', '当前账号不支持确认交易和市场。', '确定');
             return;
         }
-        var content = `<div id="confirmation_container" style="overflow: hidden; position: relative;">
+        var content = `<div id="confirmation_container" style="overflow: hidden; position: relative; font-size: 14px;">
                        <div id="confirmation_message" style="display: none; font-size: 14px; font-weight: bold; text-align: center;"></div>
                        <div id="confirmation_list" style="overflow-y: auto; max-width: 600px; min-height: 200px; max-height: calc(100vh - 220px);"></div>
                        <div id="confirmation_actions">
@@ -600,7 +600,7 @@
                        </div>
                        <div id="confirmation_waiting" style="display: none; position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;">
                        <div style="background-color: #000000; color: #ffffff; font-size: 16px; border-radius: 4px; margin: auto; padding: 8px 12px;"></div></div></div>`;
-        var modal = ShowDialog('确认交易和市场', content);
+        var modal = unsafeWindow.ShowDialog('确认交易和市场', content);
 
         modal.refreshBottons = function() {
             var $content = this.GetContent();
@@ -630,7 +630,7 @@
                 var cid = elem.getAttribute('data-cid');
                 var url = 'https://steamcommunity.com/mobileconf/detailspage/' + cid + '?' + generateConfirmationQueryParams(account, 'details' + cid, timeOffset);
                 if (unsafeWindow.location.hostname == 'steamcommunity.com') {
-                    ShowDialog('确认交易和市场', `<iframe src="${url}" style="height: 600px; width: 600px;"></iframe>`);
+                    unsafeWindow.ShowDialog('确认交易和市场', `<iframe src="${url}" style="height: 600px; width: 600px;"></iframe>`);
                 } else {
                     unsafeWindow.open(url, '_blank', 'height=790,width=600,resize=yes,scrollbars=yes');
                 }
@@ -776,16 +776,16 @@
     }
 
     function removeAccount(elem) {
-        ShowConfirmDialog('删除账号', `确定删除该账号 (${elem.getAttribute('data-name')}) 吗？`, '确定', '取消').done(function() {
+        unsafeWindow.ShowConfirmDialog('删除账号', `确定删除该账号 (${elem.getAttribute('data-name')}) 吗？`, '确定', '取消').done(function() {
             var index = elem.getAttribute('data-id');
             if (index >= ACCOUNTS.length) {
-                ShowAlertDialog('错误', '无法删除该账户，请稍后再试。', '确定').done(function() {
+                unsafeWindow.ShowAlertDialog('错误', '无法删除该账户，请稍后再试。', '确定').done(function() {
                     unsafeWindow.location.reload();
                 })
             } else {
                 ACCOUNTS.splice(index, 1);
                 GM_setValue('SG_ACCOUNTS', ACCOUNTS);
-                ShowAlertDialog('删除账号', '删除成功。', '确定');
+                unsafeWindow.ShowAlertDialog('删除账号', '删除成功。', '确定');
             }
         }); 
     }
@@ -1166,7 +1166,7 @@
         }
         #SG_add_account_dialog .SG_add_account_description {
             font-size: 14px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         #SG_add_account_dialog .SG_add_account_input, #SG_import_account_dialog textarea {
             font-family: Arial, Helvetica, Verdana, sans-serif;
@@ -1175,14 +1175,14 @@
             background-color: rgba(0, 0, 0, 0.2);
             border-radius: 3px;
             border: 1px solid #000;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             outline: none;
             box-sizing: border-box;
         }
         #SG_add_account_dialog .SG_add_account_input {
             width: 100%;
-            line-height: 22px;
-            padding: 6px 8px 2px 8px;
+            line-height: 20px;
+            padding: 4px 8px 4px 8px;
         }
         #SG_import_account_dialog textarea {
             width: 500px;
