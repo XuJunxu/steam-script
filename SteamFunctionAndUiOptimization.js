@@ -3179,42 +3179,63 @@
 			this.walletCurrencyInfo = currencyInfo;
 
 			if (!this.container) {
+				var imgCopy = "data:image/png;base64,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";
+				var imgPaste = "data:image/png;base64,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";
+				var imgClear = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAT7SURBVHhe7ZtdaFt1GMaf97RLCtMO56g3ikNQ1KmgRhDEi07n0mKatGsS6xe7K/Ry3bXFq124Kgq78EomQm2abE2rzSlDeyE4LxxDR/HOqUMQ5grtJm3a5DxebNnO/12TpenJunLO7yrv876cjx85STj5H4HHjIzQejZSiJJWEmRERHYDsPRcnTgkF0TknDic+DUeLXwo4uihzSA62AwT+cI+QL4QwUu65w38mcThZLxrXncaxTMBE9OFV8WRbyBo1z1PIZZo8c1krOsH3WoETwSMnbYfaW3BeQEe1L1mQPBKqSzPD/RGL+neRvFEwES+MCYib6m4DPAMiN8Aq6x6deK0QPAUIAcAtKjmWH9P9G2VbZhNC8jlZh5mq1yESGslI/mvBcYOxbt/MqcbI5efedmBTIvInpshWSpbO/amY6//bQxvkEY/nW9S3mEdcJ/8DYa8OnkAuLGtISMUaZVy6Q0ja4BNCxDgSXdNYmlPe9tpd+YFC//8NQliyZ2JZe67ETYvgNhp1MIrnZ2dJXfmBYODg2sQXnFnet+NsGkBGkKoM69oxoY9F7DdqPktMEJaL05Pt+ncTZGhj0UwWKlJ/BGW1X3mlDcUEZoXYG+lJvF5WFaPmFMm52KxlVo/n6sKyOZnX6HwK/cOtykXWca7yd7oj7qBagIymUzIams/D+Bp3dumzDsrSy+kUqlV3Vj3MyAUCoVBdOh820I8FAqFwjpGNQGJROIqwRM6364QPJFIJK7qHNUugQq5/Ox+CJ5x6IyK+WvvFMHvXfXWQ7wmIr03S7IEsYZRLs8ne7u/M4dvUVMAAMzMzIT/W7MWRXDrLUQc7Y9HR43BLSabt4chOF6pSRR37nB2dXd3F81Jk3UvAT8RCNCB3wgE6MBvBAJ04DeaKiA3bb+fnbLHs9P28NzcnL5tVpW5ubnWiSn7aHbKHs9OFd7TfS9pmoDM5Mw7JE4CSIE4fnmx+IGeqcbCteKIAB8BSAHy5US+MKBnvKJpAkTEuGEpgqi7roXj4KC7FhGj9pImCjDv48vt9/WrIkLzcqGqPaRpArYLgQAd+I1AgA78RiBAB34jEKADvxEI0IHfCATowG8EAnTgNwIBOvAbgQAd+I3mCSCM5SgU3rY8pRqEGH9pE+a2vKRpAsqQDEn36qwx1+uaiMOvK69JOmJh3JzwjqYJSMejttDqFOAYyUPJnq7P9Ew1+hNdn5I8JMAxR7i/P9Y1q2e8IlghogO/EQjQgaajo8MRobFOmUDT/qlpFFHHJCAvdXRUXSJb4Y4CIpHIGijmGjvB40Z9D0DwCaMWLA1GImvubD3uKADXN/aLuxYiPjk5eb8720quH4v0uDOBZRxzNeoTQHxrBII9JSs8CvCO3yLNh1KywqMQ3HqeCADEMY+5CnWdwLht725Z5e+A7DI7PGmVlof7+vqMJznuFuO2vbt1FaMEDhsNcrG8Io+l09EFI1+HugQAQHaycASWrPPdz2uAnKHDP68/KncXsNAikEcBHgDkPt0m5Eiy5+AnOl+PugVkMpkWtLXnLCCue/cSDpBPxg72SY2HJNzU9RkAAKlUqszlxQHHwSndu4c4xeXFgXpPHhsRAADpdHp5/vzZJIghAJd1fwu5DGLowrmzyXQ6vaybtaj7EtDMzs7uXFpBvwijJJ8D5AGRxre3EUhQBAsALpBisxjKpVKd1/RcPfwPinqunx0tX18AAAAASUVORK5CYII=";
 				var html = "";
 				for (var asset of assets) {
 					html += `<tr class="multi_order_row" data-hash-name="${getMarketHashName(asset)}" data-appid="${asset.appid}">
 							<td><div class="multi_order_name multi_order_cell"><img class="multi_order_item_img" src="${(asset.icon || "https://community.cloudflare.steamstatic.com/economy/image/" + asset.icon_url) + "/48fx48f"}">
 							<a class="multi_order_name_link" href="https://steamcommunity.com/market/listings/${asset.appid}/${getMarketHashName(asset)}" target="_blank">${asset.market_name || asset.name}</a></div></td>
+							<td><div class="multi_order_cell_actions"><a class="multi_order_action multi_order_copy" title="复制本行的数量和价格"><img src="${imgCopy}"></a>
+							<a class="multi_order_action multi_order_paste" title="粘贴已复制的数量和价格到本行"><img src="${imgPaste}"></a>
+							<a class="multi_order_action multi_order_clear" title="清空本行的数量和价格"><img src="${imgClear}"></a></div></td>
 							<td><div class="multi_order_cell"><input class="multi_order_quantity" type="number" step="1" min="0"></div></td>
 							<td><div class="multi_order_cell"><input class="multi_order_price" type="number" step="0.01" min="0.03"><div class="multi_order_second_price multi_order_second"></div></div></td>
 							<td><div class="multi_order_cell"><div class="multi_order_total" data-price-total="0">--</div><div class="multi_order_second_total multi_order_second" data-price-total="0"></div></div></td>
 							<td><div class="multi_order_status multi_order_cell"><span class="multi_order_message"></span></div></td></tr>`;
 				}
-				var modelHtml = `<style>.multi_order_table {border-spacing: 0 5px; margin-bottom: 10px; width: 855px;} .multi_order_cell {position: relative; width: 100%; display: inline-block; line-height: normal;}
+				var modelHtml = `<style>.multi_order_table {border-spacing: 0 5px; margin-bottom: 10px; width: 895px;} .multi_order_cell {position: relative; width: 100%; display: inline-block; line-height: normal;}
 								.multi_order_table td {padding: 0 5px; box-sizing: border-box; display: inline-block;} .multi_order_item_img {width: 48px; height: 48px; margin-right: 5px; cursor: pointer;}
-								.multi_order_table td:nth-child(1) {width: 430px;} .multi_order_table td:nth-child(2) {width: 80px;} .multi_order_table td:nth-child(3) {width: 152px;} .multi_order_table td:nth-child(4) {width: 136px;} .multi_order_table td:nth-child(5) {width: 42px;}
-								.multi_order_table tr {background-color: #00000033;} .multi_order_table thead td {height: 30px; line-height: 30px;} .multi_order_table tbody td {height: 58px; line-height: 58px;} 
+								.multi_order_table thead td:not(:last-child) {border-right: 1px solid #404040;} .multi_order_table td:nth-child(1) {width: 430px;} .multi_order_table td:nth-child(2) {width: 88px;} 
+								.multi_order_table td:nth-child(3) {width: 80px;} .multi_order_table td:nth-child(4) {width: 104px;} .multi_order_table td:nth-child(5) {width: 136px;} .multi_order_table td:nth-child(6) {width: 42px;}
+								.multi_order_table tr {background-color: #00000033;} .multi_order_table thead td {height: 30px; line-height: 30px; text-align: center;} .multi_order_table tbody td {height: 58px; line-height: 58px;} 
 								.multi_order_cell input {box-sizing: border-box; width: 100%; color: #acb2b8;} .multi_order_name {display: flex; align-items: center; margin: 5px 0px; overflow: hidden; text-wrap: nowrap;}
 								#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
 								#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {font-size: 13px; text-wrap: nowrap;} .multi_order_status {text-align: center;} .multi_order_name_link:hover {text-decoration: underline;}
 								.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888; text-wrap: nowrap;}
 								#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name_link {overflow: hidden; text-overflow: ellipsis; font-weight: bold; color: inherit;}
-								#multi_order_all_price {text-wrap: nowrap;} .multi_order_table tbody {display: inline-block; overflow-x: hidden; overflow-y: auto; min-height: 130px;}</style>
+								#multi_order_all_price {text-wrap: nowrap;} .multi_order_table tbody {display: inline-block; overflow-x: hidden; overflow-y: auto; min-height: 130px;}
+								.multi_order_cell_actions {display: flex; height: 100%; width: 100%; align-items: center; justify-content: center;} 
+								.multi_order_action {user-select: none; margin: 0 1px; line-height: 24px; height: 24px; width: 24px; text-align: center; border-radius: 3px;}
+								.multi_order_action:hover {background: #FFFFFF18} .multi_order_action img {pointer-events: none; width: 16px; height: 16px; margin: 4px;}</style>
 								<table class="multi_order_table">
-								<thead style="display: inline-block;"><tr><td style="border-right: 1px solid #404040;">物品名称</td><td style="border-right: 1px solid #404040;">数量</td><td style="border-right: 1px solid #404040;">价格</td><td style="width: 178px;">总价</td></tr></thead>
+								<thead style="display: inline-block;"><tr><td>物品名称</td><td><div class="multi_order_cell_actions"><a class="multi_order_action multi_order_pasteAll" title="粘贴已复制的数量和价格到全部物品"><img src="${imgPaste}"></a>
+								<a class="multi_order_action multi_order_clearAll" title="清空全部物品的数量和价格"><img src="${imgClear}"></a></div></td>
+								<td>数量</td><td>价格</td><td style="width: 178px;">总价</td></tr></thead>
 								<tbody>${html}</tbody></table>
-								<div style="width: 840px;"><div id="multi_order_purchase">提交订单</div><div style="white-space: nowrap;"><span>订购单的总价：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
+								<div style="width: 880px;"><div id="multi_order_purchase">提交订单</div><div style="white-space: nowrap;"><span>订购单的总价：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
 								<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div></div>`;
 		
 				this.container = document.createElement("div");
 				this.container.style.fontSize = "14px";
 				this.container.innerHTML = modelHtml;
+
+				this.container.querySelector(".multi_order_pasteAll").onclick = event => this.pasteAllBuyOrderInput(event);
+				this.container.querySelector(".multi_order_clearAll").onclick = event => this.clearAllBuyOrderInput(event);
 	
 				var tableRows = this.container.querySelectorAll(".multi_order_row");
 				for (let row of tableRows) {
 					row.oninput = event => this.updatePriceTotal(event);
-					row.onclick = function(event) {
+					row.onclick = event => {
 						if (event.target.classList.contains("multi_order_item_img")) {
 							dialogPriceInfo.show(row.getAttribute("data-appid"), row.getAttribute("data-hash-name"), currencyInfo);
+						} else if (event.target.classList.contains("multi_order_copy")) {
+							this.copyBuyOrderInput(event.currentTarget);
+						} else if (event.target.classList.contains("multi_order_paste")) {
+							this.pasteBuyOrderInput(event.currentTarget);
+						} else if (event.target.classList.contains("multi_order_clear")) {
+							this.clearBuyOrderInput(event.currentTarget);
 						}
 					};
 				}
@@ -3318,6 +3339,36 @@
 			} 
 			
 			return {price: price, quantity: quantity, price_total: price * quantity, price_2: price2, price_total_2: price2 * quantity};
+		},
+		copyBuyOrderInput: function(row) {
+			this.copyQuantity = row.querySelector(".multi_order_quantity").value;
+			this.copyPrice = row.querySelector(".multi_order_price").value;
+		},
+		pasteBuyOrderInput: function(row) {
+			if (this.copyQuantity) {
+				row.querySelector(".multi_order_quantity").value = this.copyQuantity;
+			}
+			if (this.copyPrice) {
+				row.querySelector(".multi_order_price").value = this.copyPrice;
+			}
+			row.dispatchEvent(new Event("input"));
+		},
+		clearBuyOrderInput: function(row) {
+			row.querySelector(".multi_order_quantity").value = "";
+			row.querySelector(".multi_order_price").value = "";
+			row.dispatchEvent(new Event("input"));
+		},
+		pasteAllBuyOrderInput: function(event) {
+			var tableRows = this.container.querySelectorAll(".multi_order_row");
+			for (let row of tableRows) {
+				this.pasteBuyOrderInput(row);
+			}
+		},
+		clearAllBuyOrderInput: function(event) {
+			var tableRows = this.container.querySelectorAll(".multi_order_row");
+			for (let row of tableRows) {
+				this.clearBuyOrderInput(row);
+			}
 		}
 	}
 
@@ -3466,7 +3517,7 @@
 		data.second_currency_code ??= "USD";
 		data.rate_update_interval ??= 360;
 		data.rate_item_url ??= "https://steamcommunity.com/market/listings/570/Inscribed%20Bracers%20of%20Impending%20Transgressions";
-		data.rate_item_listingid ??= "6394623418832328659";
+		data.rate_item_listingid ??= "4884793372899146898";
 		data.inventory_set_style ??= true;
 		data.inventory_set_filter ??= true;
 		data.inventory_append_linkbtn ??= true;
