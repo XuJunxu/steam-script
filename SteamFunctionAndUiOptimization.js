@@ -1149,6 +1149,7 @@
 
 		//批量上架出售相同的物品
 		async function sellAllSameItem(event, item) {
+			var sellLog = document.querySelector("#sell_log_text");
 			var hashName = item.description.market_hash_name;
 			var m_rgAssets = unsafeWindow.g_rgAppContextData[item.appid].rgContexts[parseInt(item.contextid)].inventory.m_rgAssets;
 			var input = event.currentTarget.parentNode.querySelector("input");
@@ -1179,10 +1180,14 @@
 							cnumber += quantity;
 
 							if (globalSettings.inventory_stop_sell && result.requires_confirmation) {
-								document.querySelector("#sell_log_text").innerHTML += `已停止批量出售<br>`;
-								document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
+								sellLog.innerHTML += `已停止批量出售<br>`;
+								sellLog.scroll(0, sellLog.scrollHeight);
 								break;
 							}
+						} else {
+							sellLog.innerHTML += `已停止批量出售<br>`;
+							sellLog.scroll(0, sellLog.scrollHeight);
+							break;
 						}
 					}
 				}
