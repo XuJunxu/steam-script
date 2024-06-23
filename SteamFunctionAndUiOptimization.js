@@ -1266,10 +1266,11 @@
 						html += `<a class="btn_small btn_grey_white_innerfade" href="${link}" target="_blank"><span>打开徽章页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://store.steampowered.com/app/${feeApp}" target="_blank"><span>打开商店页面</span></a>
 								<a class="btn_small btn_grey_white_innerfade" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${feeApp}" target="_blank"><span>Exchange页面</span></a>
-								<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${feeApp}" target="_blank"><span>查看社区物品</span></a>`;
+								<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${feeApp}" target="_blank"><span>搜索该游戏物品</span></a>`;
 						iconElem0.style.display = "flex";
 						iconElem1.style.display = "flex";
 					} else {
+						html += `<a class="btn_small btn_grey_white_innerfade" href="https://steamcommunity.com/market/search?appid=${appid}${appid==753? '&category_753_Game[]=tag_app_' + feeApp: ''}" target="_blank"><span>搜索该游戏物品</span></a>`;
 						iconElem0.style.display = null;
 						iconElem1.style.display = null;
 					}
