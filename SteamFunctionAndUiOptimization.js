@@ -2643,7 +2643,7 @@
 		}
 
 		function cardsAddMarketInfoBtn(cardElems, marketItems, cardElems2) {
-			var res = false;
+			var res = 0;
 			for (let i = 0; i < cardElems.length; i++) {
 				let cardElem = cardElems[i];
 				let image = (cardElems2?.[i] || cardElem).querySelector("img.gamecard").src;
@@ -2657,12 +2657,12 @@
 						cardElem.lastElementChild.innerHTML = html;
 						cardElem.lastElementChild.onclick = showMarketPriceTable;
 						
-						res = true;
+						res++;
 						break;
 					}
 				}
 			}
-			return res;
+			return res == cardElems.length;
 		}
 
 		function showMultiCreateBuyOrder() {
