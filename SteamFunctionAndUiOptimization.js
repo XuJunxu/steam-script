@@ -878,6 +878,10 @@
 				selectElem.value = "1";
 				selectElem.dispatchEvent(new Event("change"));
 			}
+
+			if (getStorageValue("SFU_AUTO_SELL")) {
+				checkAutoSellItem();
+			}
 		}
 
 		function showRestrictedItems(event) {
@@ -1310,6 +1314,120 @@
 				}
 			}
 			return false;
+		}
+
+		function checkAutoSellItem() {
+			setTimeout(async function() {
+				var autoSellSettings = getStorageValue("SFU_AUTO_SELL_SETTINGS");
+				for (var itemSettings of autoSellSettings) {
+					var now = Date.now();
+					if (now > itemSettings.nextTime) {
+						var res = await autoSellItem(itemSettings);
+						itemSettings.nextTime = Date.now() + (res? itemSettings.interval: 1) * 60000;
+						console.log(new Date().toLocaleString(), 'sell', res); //??
+					}
+				}
+				setStorageValue("SFU_AUTO_SELL_SETTINGS", autoSellSettings);
+				checkAutoSellItem();
+			}, 60 * 1000);
+		}
+
+		async function autoSellItem(itemSettings) {
+			var url = `https://steamcommunity.com/market/listings/${itemSettings.appid}/${encodeMarketHashName(itemSettings.hashName)}`;
+			var doc = await getHtmlDocument(url);
+			if (doc) {
+				var res = doc.body.innerHTML.match(/Market_LoadOrderSpread\(\s?(\d+)\s?\)/);
+				if (res && res.length > 1) {
+					var itemNameId = res[1];
+					var itemgram = await getItemOrdersHistogram(currencyInfo.country, currencyInfo.eCurrencyCode, itemNameId);
+					if (itemgram && itemgram.success == 1 && itemgram.sell_order_graph?.length > 0) {
+						var priceNum = {};
+						for(var row of doc.querySelectorAll("#tabContentsMyActiveMarketListingsRows .market_listing_row")) {
+							var price = getPriceFromSymbolStr(row.querySelector("span.market_listing_price").firstElementChild.firstElementChild.textContent);
+							priceNum[price] = (priceNum[price] ?? 0) + 1;
+						}
+
+						var sellGraph = itemgram.sell_order_graph;
+						for (var sell of sellGraph) {
+							sell[0] = Math.round(sell[0] * 100);
+						}
+
+						console.log(priceNum); //??
+						var newPrice = getNewPrice(sellGraph, priceNum, itemSettings.threshold) || getNewPrice(getSellGraphFromTable(itemgram.sell_order_table), priceNum, itemSettings.threshold);
+						if (newPrice > 0) {							
+							var newPriceReceive = calculatePriceYouReceive(Math.max(newPrice, Math.round(itemSettings.lowestPrice * 100)));
+							newPrice = calculatePriceBuyerPay(newPriceReceive);
+							console.log("price", newPrice); //??
+							var newNum = itemSettings.samePriceNum - (priceNum[newPrice] ?? 0);
+							if (newNum > 0) {
+								console.log("number", newNum); //??
+								var err_flag = false;
+								var m_rgAssets = unsafeWindow.g_rgAppContextData[itemSettings.appid].rgContexts[itemSettings.contextid].inventory.m_rgAssets;
+								for (let assetid in m_rgAssets) {
+									let it = m_rgAssets[assetid];
+									if (it?.description?.marketable && it.description.market_hash_name == itemSettings.hashName && !it.element.getAttribute("data-sold")) {
+										let result = await sellSelectedItem(0, it, newPriceReceive, newPrice, 1);
+										if (result && result.success) {
+											newNum--;
+										} else {
+											err_flag = true;
+											break;
+										}
+
+										if (newNum <= 0) {
+											break;
+										}
+									}
+								}
+								if (unsafeWindow.confirmSellItems) {
+									unsafeWindow.confirmSellItems();
+								}
+								return !err_flag;
+							}
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
+
+		function getNewPrice(sellGraph, priceNum, threshold) {
+			console.log(sellGraph); //??
+			for (var sell of sellGraph) {
+				for (var prc in priceNum) {
+					if (prc <= sell[0]) {
+						sell[1] -= priceNum[prc];
+					}
+				}
+			}
+	
+			for (var sell of sellGraph) {
+				if (sell[1] > threshold) {
+					return (sell[0] - 1);
+				}
+			}
+	
+			return 0;
+		}
+
+		function getSellGraphFromTable(tableHtml) {
+			var sellGraph = [];
+			if (tableHtml) {
+				var total = 0;
+				var elem = document.createElement("div");
+				elem.innerHTML = tableHtml;
+				for (var tr of elem.querySelectorAll("tr")) {
+					var price = getPriceFromSymbolStr(tr.firstElementChild.textContent);
+					var num = parseInt(tr.lastElementChild.textContent);
+					if (num > 0) {
+						total += num;
+						sellGraph.push([price, total]);
+					}
+				}
+				sellGraph.pop();
+			}
+			return sellGraph;
 		}
 	}
 
