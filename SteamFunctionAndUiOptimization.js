@@ -742,11 +742,17 @@
 		var sellTotalPriceReceive = 0;
 		var sellTotalPriceBuyerPay = 0;
 		var sellCount = 0;
+		var autoSellTimer = 0;
 
 		var priceGramLoaded = false;
 		var inventoryAppidForSell = 0;
 		var inventoryAppidForLink = 0;
 		var inventoryAppidForFilter = 0;
+
+		appendAutoSellCheckbox();
+		if (getStorageValue("SFU_AUTO_SELL")) {
+			checkAutoSellItem();
+		}
 
 		//修改页面布局
 		if (globalSettings.inventory_set_style) {
@@ -828,7 +834,7 @@
 				selectElem.onchange = showRestrictedItems;
 
 				var container = document.createElement("div");
-				container.style = "float: right; margin-left: 20px;"
+				container.style = "float: right; margin-left: 12px;"
 
 				container.appendChild(selectElem);
 				document.querySelector(".inventory_filters .filter_tag_button_ctn").appendChild(container);
@@ -877,10 +883,6 @@
 			if (selectElem.getAttribute("has-marketable-cards") == "true") {
 				selectElem.value = "1";
 				selectElem.dispatchEvent(new Event("change"));
-			}
-
-			if (getStorageValue("SFU_AUTO_SELL")) {
-				checkAutoSellItem();
 			}
 		}
 
@@ -1316,15 +1318,109 @@
 			return false;
 		}
 
+		function appendAutoSellCheckbox() {
+			var setting = getStorageValue("SFU_AUTO_SELL") ?? false;
+			var container = document.querySelector("#tabcontent_inventory > .filter_ctn.inventory_filters");
+			var elem = document.createElement("div");
+			elem.style = "float: left; margin: 6px 0 0 12px;";
+			elem.innerHTML = `<input type="checkbox" style="vertical-align: middle; cursor: pointer;" ${setting? "checked=true": ""}><a style="font-size: 13px;">自动出售</a>`;
+			container.insertBefore(elem, container.lastElementChild);
+
+			elem.querySelector("input").onchange = function(event) {
+				setStorageValue("SFU_AUTO_SELL", event.target.checked);
+				if (event.target.checked) {
+					checkAutoSellItem();
+				} else {
+					clearTimeout(autoSellTimer);
+				}
+			}
+
+			elem.querySelector("a").onclick = function() {
+				autoSellSettingsDialog();
+			}
+		}
+
+		function autoSellSettingsDialog() {
+			var settings = getStorageValue("SFU_AUTO_SELL_SETTINGS") ?? [];
+			var html = "";
+			for (var item of settings) {
+				var row = createRow(item);
+				html += row;
+			}
+			html = `<table id="sfu_auto_sell_settings"><thead><tr><th>appid</th><th>contextid</th><th>hashName</th>
+			        <th title="同一价格的在售数量">samePriceNum</th><th title="允许他人的较低价格在售数量">threshold</th><th title="最低出售价格">lowestPrice</th>
+					<th title="检测周期（分钟）">interval</th><th class="auto_sell_settings_add" title="添加">+</th></tr></thead><tbody>${html}</tbody></table>`;
+			var container = document.createElement("div");
+			container.innerHTML = `<style>#sfu_auto_sell_settings th, #sfu_auto_sell_settings td {font-size: 14px; font-weight: normal; text-align: center; padding: 3px 5px;}
+							   	   #sfu_auto_sell_settings thead tr, #sfu_auto_sell_settings tbody tr:nth-child(even) {background: #00000066;} 
+				                   #sfu_auto_sell_settings tbody tr:nth-child(odd) {background: #00000033;}
+								   #sfu_auto_sell_settings .auto_sell_settings_add, #sfu_auto_sell_settings .auto_sell_settings_delete {padding: 3px 10px; cursor: pointer}</style>` + html;
+
+			container.oninput = function(event) {
+				var td = event.target;
+				var name = td.getAttribute("data-name");
+				var value = td.textContent;
+				if (name == "lowestPrice") {
+					if (!value || value.match(/^\d+\.?\d*$/)) {
+						if (value) {
+							value = parseFloat(value).toString();
+						}
+						td.setAttribute("data-value", value);
+					} else {
+						td.textContent = td.getAttribute("data-value");
+					}
+				}  else if (name != "hashName") {
+					if (!value || value.match(/^\d+$/)) {
+						td.setAttribute("data-value", value);
+					} else {
+						td.textContent = td.getAttribute("data-value");
+					}
+				}
+			}
+
+			container.onclick = function(event) {
+				var elem = event.target;
+				if (elem.classList.contains("auto_sell_settings_add")) {
+					container.querySelector("tbody").innerHTML += createRow();
+					modal.AdjustSizing();
+				} else if (elem.classList.contains("auto_sell_settings_delete")) {
+					var row = elem.parentNode;
+					row.parentNode.removeChild(row);
+					modal.AdjustSizing();
+				}
+			}
+
+			var modal = unsafeWindow.ShowConfirmDialog("自动出售设置", container, "保存").done(function() {
+				var newSettngs = [];
+				for (var row of container.querySelectorAll("#sfu_auto_sell_settings tbody tr")) {
+					var itemSet = {};
+					for (var td of row.querySelectorAll("td")) {
+						itemSet[td.getAttribute("data-name")] = td.getAttribute("data-value");
+					}
+					newSettngs.push(itemSet);
+				}
+				setStorageValue("SFU_AUTO_SELL_SETTINGS", newSettngs);
+			});
+
+			function createRow(item={}) {
+				var row = "";
+				for (var key of ["appid", "contextid", "hashName", "samePriceNum", "threshold", "lowestPrice", "interval"]) {
+					row += `<td contenteditable="true" data-name="${key}" data-value="${item[key] ?? ""}">${item[key] ?? ""}</td>`;
+				}
+				row += `<td class="auto_sell_settings_delete" data-name="nextTime" data-value="${item.nextTime ?? 0}" title="删除">-</td>`;
+				return `<tr>${row}</tr>`;
+			}
+		}
+
 		function checkAutoSellItem() {
-			setTimeout(async function() {
-				var autoSellSettings = getStorageValue("SFU_AUTO_SELL_SETTINGS");
+			autoSellTimer = setTimeout(async function() {
+				var autoSellSettings = getStorageValue("SFU_AUTO_SELL_SETTINGS") ?? [];
 				for (var itemSettings of autoSellSettings) {
 					var now = Date.now();
-					if (now > itemSettings.nextTime) {
+					if (itemSettings.appid && itemSettings.contextid && itemSettings.hashName && itemSettings.samePriceNum > 0 && 
+						itemSettings.threshold > 0 && itemSettings.lowestPrice > 0 && itemSettings.interval > 0 && now > itemSettings.nextTime) {
 						var res = await autoSellItem(itemSettings);
 						itemSettings.nextTime = Date.now() + (res? itemSettings.interval: 1) * 60000;
-						console.log(new Date().toLocaleString(), 'sell', res); //??
 					}
 				}
 				setStorageValue("SFU_AUTO_SELL_SETTINGS", autoSellSettings);
@@ -1333,9 +1429,10 @@
 		}
 
 		async function autoSellItem(itemSettings) {
+			var m_rgAssets = unsafeWindow.g_rgAppContextData?.[itemSettings.appid]?.rgContexts?.[itemSettings.contextid]?.inventory?.m_rgAssets;
 			var url = `https://steamcommunity.com/market/listings/${itemSettings.appid}/${encodeMarketHashName(itemSettings.hashName)}`;
 			var doc = await getHtmlDocument(url);
-			if (doc) {
+			if (doc && doc.querySelector("#tabContentsMyActiveMarketListingsTable")) {
 				var res = doc.body.innerHTML.match(/Market_LoadOrderSpread\(\s?(\d+)\s?\)/);
 				if (res && res.length > 1) {
 					var itemNameId = res[1];
@@ -1352,17 +1449,19 @@
 							sell[0] = Math.round(sell[0] * 100);
 						}
 
-						console.log(priceNum); //??
 						var newPrice = getNewPrice(sellGraph, priceNum, itemSettings.threshold) || getNewPrice(getSellGraphFromTable(itemgram.sell_order_table), priceNum, itemSettings.threshold);
 						if (newPrice > 0) {							
 							var newPriceReceive = calculatePriceYouReceive(Math.max(newPrice, Math.round(itemSettings.lowestPrice * 100)));
 							newPrice = calculatePriceBuyerPay(newPriceReceive);
-							console.log("price", newPrice); //??
-							var newNum = itemSettings.samePriceNum - (priceNum[newPrice] ?? 0);
+							var newNum = itemSettings.samePriceNum;
+							for (var prc in priceNum) {
+								if (prc <= newPrice) {
+									newNum -= priceNum[prc];
+								}
+							}
+
 							if (newNum > 0) {
-								console.log("number", newNum); //??
 								var err_flag = false;
-								var m_rgAssets = unsafeWindow.g_rgAppContextData[itemSettings.appid].rgContexts[itemSettings.contextid].inventory.m_rgAssets;
 								for (let assetid in m_rgAssets) {
 									let it = m_rgAssets[assetid];
 									if (it?.description?.marketable && it.description.market_hash_name == itemSettings.hashName && !it.element.getAttribute("data-sold")) {
@@ -1393,7 +1492,6 @@
 		}
 
 		function getNewPrice(sellGraph, priceNum, threshold) {
-			console.log(sellGraph); //??
 			for (var sell of sellGraph) {
 				for (var prc in priceNum) {
 					if (prc <= sell[0]) {
