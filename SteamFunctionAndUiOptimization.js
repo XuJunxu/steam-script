@@ -935,8 +935,8 @@
 						<div><input class="sell_price_input" type="number" step="0.01" min="0.03" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
 						<a class="btn_small btn_green_white_innerfade sell_comfirm quick_sell_btn"><span>确认出售</span></a>
 						<a class="btn_small btn_green_white_innerfade sell_all_same quick_sell_btn" title="出售全部相同的物品"><span>批量出售(${sellNumber > 0 ? sellNumber.toString() + "个" : "全部"})</span></a></div>
-						<div><label class="price_receive"></label><label class="price_receive_2"></label></div>
-						<div class="sell_btns"></div></div>`;
+						<div><label class="price_receive"></label><label class="price_receive_2"></label></div><div class="sell_btns" style="float: left;"></div>
+						<div style="float: left;"><a class="btn_small btn_green_white_innerfade quick_sell_btn auto_sell_btn"><span>自动出售</span></a></div><div style="clear: both;"></div></div>`;
 			var container0 = document.createElement("div");
 			container0.id = "price_gram_container0";
 			var container1 = document.createElement("div");
@@ -970,6 +970,8 @@
 						document.querySelector("#price_gram_container1 .sell_comfirm").onclick = event => sellItemCustom(event, selectedItem);
 						document.querySelector("#price_gram_container0 .sell_all_same").onclick = event => sellAllSameItem(event, selectedItem);
 						document.querySelector("#price_gram_container1 .sell_all_same").onclick = event => sellAllSameItem(event, selectedItem);
+						document.querySelector("#price_gram_container0 .auto_sell_btn").onclick = event => addToAutoSell(event, selectedItem);
+						document.querySelector("#price_gram_container1 .auto_sell_btn").onclick = event => addToAutoSell(event, selectedItem);
 					} else {
 						document.querySelector("#price_gram_container0 .sell_btn_container").style.display = "none";
 						document.querySelector("#price_gram_container1 .sell_btn_container").style.display = "none";
@@ -1340,12 +1342,25 @@
 			}
 		}
 
-		function autoSellSettingsDialog() {
+		function autoSellSettingsDialog(addItemSetting) {
 			var settings = getStorageValue("SFU_AUTO_SELL_SETTINGS") ?? [];
 			var html = "";
+			var existed = -1;
 			for (var item of settings) {
 				var row = createRow(item);
 				html += row;
+			}
+			if (addItemSetting) {
+				for (var index = 0; index < settings.length; index++) {
+					if (settings[index].hashName == addItemSetting.hashName) {
+						existed = index;
+						break;
+					}
+				}
+				if (existed < 0) {
+					var row = createRow(addItemSetting);
+					html += row;
+				}
 			}
 			html = `<table id="sfu_auto_sell_settings"><thead><tr><th>appid</th><th>contextid</th><th>hashName</th>
 			        <th title="同一价格的在售数量">samePriceNum</th><th title="允许他人的较低价格在售数量">threshold</th><th title="最低出售价格">lowestPrice</th>
@@ -1402,6 +1417,11 @@
 				setStorageValue("SFU_AUTO_SELL_SETTINGS", newSettngs);
 			});
 
+			if (addItemSetting) {
+				var td = container.querySelector(`td[data-value="${addItemSetting.hashName}"]`);
+				td?.focus();
+			}
+
 			function createRow(item={}) {
 				var row = "";
 				for (var key of ["appid", "contextid", "hashName", "samePriceNum", "threshold", "lowestPrice", "interval"]) {
@@ -1410,6 +1430,15 @@
 				row += `<td class="auto_sell_settings_delete" data-name="nextTime" data-value="${item.nextTime ?? 0}" title="删除">-</td>`;
 				return `<tr>${row}</tr>`;
 			}
+		}
+
+		function addToAutoSell(event, selectedItem) {
+			var setting = {
+				appid: selectedItem.appid,
+				contextid: selectedItem.contextid,
+				hashName: selectedItem.description.market_hash_name
+			}
+			autoSellSettingsDialog(setting);
 		}
 
 		function checkAutoSellItem() {
