@@ -1384,12 +1384,14 @@
 					} else {
 						td.textContent = td.getAttribute("data-value");
 					}
-				}  else if (name != "hashName") {
+				} else if (name != "hashName") {
 					if (!value || value.match(/^\d+$/)) {
 						td.setAttribute("data-value", value);
 					} else {
 						td.textContent = td.getAttribute("data-value");
 					}
+				} else {
+					td.setAttribute("data-value", value.trim());
 				}
 			}
 
