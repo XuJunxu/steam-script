@@ -2792,21 +2792,17 @@
 			} 
 
 			var buttons = document.createElement("div");
-			buttons.innerHTML = `<a class="btn_grey_grey btn_medium" style="margin: 8px 4px 0 0;" href="https://store.steampowered.com/app/${appid}" target="_blank"><span>打开商店页面</span></a>
-								 <a class="btn_grey_grey btn_medium" style="margin: 8px 4px 0 0;" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" target="_blank"><span>打开Exchange页面</span></a>
-								 <a class="btn_grey_grey btn_medium" style="margin: 8px 4px 0 0;" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${appid}" target="_blank"><span>查看该游戏社区物品</span></a>
-								 <a class="btn_grey_grey btn_medium" id="multi_buy_order" style="margin: 8px 0 0 0; display: none;"><span>批量购买卡牌</span></a>`;
+			buttons.style = "margin: -6px 0 14px 8px";
+			buttons.innerHTML = `<a class="btn_grey_grey btn_medium" href="https://store.steampowered.com/app/${appid}" target="_blank"><span>打开商店页面</span></a>
+								 <a class="btn_grey_grey btn_medium" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-${appid}" target="_blank"><span>打开Exchange页面</span></a>
+								 <a class="btn_grey_grey btn_medium" href="https://steamcommunity.com/market/search?appid=753&category_753_Game[]=tag_app_${appid}" target="_blank"><span>查看该游戏社区物品</span></a>
+								 <a class="btn_grey_grey btn_medium" id="multi_buy_order" style="display: none;"><span>批量购买卡牌</span></a>`;
 
-			var elem = document.querySelector("div.badge_detail_tasks>div.gamecards_inventorylink");
-			if (!elem) {
-				elem = document.createElement("div");
-				elem.className = "gamecards_inventorylink";
-				document.querySelector("div.badge_detail_tasks").insertBefore(elem, document.querySelector("div.badge_detail_tasks").firstElementChild);
+			buttons.querySelector("#multi_buy_order").onclick = showMultiCreateBuyOrder;
+			var elem = document.querySelector("div.badge_detail_tasks>div.badge_card_set_cards");
+			if (elem) {
+				elem.parentNode.insertBefore(buttons, elem);
 			}
-
-			elem.appendChild(buttons);
-
-			document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order").onclick = showMultiCreateBuyOrder;
 		}
 
 		//卡牌下方添加链接和价格
@@ -2815,7 +2811,7 @@
 			styleElem.innerHTML = ".market_link {display: block; color: #EBEBEB; font-size: 12px; background: #00000066; padding: 3px; text-align: center;} .market_link:hover {background: #7bb7e355;}";
 			document.body.appendChild(styleElem);
 
-			var multiBuyOrderBtn = document.querySelector(".badge_detail_tasks>.gamecards_inventorylink #multi_buy_order");
+			var multiBuyOrderBtn = document.querySelector(".badge_detail_tasks #multi_buy_order");
 			var gameid = getGameId();
 
 			var res1 = location.search.match(/\bborder=(\d)/);
@@ -2828,7 +2824,7 @@
 			var cardElems = document.querySelectorAll("div.badge_card_set_card");
 			var linkElems = document.querySelectorAll("div.gamecards_inventorylink>a");
 			for (var le of linkElems) {
-				var hashNameList = le.href.match(/(?<=items\[\]\=).+?(?=\&)/g);
+				var hashNameList = le.href.match(/(?<=items\[\]\=).+?(?=\&)/g) || decodeURI(le.href.replace(/\+/g, "%20")).match(/(?<=items\[\]\=).+?(?=\&)/g);
 				if (hashNameList && hashNameList.length > 0) {
 					break;
 				}
