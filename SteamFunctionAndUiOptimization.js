@@ -1342,7 +1342,9 @@
 			}
 		}
 
+		var autoSellNum = 0;
 		function autoSellSettingsDialog(addItemSetting) {
+			autoSellNum = 0;
 			var settings = getStorageValue("SFU_AUTO_SELL_SETTINGS") ?? [];
 			var html = "";
 			var existed = -1;
@@ -1362,13 +1364,13 @@
 					html += row;
 				}
 			}
-			html = `<table id="sfu_auto_sell_settings"><thead><tr><th>appid</th><th>contextid</th><th>hashName</th>
+			html = `<table id="sfu_auto_sell_settings"><thead><tr><th>no.</th><th>appid</th><th>contextid</th><th>hashName</th>
 			        <th title="同一价格的在售数量">samePriceNum</th><th title="允许他人的较低价格在售数量">threshold</th><th title="最低出售价格">lowestPrice</th>
 					<th title="检测周期（分钟）">interval</th><th class="auto_sell_settings_add" title="添加">+</th></tr></thead><tbody>${html}</tbody></table>`;
 			var container = document.createElement("div");
 			container.innerHTML = `<style>#sfu_auto_sell_settings th, #sfu_auto_sell_settings td {font-size: 14px; font-weight: normal; text-align: center; padding: 3px 5px;}
 							   	   #sfu_auto_sell_settings thead tr, #sfu_auto_sell_settings tbody tr:nth-child(even) {background: #00000066;} 
-				                   #sfu_auto_sell_settings tbody tr:nth-child(odd) {background: #00000033;}
+				                   #sfu_auto_sell_settings tbody tr:nth-child(odd) {background: #00000033;} #sfu_auto_sell_settings .auto_sell_settings_info {cursor: pointer;}
 								   #sfu_auto_sell_settings .auto_sell_settings_add, #sfu_auto_sell_settings .auto_sell_settings_delete {padding: 3px 10px; cursor: pointer}</style>` + html;
 
 			container.oninput = function(event) {
@@ -1403,7 +1405,18 @@
 				} else if (elem.classList.contains("auto_sell_settings_delete")) {
 					var row = elem.parentNode;
 					row.parentNode.removeChild(row);
+					autoSellNum = 0;
+					for (var td of container.querySelectorAll(".auto_sell_settings_info")) {
+						td.textContent = ++autoSellNum;
+					}
 					modal.AdjustSizing();
+				} else if (elem.classList.contains("auto_sell_settings_info")) {
+					var parentElem = elem.parentNode;
+					var appid = parentElem.querySelector("td[data-name=appid]").getAttribute("data-value");
+					var hashName = parentElem.querySelector("td[data-name=hashName]").getAttribute("data-value");
+					if (appid && hashName) {
+						dialogPriceInfo.show(appid, encodeMarketHashName(hashName), currencyInfo, null, null, null);
+					}
 				}
 			}
 
@@ -1412,7 +1425,10 @@
 				for (var row of container.querySelectorAll("#sfu_auto_sell_settings tbody tr")) {
 					var itemSet = {};
 					for (var td of row.querySelectorAll("td")) {
-						itemSet[td.getAttribute("data-name")] = td.getAttribute("data-value");
+						var name = td.getAttribute("data-name");
+						if (name) {
+							itemSet[name] = td.getAttribute("data-value");
+						}
 					}
 					newSettngs.push(itemSet);
 				}
@@ -1425,7 +1441,7 @@
 			}
 
 			function createRow(item={}) {
-				var row = "";
+				var row = `<td class="auto_sell_settings_info">${++autoSellNum}</td>`;
 				for (var key of ["appid", "contextid", "hashName", "samePriceNum", "threshold", "lowestPrice", "interval"]) {
 					row += `<td contenteditable="true" data-name="${key}" data-value="${item[key] ?? ""}">${item[key] ?? ""}</td>`;
 				}
