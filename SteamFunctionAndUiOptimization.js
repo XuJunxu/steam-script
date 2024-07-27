@@ -1343,6 +1343,8 @@
 		}
 
 		var autoSellNum = 0;
+		var autoSellNextTime = {};
+
 		function autoSellSettingsDialog(addItemSetting) {
 			autoSellNum = 0;
 			var settings = getStorageValue("SFU_AUTO_SELL_SETTINGS") ?? [];
@@ -1365,13 +1367,15 @@
 				}
 			}
 			html = `<table id="sfu_auto_sell_settings"><thead><tr><th>no.</th><th>appid</th><th>contextid</th><th>hashName</th>
-			        <th title="同一价格的在售数量">samePriceNum</th><th title="允许他人的较低价格在售数量">threshold</th><th title="最低出售价格">lowestPrice</th>
+			        <th title="同一价格的在售数量">samePriceNum</th><th title="允许他人的较低价格在售数量">threshold</th><th colspan=2 title="最低出售价格">lowestPrice</th>
 					<th title="检测周期（分钟）">interval</th><th class="auto_sell_settings_add" title="添加">+</th></tr></thead><tbody>${html}</tbody></table>`;
 			var container = document.createElement("div");
-			container.innerHTML = `<style>#sfu_auto_sell_settings th, #sfu_auto_sell_settings td {font-size: 14px; font-weight: normal; text-align: center; padding: 3px 5px;}
+			container.innerHTML = `<style>#sfu_auto_sell_settings {border-spacing: inherit;}
+								   #sfu_auto_sell_settings th, #sfu_auto_sell_settings td {font-size: 14px; font-weight: normal; text-align: center; padding: 3px 5px; border: 1px solid #FFFFFF22;}
 							   	   #sfu_auto_sell_settings thead tr, #sfu_auto_sell_settings tbody tr:nth-child(even) {background: #00000066;} 
 				                   #sfu_auto_sell_settings tbody tr:nth-child(odd) {background: #00000033;} #sfu_auto_sell_settings .auto_sell_settings_info {cursor: pointer;}
-								   #sfu_auto_sell_settings .auto_sell_settings_add, #sfu_auto_sell_settings .auto_sell_settings_delete {padding: 3px 10px; cursor: pointer}</style>` + html;
+								   #sfu_auto_sell_settings .auto_sell_settings_add, #sfu_auto_sell_settings .auto_sell_settings_delete {padding: 3px 10px; cursor: pointer}
+								   #sfu_auto_sell_settings td:nth-child(7) {border-right: none;} #sfu_auto_sell_settings td:nth-child(8) {border-left: none;}</style>` + html;
 
 			container.oninput = function(event) {
 				var td = event.target;
@@ -1421,9 +1425,10 @@
 			}
 
 			var modal = unsafeWindow.ShowConfirmDialog("自动出售设置", container, "保存").done(function() {
+				var index = 1;
 				var newSettngs = [];
 				for (var row of container.querySelectorAll("#sfu_auto_sell_settings tbody tr")) {
-					var itemSet = {};
+					var itemSet = { index: index++ };
 					for (var td of row.querySelectorAll("td")) {
 						var name = td.getAttribute("data-name");
 						if (name) {
@@ -1433,6 +1438,7 @@
 					newSettngs.push(itemSet);
 				}
 				setStorageValue("SFU_AUTO_SELL_SETTINGS", newSettngs);
+				autoSellNextTime = {};
 			});
 
 			if (addItemSetting) {
@@ -1441,12 +1447,16 @@
 			}
 
 			function createRow(item={}) {
-				var row = `<td class="auto_sell_settings_info">${++autoSellNum}</td>`;
+				var row = [`<td class="auto_sell_settings_info">${++autoSellNum}</td>`];
 				for (var key of ["appid", "contextid", "hashName", "samePriceNum", "threshold", "lowestPrice", "interval"]) {
-					row += `<td contenteditable="true" data-name="${key}" data-value="${item[key] ?? ""}">${item[key] ?? ""}</td>`;
+					row.push(`<td contenteditable="true" data-name="${key}" data-value="${item[key] ?? ""}">${item[key] ?? ""}</td>`);
 				}
-				row += `<td class="auto_sell_settings_delete" data-name="nextTime" data-value="${item.nextTime ?? 0}" title="删除">-</td>`;
-				return `<tr>${row}</tr>`;
+
+				var currency = item.currency ?? currencyInfo.eCurrencyCode;
+				var strSymbol = getCurrencyInfo(getCurrencyCode).strSymbol;
+				row.splice(6, 0, `<td class="auto_sell_settings_info" data-name="currency" data-value="${currency}">${strSymbol}</td>`);
+				row.push(`<td class="auto_sell_settings_delete" title="删除">-</td>`);
+				return `<tr>${row.join("")}</tr>`;
 			}
 		}
 
@@ -1461,16 +1471,17 @@
 
 		function checkAutoSellItem() {
 			autoSellTimer = setTimeout(async function() {
+				var autoSellNextTimeTemp = autoSellNextTime;
 				var autoSellSettings = getStorageValue("SFU_AUTO_SELL_SETTINGS") ?? [];
 				for (var itemSettings of autoSellSettings) {
+					var nextTime = autoSellNextTimeTemp[itemSettings.index] ?? 0;
 					var now = Date.now();
-					if (itemSettings.appid && itemSettings.contextid && itemSettings.hashName && itemSettings.samePriceNum > 0 && 
-						itemSettings.threshold > 0 && itemSettings.lowestPrice > 0 && itemSettings.interval > 0 && now > itemSettings.nextTime) {
+					if (itemSettings.appid && itemSettings.contextid && itemSettings.hashName && itemSettings.samePriceNum > 0 && itemSettings.threshold > 0 && 
+						itemSettings.lowestPrice > 0 && itemSettings.interval > 0 && itemSettings.currency == currencyInfo.eCurrencyCode && now > nextTime) {
 						var res = await autoSellItem(itemSettings);
-						itemSettings.nextTime = Date.now() + (res? itemSettings.interval: 1) * 60000;
+						autoSellNextTimeTemp[itemSettings.index] = Date.now() + (res? itemSettings.interval: 1) * 60000;
 					}
 				}
-				setStorageValue("SFU_AUTO_SELL_SETTINGS", autoSellSettings);
 				checkAutoSellItem();
 			}, 60 * 1000);
 		}
