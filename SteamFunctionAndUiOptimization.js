@@ -1410,7 +1410,7 @@
 					var row = elem.parentNode;
 					row.parentNode.removeChild(row);
 					autoSellNum = 0;
-					for (var td of container.querySelectorAll(".auto_sell_settings_info")) {
+					for (var td of container.querySelectorAll(".auto_sell_settings_number")) {
 						td.textContent = ++autoSellNum;
 					}
 					modal.AdjustSizing();
@@ -1447,7 +1447,7 @@
 			}
 
 			function createRow(item={}) {
-				var row = [`<td class="auto_sell_settings_info">${++autoSellNum}</td>`];
+				var row = [`<td class="auto_sell_settings_number">${++autoSellNum}</td>`];
 				for (var key of ["appid", "contextid", "hashName", "samePriceNum", "threshold", "lowestPrice", "interval"]) {
 					row.push(`<td contenteditable="true" data-name="${key}" data-value="${item[key] ?? ""}">${item[key] ?? ""}</td>`);
 				}
@@ -1480,6 +1480,7 @@
 						itemSettings.lowestPrice > 0 && itemSettings.interval > 0 && itemSettings.currency == currencyInfo.eCurrencyCode && now > nextTime) {
 						var res = await autoSellItem(itemSettings);
 						autoSellNextTimeTemp[itemSettings.index] = Date.now() + (res? itemSettings.interval: 1) * 60000;
+						await sleep(1000);
 					}
 				}
 				checkAutoSellItem();
