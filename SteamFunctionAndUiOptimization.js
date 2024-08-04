@@ -591,17 +591,29 @@
 		}
 
 		appendPageControl();
+		var activeInventoryAppid = null;
+		var activeInventoryContextid = null;
+		var activeInventoryOwner = null;
 
 		var styleElem = document.createElement("style");
 		styleElem.innerHTML = `#inventory_displaycontrols {display: none;} #trade_offer_buttons{margin: 10px 0px 0px 10px;} 
-							   .btn_move_items{padding: 5px 15px; margin: 8px 4px 0 0;} .add_to_trade {margin-top: 15px;}`;
+							   .btn_move_items{padding: 5px 15px; margin: 8px 4px 0 0;} .add_to_trade {margin-top: 15px;}
+							   .trade_offer_buttons select, .trade_offer_buttons input {max-width: 380px; padding: 2px 0 2px 4px; margin: 8px 0 0 4px; color: #EEEEEE;}
+							   .trade_offer_buttons option {background-color: #181818}`;
 		document.body.appendChild(styleElem);
 
 		var tradeButtons = document.createElement("div");
 		tradeButtons.className = "trade_offer_buttons add_to_trade";
-		tradeButtons.innerHTML = `<a class="btn_add_cards btn_move_items btn_green_white_innerfade">添加全部普通卡牌</a>
+		tradeButtons.innerHTML = `<div id="game_item_actions" style="display: none;">
 								  <a class="btn_add_all btn_move_items btn_green_white_innerfade">添加全部物品</a>
-								  <a class="btn_add_current btn_move_items btn_green_white_innerfade">添加当前页物品</a>`;
+								  <a class="btn_add_current btn_move_items btn_green_white_innerfade">添加当前页物品</a></div>
+								  <div id="steam_item_actions" style="display: none;">
+								  <a class="btn_add_custom btn_move_items btn_green_white_innerfade">添加满足条件的物品</a>
+								  <a class="btn_add_current btn_move_items btn_green_white_innerfade">添加当前页物品</a><br>
+								  <span>游戏</span><select id="select_game_to_trade"></select><br>
+								  <span>物品</span><select id="select_item_class_to_trade"></select>
+								  <span style="margin-left: 18px;">数量</span><input id="input_quantity_to_trade" type="number" min="1" step="1" placeholder="全部" style="width: 70px;">
+								  <select id="select_quantity_unit"></select></div>`;
 		var filters = document.querySelector("#nonresponsivetrade_itemfilters");
 		filters.parentNode.insertBefore(tradeButtons, filters);
 		tradeButtons.onclick = optButtonClicked;
@@ -630,6 +642,59 @@
 		document.querySelector("#your_slots").onclick = itemClicked;
 		document.querySelector("#their_slots").onclick = itemClicked;
 
+		document.querySelector("#appselect_you_options").onclick = waitLoadInventory;
+		document.querySelector("#appselect_them_options").onclick = waitLoadInventory;
+		document.querySelector("#inventory_select_your_inventory").onclick = waitLoadInventory;
+		document.querySelector("#inventory_select_their_inventory").onclick = waitLoadInventory;
+		waitLoadInventory();
+
+		function waitLoadInventory() {  
+			if (!unsafeWindow.g_ActiveInventory?.appid || unsafeWindow.g_ActiveInventory.BIsPendingInventory()) {
+				setTimeout(function() {
+					waitLoadInventory();
+				}, 100);
+				return;
+			}
+
+			if (activeInventoryOwner == unsafeWindow.g_ActiveInventory.owner.strSteamId && activeInventoryAppid == unsafeWindow.g_ActiveInventory.appid && activeInventoryContextid == unsafeWindow.g_ActiveInventory.contextid) {
+				return;
+			}
+			activeInventoryAppid = unsafeWindow.g_ActiveInventory.appid;
+			activeInventoryContextid = unsafeWindow.g_ActiveInventory.contextid;
+			activeInventoryOwner = unsafeWindow.g_ActiveInventory.owner.strSteamId;
+
+			if (activeInventoryAppid == 753 && (activeInventoryContextid == 0 || activeInventoryContextid == 6)) {
+				tradeButtons.querySelector("#steam_item_actions").style.display = "block";
+				tradeButtons.querySelector("#game_item_actions").style.display = "none";
+
+				var selectGame = tradeButtons.querySelector("#select_game_to_trade");
+				var tags = unsafeWindow.g_ActiveInventory.tags.Game.tags;
+				var options = `<option value="all">全部</option>`;
+				for (var appid in tags) {
+					options += `<option value="${appid}">${tags[appid].name}</option>`;
+				}
+				selectGame.innerHTML = options;
+
+				tradeButtons.querySelector("#select_item_class_to_trade").innerHTML = `
+					<option value="cardborder_0">普通卡牌</option>
+					<option value="cardborder_1">闪亮卡牌</option>
+					<option value="item_class_3">背景</option>
+					<option value="item_class_4">表情</option>
+					<option value="item_class_5">补充包</option>
+					<option value="all">全部</option>
+				`;
+
+				tradeButtons.querySelector("#select_quantity_unit").innerHTML = `
+					<option value="set">组</option>
+					<option value="sheet">个</option>
+				`;
+			} else {
+				tradeButtons.querySelector("#game_item_actions").style.display = "block";
+				tradeButtons.querySelector("#steam_item_actions").style.display = "none";
+			}
+
+		}
+
 		function itemClicked(event) {
 			var elem = event.target;
 			if (elem.parentNode.id.match(/^item.+/) && elem.parentNode.classList.contains("item")) {
@@ -652,12 +717,105 @@
 
 		function optButtonClicked(event) {
 			var button = event.target;
-			if (button.classList.contains("btn_add_cards")) {
-				addAllCommonCards();
+			if (button.classList.contains("btn_add_custom")) {
+				addCustomItems();
 			} else if (button.classList.contains("btn_add_all")) {
 				addAllItems();
 			} else if (button.classList.contains("btn_add_current")) {
 				addCurrentItems();
+			}
+		}
+
+		function addCustomItems() {
+			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
+			if (g_ActiveInventory.appid != 753 || (g_ActiveInventory.contextid != 0 && g_ActiveInventory.contextid != 6)) {
+				return;
+			}
+
+			if (!g_ActiveInventory.classifiedItems) {
+				g_ActiveInventory.classifiedItems = {};
+				for (var page of g_ActiveInventory.pageList) {
+					for (var itemHolder of page.children) {
+						var item = itemHolder?.rgItem;
+						if (item && item.tradable && item.tags) {
+							var feeAppid = null;
+							var itemClass = null; 
+							var cardborder = null;
+							var hashName = item.market_hash_name;
+							for (var tag of item.tags) {
+								if (tag.category == "Game") {
+									feeAppid = tag.internal_name;
+								} else if (tag.category == "item_class") {
+									itemClass = tag.internal_name;
+								} else if (tag.category == "cardborder") {
+									cardborder = tag.internal_name;
+								}
+							}
+							if (feeAppid && itemClass) {
+								g_ActiveInventory.classifiedItems[feeAppid] ??= {};
+								if (itemClass == "item_class_2") {
+									g_ActiveInventory.classifiedItems[feeAppid][cardborder] ??= {};
+									g_ActiveInventory.classifiedItems[feeAppid][cardborder][hashName] ??= [];
+									g_ActiveInventory.classifiedItems[feeAppid][cardborder][hashName].push(itemHolder);
+								} else {
+									g_ActiveInventory.classifiedItems[feeAppid][itemClass] ??= {};
+									g_ActiveInventory.classifiedItems[feeAppid][itemClass][hashName] ??= [];
+									g_ActiveInventory.classifiedItems[feeAppid][itemClass][hashName].push(itemHolder);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			var selectGame = tradeButtons.querySelector("#select_game_to_trade");
+			var selectItemClass = tradeButtons.querySelector("#select_item_class_to_trade");
+			var inputQuantity = tradeButtons.querySelector("#input_quantity_to_trade");
+			var selectUnit = tradeButtons.querySelector("#select_quantity_unit");
+
+			var gameAppidList = selectGame.value == "all"? Object.keys(unsafeWindow.g_ActiveInventory.tags.Game.tags): [selectGame.value];
+			var itemClassList = selectItemClass.value == "all"? ["cardborder_0", "cardborder_1", "item_class_3", "item_class_4", "item_class_5"]: [selectItemClass.value];
+			var itemQuantity = inputQuantity.value && parseInt(inputQuantity.value) > 0? parseInt(inputQuantity.value): -1;
+
+			if (selectUnit.value == "set") {
+				for (var appid of gameAppidList) {
+					for (var itemCls of itemClassList) {
+						for (var itemName in g_ActiveInventory.classifiedItems[appid][itemCls]) {
+							var itemList = g_ActiveInventory.classifiedItems[appid][itemCls][itemName];
+							var itemNum = itemQuantity > 0? Math.min(itemList.length, itemQuantity): itemList.length;
+							var num = 0;
+							for (var itemHolder of itemList) {
+								if (itemHolder == itemHolder.rgItem.element?.parentNode) {
+									unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+									num++;
+									if (num >= itemNum) {
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+			} else {
+				for (var appid of gameAppidList) {
+					for (var itemCls of itemClassList) {
+						var num = 0;
+						for (var itemName in g_ActiveInventory.classifiedItems[appid][itemCls]) {
+							for (var itemHolder of g_ActiveInventory.classifiedItems[appid][itemCls][itemName]) {
+								if (itemHolder == itemHolder.rgItem.element?.parentNode) {
+									unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+									num++;
+									if (itemQuantity > 0 && num >= itemQuantity) {
+										break;
+									}
+								}
+							}
+							if (itemQuantity > 0 && num >= itemQuantity) {
+								break;
+							}
+						}
+					}
+				}
 			}
 		}
 
