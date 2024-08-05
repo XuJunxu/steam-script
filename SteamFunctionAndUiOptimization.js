@@ -596,27 +596,31 @@
 		var activeInventoryOwner = null;
 
 		var styleElem = document.createElement("style");
-		styleElem.innerHTML = `#inventory_displaycontrols {display: none;} #trade_offer_buttons{margin: 10px 0px 0px 10px;} 
-							   .btn_move_items{padding: 5px 15px; margin: 8px 4px 0 0;} .add_to_trade {margin-top: 15px;}
-							   .trade_offer_buttons select, .trade_offer_buttons input {max-width: 380px; padding: 2px 0 2px 4px; margin: 8px 0 0 4px; color: #EEEEEE;}
-							   .trade_offer_buttons option {background-color: #181818}`;
+		styleElem.innerHTML = `#inventory_displaycontrols {display: none;} .btn_move_items {padding: 3px 15px; margin: 0 5px 0 0;} 
+							   .custom_container select, .custom_container input {max-width: 380px; padding: 2px 0 2px 4px; margin: 8px 0 0 4px; color: #EEEEEE;}
+							   .custom_container option {background-color: #181818} .trade_offer_buttons {margin: 8px 0 0 0;}
+							   .trade_add_buttons {margin: -10px 0 8px 0;}`;
 		document.body.appendChild(styleElem);
 
 		var tradeButtons = document.createElement("div");
-		tradeButtons.className = "trade_offer_buttons add_to_trade";
-		tradeButtons.innerHTML = `<div id="add_to_trade_actions">
-								  <a class="btn_add_custom btn_move_items btn_green_white_innerfade">添加满足条件的物品</a>
-								  <a class="btn_add_all btn_move_items btn_green_white_innerfade" title="将当前库存中全部物品（可设置筛选条件）添加到交易报价中">添加全部物品</a>
+		tradeButtons.className = "trade_add_buttons";
+		tradeButtons.innerHTML = `<a class="btn_add_all btn_move_items btn_green_white_innerfade" title="将当前库存中全部物品（可设置筛选条件）添加到交易报价中">添加全部物品</a>
 								  <a class="btn_add_current btn_move_items btn_green_white_innerfade" title="将当前页显示的物品添加到交易报价中">添加当前页物品</a>
-								  <input type="checkbox" id="include_stackable_item" style="margin: 3px;"><label for="include_stackable_item">包含堆叠的物品</label></div>
-								  <div id="steam_item_selector">
-								  <span>游戏</span><select id="select_game_to_trade"></select><br>
-								  <span>物品</span><select id="select_item_class_to_trade"></select>
-								  <span style="margin-left: 18px;">数量</span><input id="input_quantity_to_trade" type="number" min="1" step="1" placeholder="全部" style="width: 70px;">
-								  <select id="select_quantity_unit"></select></div>`;
+								  <input type="checkbox" id="include_stackable_item" style="margin: 3px;"><label for="include_stackable_item">包含堆叠的物品</label>`;
 		var filters = document.querySelector("#nonresponsivetrade_itemfilters");
-		filters.parentNode.insertBefore(tradeButtons, filters);
+		filters.insertBefore(tradeButtons, filters.querySelector(".filter_ctn"));
 		tradeButtons.onclick = optButtonClicked;
+
+		var customContainer = document.createElement("div");
+		customContainer.className = "custom_container";
+		customContainer.innerHTML = `<div style="height: 1px; background: #000000; border-bottom: 1px solid #2B2B2B; margin: 10px 0 8px 0;"></div>
+									 <div><a class="btn_add_custom btn_move_items btn_green_white_innerfade" title="根据下面的设置将物品添加到交易报价中">添加以下设置的物品</a></div>
+									 <div><span>游戏</span><select id="select_game_to_trade"></select><br>
+									 <span>物品</span><select id="select_item_class_to_trade"></select>
+									 <span style="margin-left: 18px;">数量</span><input id="input_quantity_to_trade" type="number" min="1" step="1" placeholder="全部" style="width: 70px;">
+									 <select id="select_quantity_unit"></select></div>`;
+		filters.parentNode.appendChild(customContainer);
+		customContainer.onclick = optButtonClicked;
 
 		var html = `<a class="btn_remove_all btn_move_items btn_green_white_innerfade">移除全部物品</a>`;
 		var trade_yours = document.createElement("div");
@@ -643,7 +647,7 @@
 		waitLoadInventory();
 
 		function waitLoadInventory() {  
-			tradeButtons.style.display = "none";
+			customContainer.style.display = "none";
 			if (!unsafeWindow.g_ActiveInventory?.appid || unsafeWindow.g_ActiveInventory.BIsPendingInventory()) {
 				setTimeout(function() {
 					waitLoadInventory();
@@ -659,11 +663,9 @@
 			activeInventoryOwner = unsafeWindow.g_ActiveInventory.owner.strSteamId;
 
 			if (activeInventoryAppid == 753 && (activeInventoryContextid == 0 || activeInventoryContextid == 6)) {
-				tradeButtons.querySelector(".btn_add_custom").style.display = null;
-				tradeButtons.querySelector(".btn_add_all").style.display = "none";
-				tradeButtons.querySelector("#steam_item_selector").style.display = null;
+				customContainer.style.display = null;
 
-				var selectGame = tradeButtons.querySelector("#select_game_to_trade");
+				var selectGame = customContainer.querySelector("#select_game_to_trade");
 				var tags = unsafeWindow.g_ActiveInventory.tags.Game.tags;
 				var options = `<option value="all">全部</option>`;
 				for (var appid in tags) {
@@ -671,7 +673,7 @@
 				}
 				selectGame.innerHTML = options;
 
-				tradeButtons.querySelector("#select_item_class_to_trade").innerHTML = `
+				customContainer.querySelector("#select_item_class_to_trade").innerHTML = `
 					<option value="cardborder_0">普通卡牌</option>
 					<option value="cardborder_1">闪亮卡牌</option>
 					<option value="item_class_3">背景</option>
@@ -680,16 +682,13 @@
 					<option value="all">全部</option>
 				`;
 
-				tradeButtons.querySelector("#select_quantity_unit").innerHTML = `
+				customContainer.querySelector("#select_quantity_unit").innerHTML = `
 					<option value="set">组</option>
 					<option value="sheet">个</option>
 				`;
 			} else {
-				tradeButtons.querySelector(".btn_add_all").style.display = null;
-				tradeButtons.querySelector(".btn_add_custom").style.display = "none";
-				tradeButtons.querySelector("#steam_item_selector").style.display = "none";
+				customContainer.style.display = "none";
 			}
-			tradeButtons.style.display = null;
 		}
 
 		function itemClicked(event) {
@@ -756,10 +755,10 @@
 				}
 			}
 
-			var selectGame = tradeButtons.querySelector("#select_game_to_trade");
-			var selectItemClass = tradeButtons.querySelector("#select_item_class_to_trade");
-			var inputQuantity = tradeButtons.querySelector("#input_quantity_to_trade");
-			var selectUnit = tradeButtons.querySelector("#select_quantity_unit");
+			var selectGame = customContainer.querySelector("#select_game_to_trade");
+			var selectItemClass = customContainer.querySelector("#select_item_class_to_trade");
+			var inputQuantity = customContainer.querySelector("#input_quantity_to_trade");
+			var selectUnit = customContainer.querySelector("#select_quantity_unit");
 
 			var gameAppidList = selectGame.value == "all"? Object.keys(unsafeWindow.g_ActiveInventory.tags.Game.tags): [selectGame.value];
 			var itemClassList = selectItemClass.value == "all"? ["cardborder_0", "cardborder_1", "item_class_3", "item_class_4", "item_class_5"]: [selectItemClass.value];
