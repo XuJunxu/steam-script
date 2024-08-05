@@ -848,7 +848,7 @@
 		function addCurrentItems() {
 			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
 			for (var itemHolder of g_ActiveInventory.pageList[g_ActiveInventory.pageCurrent].children) {
-				if (itemHolder?.rgItem?.tradable && (!itemHolder.rgItem.is_stackable && itemHolder == itemHolder.rgItem.element?.parentNode)) {
+				if (itemHolder?.rgItem?.tradable && itemHolder.style.display != "none" && (!itemHolder.rgItem.is_stackable && itemHolder == itemHolder.rgItem.element?.parentNode)) {
 					unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
 				}
 			}
