@@ -604,12 +604,12 @@
 
 		var tradeButtons = document.createElement("div");
 		tradeButtons.className = "trade_offer_buttons add_to_trade";
-		tradeButtons.innerHTML = `<div id="game_item_actions" style="display: none;">
-								  <a class="btn_add_all btn_move_items btn_green_white_innerfade">添加全部物品</a>
-								  <a class="btn_add_current btn_move_items btn_green_white_innerfade">添加当前页物品</a></div>
-								  <div id="steam_item_actions" style="display: none;">
+		tradeButtons.innerHTML = `<div id="add_to_trade_actions">
 								  <a class="btn_add_custom btn_move_items btn_green_white_innerfade">添加满足条件的物品</a>
-								  <a class="btn_add_current btn_move_items btn_green_white_innerfade">添加当前页物品</a><br>
+								  <a class="btn_add_all btn_move_items btn_green_white_innerfade" title="将当前库存中全部物品（可设置筛选条件）添加到交易报价中">添加全部物品</a>
+								  <a class="btn_add_current btn_move_items btn_green_white_innerfade" title="将当前页显示的物品添加到交易报价中">添加当前页物品</a>
+								  <input type="checkbox" id="include_stackable_item" style="margin: 3px;"><label for="include_stackable_item">包含堆叠的物品</label></div>
+								  <div id="steam_item_selector">
 								  <span>游戏</span><select id="select_game_to_trade"></select><br>
 								  <span>物品</span><select id="select_item_class_to_trade"></select>
 								  <span style="margin-left: 18px;">数量</span><input id="input_quantity_to_trade" type="number" min="1" step="1" placeholder="全部" style="width: 70px;">
@@ -632,12 +632,6 @@
 		trade_yours.onclick = removeAllItems;
 		trade_theirs.onclick = removeAllItems;
 
-		var obs = new MutationObserver(removeSlots);
-		obs.observe(document.querySelector("#trade_yours > div.trade_item_box"), { childList: true }); 
-
-		var obs2 = new MutationObserver(removeSlots);
-		obs2.observe(document.querySelector("#trade_theirs > div.trade_item_box"), { childList: true }); 
-
 		document.querySelector("#inventories").onclick = itemClicked;
 		document.querySelector("#your_slots").onclick = itemClicked;
 		document.querySelector("#their_slots").onclick = itemClicked;
@@ -649,6 +643,7 @@
 		waitLoadInventory();
 
 		function waitLoadInventory() {  
+			tradeButtons.style.display = "none";
 			if (!unsafeWindow.g_ActiveInventory?.appid || unsafeWindow.g_ActiveInventory.BIsPendingInventory()) {
 				setTimeout(function() {
 					waitLoadInventory();
@@ -664,8 +659,9 @@
 			activeInventoryOwner = unsafeWindow.g_ActiveInventory.owner.strSteamId;
 
 			if (activeInventoryAppid == 753 && (activeInventoryContextid == 0 || activeInventoryContextid == 6)) {
-				tradeButtons.querySelector("#steam_item_actions").style.display = "block";
-				tradeButtons.querySelector("#game_item_actions").style.display = "none";
+				tradeButtons.querySelector(".btn_add_custom").style.display = null;
+				tradeButtons.querySelector(".btn_add_all").style.display = "none";
+				tradeButtons.querySelector("#steam_item_selector").style.display = null;
 
 				var selectGame = tradeButtons.querySelector("#select_game_to_trade");
 				var tags = unsafeWindow.g_ActiveInventory.tags.Game.tags;
@@ -689,10 +685,11 @@
 					<option value="sheet">个</option>
 				`;
 			} else {
-				tradeButtons.querySelector("#game_item_actions").style.display = "block";
-				tradeButtons.querySelector("#steam_item_actions").style.display = "none";
+				tradeButtons.querySelector(".btn_add_all").style.display = null;
+				tradeButtons.querySelector(".btn_add_custom").style.display = "none";
+				tradeButtons.querySelector("#steam_item_selector").style.display = "none";
 			}
-
+			tradeButtons.style.display = null;
 		}
 
 		function itemClicked(event) {
@@ -703,15 +700,6 @@
 			if (elem.id.match(/^item.+/) && elem.classList.contains("item")) {
 				elem.firstElementChild.addEventListener("dblclick", e => {e.stopPropagation();});  //消除单击过快触发双击事件
 				unsafeWindow.OnDoubleClickItem(event, elem);
-			}
-		}
-
-		function removeSlots(records, observer) {
-			if (records[0].removedNodes.length > 0) {
-				var itemBox = records[0].target;
-				for (var node of itemBox.querySelectorAll("div.trade_item_box > div.trade_slot")) {
-					itemBox.removeChild(node);
-				}
 			}
 		}
 
@@ -777,6 +765,7 @@
 			var itemClassList = selectItemClass.value == "all"? ["cardborder_0", "cardborder_1", "item_class_3", "item_class_4", "item_class_5"]: [selectItemClass.value];
 			var itemQuantity = inputQuantity.value && parseInt(inputQuantity.value) > 0? parseInt(inputQuantity.value): -1;
 
+			var itemsToTrade = [];
 			if (selectUnit.value == "set") {
 				for (var appid of gameAppidList) {
 					for (var itemCls of itemClassList) {
@@ -786,7 +775,7 @@
 							var num = 0;
 							for (var itemHolder of itemList) {
 								if (itemHolder == itemHolder.rgItem.element?.parentNode) {
-									unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+									itemsToTrade.push([itemHolder.rgItem, itemHolder.rgItem.original_amount]);
 									num++;
 									if (num >= itemNum) {
 										break;
@@ -803,7 +792,7 @@
 						for (var itemName in g_ActiveInventory.classifiedItems[appid][itemCls]) {
 							for (var itemHolder of g_ActiveInventory.classifiedItems[appid][itemCls][itemName]) {
 								if (itemHolder == itemHolder.rgItem.element?.parentNode) {
-									unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+									itemsToTrade.push([itemHolder.rgItem, itemHolder.rgItem.original_amount]);
 									num++;
 									if (itemQuantity > 0 && num >= itemQuantity) {
 										break;
@@ -817,41 +806,50 @@
 					}
 				}
 			}
+			moveItemsToTrade(itemsToTrade);
 		}
 
 		function addAllCommonCards() {
+			var itemsToTrade = [];
 			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
 			if (g_ActiveInventory && g_ActiveInventory.appid == 753 && (g_ActiveInventory.contextid == 0 || g_ActiveInventory.contextid == 6) && g_ActiveInventory.pageList) {
 				for (var page of g_ActiveInventory.pageList) {
 					for (var itemHolder of page.children) {
 						if (itemHolder?.rgItem?.tradable && checkCommonCard(itemHolder.rgItem.tags) && itemHolder == itemHolder.rgItem.element?.parentNode) {
-							unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+							itemsToTrade.push([itemHolder.rgItem, itemHolder.rgItem.original_amount]);
 						}
 					}
 				}
 			}
+			moveItemsToTrade(itemsToTrade);
 		}
 
 		function addAllItems() {
+			var includeStackable = tradeButtons.querySelector("#include_stackable_item").checked;
+			var itemsToTrade = [];
 			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
 			if (g_ActiveInventory && g_ActiveInventory.pageList) {
 				for (var page of g_ActiveInventory.pageList) {
 					for (var itemHolder of page.children) {
-						if (itemHolder?.rgItem?.tradable && (!itemHolder.rgItem.is_stackable) && itemHolder == itemHolder.rgItem.element?.parentNode) {
-							unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+						if (itemHolder?.rgItem?.tradable && itemHolder.style.display != "none" && (includeStackable || !itemHolder.rgItem.is_stackable) && itemHolder == itemHolder.rgItem.element?.parentNode) {
+							itemsToTrade.push([itemHolder.rgItem, itemHolder.rgItem.original_amount]);
 						}
 					}
 				}
 			}
+			moveItemsToTrade(itemsToTrade);
 		}
 
 		function addCurrentItems() {
+			var includeStackable = tradeButtons.querySelector("#include_stackable_item").checked;
+			var itemsToTrade = [];
 			var g_ActiveInventory = unsafeWindow.g_ActiveInventory;
 			for (var itemHolder of g_ActiveInventory.pageList[g_ActiveInventory.pageCurrent].children) {
-				if (itemHolder?.rgItem?.tradable && itemHolder.style.display != "none" && (!itemHolder.rgItem.is_stackable && itemHolder == itemHolder.rgItem.element?.parentNode)) {
-					unsafeWindow.MoveItemToTrade(itemHolder.rgItem.element);
+				if (itemHolder?.rgItem?.tradable && itemHolder.style.display != "none" && (includeStackable || !itemHolder.rgItem.is_stackable && itemHolder == itemHolder.rgItem.element?.parentNode)) {
+					itemsToTrade.push([itemHolder.rgItem, itemHolder.rgItem.original_amount]);
 				}
 			}
+			moveItemsToTrade(itemsToTrade);
 		}
 
 		function removeAllItems(event) {
@@ -863,11 +861,13 @@
 				return;
 			}
 
+			var itmesToInventory = [];
 			if (event.target.classList.contains("btn_remove_all")) {
-				for (var item of document.querySelectorAll(select)) {
-					unsafeWindow.MoveItemToInventory(item);
+				for (var elItem of document.querySelectorAll(select)) {
+					itmesToInventory.push(elItem.rgItem);
 				}
 			}
+			moveItemsToInventory(itmesToInventory);
 		}
 
 		function checkCommonCard(tags) {
@@ -880,6 +880,94 @@
 			return flag == 2;
 		}
 
+		//unsafeWindow.MoveItemToTrade
+		function moveItemsToTrade(items) {
+			for (var [item, xferAmount] of items) {
+				setAssetOrCurrencyInTrade(item, xferAmount || 1);
+			}
+			unsafeWindow.CTradeOfferStateManager.UpdateTradeStatus();
+		}
+
+		//unsafeWindow.CTradeOfferStateManager.SetAssetOrCurrencyInTrade
+		function setAssetOrCurrencyInTrade(item, xferAmount) {
+			var is_currency = item.is_currency;
+			var userslots = item.is_their_item ? unsafeWindow.g_rgCurrentTradeStatus.them : unsafeWindow.g_rgCurrentTradeStatus.me;
+			var slots = is_currency ? userslots.currency : userslots.assets;
+	
+			// find existing element
+			var iExistingElement = -1;
+			for (var i = 0; i < slots.length; i++) {
+				var rgSlotItem = slots[i];
+				if (rgSlotItem.appid == item.appid && rgSlotItem.contextid == item.contextid &&
+					((is_currency ? rgSlotItem.currencyid : rgSlotItem.assetid) == item.id)) {
+
+					iExistingElement = i;
+					if (xferAmount == 0) {
+						slots.splice(i, 1);
+					}
+					break;
+				}
+			}
+	
+			if (xferAmount > 0) {
+				if (iExistingElement != -1) {
+					if (slots[iExistingElement].amount != xferAmount) {
+						slots[iExistingElement].amount = xferAmount;
+					}
+				} else {
+					var oSlot = {
+						appid: item.appid,
+						contextid: item.contextid,
+						amount: xferAmount
+					};
+					if (is_currency)
+						oSlot.currencyid = item.id;
+					else
+						oSlot.assetid = item.id;
+	
+					slots.push(oSlot);
+				}
+			}
+		}
+
+		//unsafeWindow.MoveItemToInventory
+		function moveItemsToInventory(items) {
+			for (var item of items) {
+				var elItem = item.element;
+				if (unsafeWindow.BIsInTradeSlot(elItem)) {
+					unsafeWindow.CleanupSlot(elItem.parentNode.parentNode);
+				}
+
+				if (item.is_stackable) {
+					setAssetOrCurrencyInTrade(item, 0);
+					unsafeWindow.UpdateTradeItemStackDisplay(item.parent_item, item, 0 );
+					elItem.remove();
+				} else {
+					item.homeElement.appendChild(item.element.remove());
+					// if the inventory view is filtered, make sure the item applies
+					if (unsafeWindow.g_ActiveInventory && unsafeWindow.g_ActiveInventory.appid == item.appid && unsafeWindow.g_ActiveInventory.contextid == item.contextid )
+						unsafeWindow.Filter.ApplyFilter(document.querySelector("#filter_control").value, item.element);
+
+					item.homeElement.down(".slot_actionmenu_button").show();
+					removeItemFromTrade(item);
+				}
+			}
+
+			unsafeWindow.CTradeOfferStateManager.UpdateTradeStatus();
+		}
+
+		//unsafeWindow.CTradeOfferStateManager.RemoveItemFromTrade
+		function removeItemFromTrade(item) {
+			var slots = item.is_their_item ? unsafeWindow.g_rgCurrentTradeStatus.them : unsafeWindow.g_rgCurrentTradeStatus.me;
+
+			for (var i = 0; i < slots.assets.length; i++) {
+				var rgAsset = slots.assets[i];
+				if (rgAsset.appid == item.appid && rgAsset.contextid == item.contextid && rgAsset.assetid == item.id) {
+					slots.assets.splice(i, 1);
+					break;
+				}
+			}
+		}
 	}
 
 	//库存界面
