@@ -692,6 +692,10 @@
 		}
 
 		function itemClicked(event) {
+			if (unsafeWindow.CTradeOfferStateManager.m_eTradeOfferState == unsafeWindow.CTradeOfferStateManager.TRADE_OFFER_STATE_VIEW) {
+				return;
+			}
+
 			var elem = event.target;
 			if (elem.parentNode.id.match(/^item.+/) && elem.parentNode.classList.contains("item")) {
 				elem = elem.parentNode;
@@ -703,6 +707,10 @@
 		}
 
 		function optButtonClicked(event) {
+			if (unsafeWindow.CTradeOfferStateManager.m_eTradeOfferState == unsafeWindow.CTradeOfferStateManager.TRADE_OFFER_STATE_VIEW) {
+				return;
+			}
+
 			var button = event.target;
 			if (button.classList.contains("btn_add_custom")) {
 				addCustomItems();
@@ -852,6 +860,10 @@
 		}
 
 		function removeAllItems(event) {
+			if (unsafeWindow.CTradeOfferStateManager.m_eTradeOfferState == unsafeWindow.CTradeOfferStateManager.TRADE_OFFER_STATE_VIEW) {
+				return;
+			}
+			
 			if (event.currentTarget.classList.contains("trade_yours_bottons")) {
 				var select = "#your_slots div.item";
 			} else if (event.currentTarget.classList.contains("trade_theirs_bottons")) {
