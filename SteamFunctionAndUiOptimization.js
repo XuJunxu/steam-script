@@ -1005,6 +1005,7 @@
 		var inventoryAppidForSell = 0;
 		var inventoryAppidForLink = 0;
 		var inventoryAppidForFilter = 0;
+		var sellNumber = globalSettings.inventory_sell_number;
 
 		appendAutoSellCheckbox();
 		if (getStorageValue("SFU_AUTO_SELL")) {
@@ -1178,21 +1179,21 @@
 									.price_gram_table .table_title {text-align: center; font-size: 12px;} .price_gram_table th, .price_gram_table td {width: 75px; text-align: center; font-size: 12px; line-height: 18px;} 
 									.price_gram_table tr:nth-child(odd) {background: #00000066;} .price_gram_table tr:nth-child(even) {background: #00000033;} .price_overview {margin-left: 10px; white-space: nowrap;} 
 									.price_overview>div {display: inline-block;} .price_overview span {margin-right: 20px; font-size: 12px;} 
-									.sell_price_input {text-align: center; margin-right: 2px; width: 100px;} .sell_btn_container {margin: 5px 10px;} 
+									.sell_price_input {text-align: center; margin-right: 2px; width: 90px;} .sell_btn_container {margin: 5px 10px;} 
 									.quick_sell_btn {margin: 5px 5px 0px 0px;} .quick_sell_btn>span {padding: 0px 5px; pointer-events: none;} .price_receive, .price_receive_2 {margin: 0 20px 0 0; font-size: 12px; white-space: nowrap;}
 									.show_market_info {border-radius: 2px; background: #000000; color: #FFFFFF; margin: 10px 0px 0px 10px; cursor: pointer; padding: 2px 15px; display: inline-block;} 
 									.show_market_info:hover {background: rgba(102, 192, 244, 0.4)} .price_gram, .price_gram div{font-size: 12px; font-weight: normal;}`;
 			document.body.appendChild(styleElem);
 
-			var sellNumber = globalSettings.inventory_sell_number;
 			var html = `<div><a class="show_market_info">显示市场价格信息</a></div><div class="market_info">
 						<div class="price_gram"><div class="price_gram_table"><div><div class="table_title">出售</div><br>Loading...</div><div><div class="table_title">购买</div><br>Loading...</div></div></div>
 						<div class="price_overview"><div><span>Loading...</span></div><div></div></div></div>
 						<div class="sell_btn_container">
-						<div><input class="sell_price_input" type="number" step="0.01" min="0.03" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;">
+						<div><input class="sell_price_input" type="number" step="0.01" min="0.03" style="color: #FFFFFF; background: #000000; border: 1px solid #666666;" title="出售价格(买家支付)">
 						<a class="btn_small btn_green_white_innerfade sell_comfirm quick_sell_btn"><span>确认出售</span></a>
-						<a class="btn_small btn_green_white_innerfade sell_all_same quick_sell_btn" title="出售全部相同的物品"><span>批量出售(${sellNumber > 0 ? sellNumber.toString() + "个" : "全部"})</span></a></div>
-						<div><label class="price_receive"></label><label class="price_receive_2"></label></div><div class="sell_btns" style="float: left;"></div>
+						<a class="btn_small btn_green_white_innerfade sell_all_same quick_sell_btn" title="批量出售相同的物品"><span>批量出售</span></a>
+						<input class="sell_number_input" type="number" min="1" step="1"  style="color: #FFFFFF; background: #000000; border: 1px solid #666666; width: 60px; text-align: center;" placeholder="全部" title="一次批量出售的数量"></div>
+						<div><label class="price_receive" title="买家支付的金额(您收到的金额)"></label><label class="price_receive_2"></label></div><div class="sell_btns" style="float: left;"></div>
 						<div style="float: left;"><a class="btn_small btn_green_white_innerfade quick_sell_btn auto_sell_btn"><span>自动出售</span></a></div><div style="clear: both;"></div></div>`;
 			var container0 = document.createElement("div");
 			container0.id = "price_gram_container0";
@@ -1229,6 +1230,10 @@
 						document.querySelector("#price_gram_container1 .sell_all_same").onclick = event => sellAllSameItem(event, selectedItem);
 						document.querySelector("#price_gram_container0 .auto_sell_btn").onclick = event => addToAutoSell(event, selectedItem);
 						document.querySelector("#price_gram_container1 .auto_sell_btn").onclick = event => addToAutoSell(event, selectedItem);
+						document.querySelector("#price_gram_container0 .sell_number_input").oninput = event => sellNumber = event.target.value;
+						document.querySelector("#price_gram_container1 .sell_number_input").oninput = event => sellNumber = event.target.value;
+						document.querySelector("#price_gram_container0 .sell_number_input").value = sellNumber > 0? sellNumber: '';
+						document.querySelector("#price_gram_container1 .sell_number_input").value = sellNumber > 0? sellNumber: '';
 					} else {
 						document.querySelector("#price_gram_container0 .sell_btn_container").style.display = "none";
 						document.querySelector("#price_gram_container1 .sell_btn_container").style.display = "none";
@@ -1423,7 +1428,7 @@
 			var buyerPay = calculatePriceBuyerPay(price, item);
 
 			if (hashName && m_rgAssets && price > 0) {
-				let maxNumber = globalSettings.inventory_sell_number;
+				let maxNumber = sellNumber;
 				let cnumber = 0;
 
 				for (let assetid in m_rgAssets) {
