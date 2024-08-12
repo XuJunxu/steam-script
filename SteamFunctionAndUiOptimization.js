@@ -863,7 +863,7 @@
 			if (unsafeWindow.CTradeOfferStateManager.m_eTradeOfferState == unsafeWindow.CTradeOfferStateManager.TRADE_OFFER_STATE_VIEW) {
 				return;
 			}
-			
+
 			if (event.currentTarget.classList.contains("trade_yours_bottons")) {
 				var select = "#your_slots div.item";
 			} else if (event.currentTarget.classList.contains("trade_theirs_bottons")) {
@@ -1494,6 +1494,11 @@
 				} else {
 					var logText = `<Failed> ${strQuantity}${item.description.name} 上架市场失败，原因：${data.message || errorTranslator(data)}` + "<br>";
 					document.querySelector("#sell_log_text").innerHTML += logText;
+
+					if (data.message && data.message.match(/物品不再存在|no longer in your inventory/)) {
+						item.element.style.background = "green";
+						item.element.setAttribute("data-sold", "1");
+					}
 				}
 				document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
 				document.querySelector("#clear_sell_log").style.display = "inline-block";
