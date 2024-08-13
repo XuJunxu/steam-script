@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam功能和界面优化
 // @namespace    https://github.com/XuJunxu/steam-script
-// @version      2.3.1
+// @version      2.3.2
 // @description  Steam功能和界面优化
 // @author       Nin9
 // @iconURL      https://store.steampowered.com/favicon.ico
@@ -1637,10 +1637,10 @@
 			        <th title="同一价格的在售数量">samePriceNum</th><th title="允许他人的较低价格在售数量">threshold</th><th colspan=2 title="最低出售价格">lowestPrice</th>
 					<th title="检测周期（分钟）">interval</th><th class="auto_sell_settings_add" title="添加">+</th></tr></thead><tbody>${html}</tbody></table>`;
 			var container = document.createElement("div");
-			container.innerHTML = `<style>#sfu_auto_sell_settings {border-spacing: inherit;}
+			container.innerHTML = `<style>#sfu_auto_sell_settings {border-spacing: inherit;} #sfu_auto_sell_settings .auto_sell_settings_input {min-width: 40px;}
 								   #sfu_auto_sell_settings th, #sfu_auto_sell_settings td {font-size: 14px; font-weight: normal; text-align: center; padding: 3px 5px; border: 1px solid #FFFFFF22;}
 							   	   #sfu_auto_sell_settings thead tr, #sfu_auto_sell_settings tbody tr:nth-child(even) {background: #00000066;} 
-				                   #sfu_auto_sell_settings tbody tr:nth-child(odd) {background: #00000033;} #sfu_auto_sell_settings .auto_sell_settings_info {cursor: pointer;}
+				                   #sfu_auto_sell_settings tbody tr:nth-child(odd) {background: #00000033;} #sfu_auto_sell_settings .auto_sell_settings_info {cursor: pointer; width: 20px;}
 								   #sfu_auto_sell_settings .auto_sell_settings_add, #sfu_auto_sell_settings .auto_sell_settings_delete {padding: 3px 10px; cursor: pointer}
 								   #sfu_auto_sell_settings td:nth-child(7) {border-right: none;} #sfu_auto_sell_settings td:nth-child(8) {border-left: none;}</style>` + html;
 
@@ -1716,7 +1716,7 @@
 			function createRow(item={}) {
 				var row = [`<td class="auto_sell_settings_number">${++autoSellNum}</td>`];
 				for (var key of ["appid", "contextid", "hashName", "samePriceNum", "threshold", "lowestPrice", "interval"]) {
-					row.push(`<td contenteditable="true" data-name="${key}" data-value="${item[key] ?? ""}">${item[key] ?? ""}</td>`);
+					row.push(`<td class="auto_sell_settings_input" contenteditable="true" data-name="${key}" data-value="${item[key] ?? ""}">${item[key] ?? ""}</td>`);
 				}
 
 				var currency = item.currency ?? currencyInfo.eCurrencyCode;
