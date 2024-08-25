@@ -1266,7 +1266,7 @@
         });
     } 
 
-    if (AUTOCODE && !STEAM_CLIENT && (!document.querySelector('#account_dropdown .account_name') || unsafeWindow.location.href.indexOf('checkout.steampowered.com/login/?purchasetype=') !== -1)) {
+    if (AUTOCODE && !STEAM_CLIENT && (!document.querySelector('#account_dropdown .account_name') || unsafeWindow.location.href.search(/checkout\.steampowered\.com\/login\/?\?purchasetype\=|help\.steampowered\.com\/.+?\/login\?need_password\=1/) > -1)) {
         mutationObserver.observe(document.body, {childList: true, subtree: true});
     }
 
