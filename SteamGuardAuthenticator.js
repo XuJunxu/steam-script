@@ -11,12 +11,12 @@
 // @match        http*://help.steampowered.com/*
 // @match        http*://checkout.steampowered.com/*
 // @match        http*://steamcommunity.com/*
-// @exclude      http*://store.steampowered.com/login/transfer
-// @exclude      http*://help.steampowered.com/login/transfer
+// @exclude      http*://*.steampowered.com/login/transfer
 // @exclude      http*://steamcommunity.com/login/transfer
-// @exclude      http*://store.steampowered.com/login/logout/
-// @exclude      http*://help.steampowered.com/login/logout/
-// @exclude      http*://steamcommunity.com/login/logout/
+// @exclude      http*://*.steampowered.com/logout/
+// @exclude      http*://steamcommunity.com/logout/
+// @exclude      http*://*.steampowered.com/*/logout/
+// @exclude      http*://steamcommunity.com/*/logout/
 // @exclude      http*://store.steampowered.com/widget/*
 // @exclude      http*://steamcommunity.com/mobileconf/detailspage/*
 // @grant        unsafeWindow
@@ -1203,10 +1203,10 @@
 
     var intersectionObserver = new IntersectionObserver(function(entries) {
         if (entries[0].intersectionRatio > 0) {
-            var name = $J('#login_twofactorauth_message_entercode_accountname, [class^="login_SigningInAccountName"], [class^="newlogindialog_AccountName"]').text();
+            var name = $J('#login_twofactorauth_message_entercode_accountname, [class^="login_SigningInAccountName"], [class^="newlogindialog_AccountName"], :has(> a[href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]) :nth-child(1) span').text().trim().toLowerCase();
             $J.each(getAllAccounts(), function(i, v) {
-                if(name == v.account_name) {
-                    var $AuthCodeInput = $J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input');
+                if(name == v.account_name.toLowerCase()) {
+                    var $AuthCodeInput = $J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input, :has(> a[href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]) :nth-child(2) input');
                     var dt = new DataTransfer();
                     dt.setData('text', generateAuthCode(v.shared_secret, timeOffset));
                     $AuthCodeInput[0].dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true}));
@@ -1217,33 +1217,12 @@
     });
 
     var mutationObserver = new MutationObserver(function() {
-        if ($J('#page_content form input[maxlength="1"], .page_content form input[maxlength="1"]').length == 5) {
-            var name = $J('#page_content form span, .page_content form span').text();
-            $J.each(getAllAccounts(), function(i, v) {
-                if(name == v.account_name) {
-                    var $AuthCodeInput = $J('#page_content form input[maxlength="1"], .page_content form input[maxlength="1"]');
-                    var dt = new DataTransfer();
-                    dt.setData('text', generateAuthCode(v.shared_secret, timeOffset));
-
-                    setTimeout(function() {     //过快的输入验证码会显示登录错误，虽然可以成功登录
-                        $AuthCodeInput[0].dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true}));
-                    }, 500);
-                    
-                    return false;
-                }
-            });
+        if ($J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input, :has(> a[href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]) :nth-child(2) input').length) {
+            intersectionObserver.observe($J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input, :has(> a[href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]) :nth-child(2) input')[0]);
         }
 
-        if ($J('div[data-featuretarget="login"] [href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]').length) {
-            $J('div[data-featuretarget="login"] [href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]')[0].parentNode.firstElementChild.firstElementChild.click();
-        }
-
-        if ($J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input').length) {
-            intersectionObserver.observe($J('#twofactorcode_entry, [class^="login_AuthenticatorInputcontainer"] input.DialogInput, [class^="newlogindialog_SegmentedCharacterInput"] input, [class^="segmentedinputs_SegmentedCharacterInput"] input')[0]);
-        }
-
-        if ($J('[class^="newlogindialog_EnterCodeInsteadLink"] [class^="newlogindialog_TextLink"]').length) {
-            $J('[class^="newlogindialog_EnterCodeInsteadLink"] [class^="newlogindialog_TextLink"]')[0].click();
+        if ($J('[class^="newlogindialog_EnterCodeInsteadLink"] [class^="newlogindialog_TextLink"], :has(> a[href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]):not(:has(input))').length) {
+            $J('[class^="newlogindialog_EnterCodeInsteadLink"] [class^="newlogindialog_TextLink"], :has(+ a[href="https://help.steampowered.com/wizard/HelpWithLoginInfo?lost=8&issueid=402"]) div')[0].click();
         }
     });
 
@@ -1266,7 +1245,7 @@
         });
     } 
 
-    if (AUTOCODE && !STEAM_CLIENT && (!document.querySelector('#account_dropdown .account_name') || unsafeWindow.location.href.search(/checkout\.steampowered\.com\/login\/?\?purchasetype\=|help\.steampowered\.com\/.+?\/login\?need_password\=1/) > -1)) {
+    if (AUTOCODE && !STEAM_CLIENT && (!document.querySelector('#account_dropdown .account_name') || unsafeWindow.location.href.search(/steampowered\.com(\/.+?)?\/login/) > -1)) {
         mutationObserver.observe(document.body, {childList: true, subtree: true});
     }
 
