@@ -4091,10 +4091,12 @@
 
 	//检查是否更新汇率
 	function checkUpdateCurrencyRate(settings, currencyRate) {
-		var walletCurrencyCode = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency);
-		if (walletCurrencyCode != currencyRate.wallet_code || settings.second_currency_code != currencyRate.second_code || 
-			currencyRate.wallet_rate <= 0 || currencyRate.second_rate <= 0 || (Date.now() - currencyRate.last_update) > settings.rate_update_interval * 60000) {
-			getCurrencyRate(walletCurrencyCode, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
+		if (unsafeWindow.g_rgWalletInfo?.wallet_currency) {
+			var walletCurrencyCode = getCurrencyCode(unsafeWindow.g_rgWalletInfo.wallet_currency);
+			if (walletCurrencyCode != currencyRate.wallet_code || settings.second_currency_code != currencyRate.second_code || 
+				currencyRate.wallet_rate <= 0 || currencyRate.second_rate <= 0 || (Date.now() - currencyRate.last_update) > settings.rate_update_interval * 60000) {
+				getCurrencyRate(walletCurrencyCode, settings.second_currency_code, settings.rate_item_url, settings.rate_item_listingid);
+			}
 		}
 	}
 
