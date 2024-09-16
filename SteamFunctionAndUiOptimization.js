@@ -3830,6 +3830,7 @@
 							allMyBuyOrders.add(appid, hashName, {appid: appid, market_hash_name: hashName, quantity: amount.quantity, price: getSymbolStrFromPrice(amount.price, this.walletCurrencyInfo), buy_orderid: result.buy_orderid});
 							elem.querySelector(".multi_order_message").textContent = "✔️";
 							elem.querySelector(".multi_order_message").title = "您已成功提交订购单！";
+							this.clearBuyOrderInput(elem);
 						} else if (result.message) {
 							elem.querySelector(".multi_order_message").textContent = "⚠️";
 							elem.querySelector(".multi_order_message").title = result.message;
