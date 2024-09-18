@@ -3739,13 +3739,13 @@
 							<td><div class="multi_order_cell"><div class="multi_order_total" data-price-total="0">--</div><div class="multi_order_second_total multi_order_second" data-price-total="0"></div></div></td>
 							<td><div class="multi_order_status multi_order_cell"><span class="multi_order_message"></span></div></td></tr>`;
 				}
-				var modelHtml = `<style>.multi_order_table {border-spacing: 0 5px; margin-bottom: 10px; width: 895px;} .multi_order_cell {position: relative; width: 100%; display: inline-block; line-height: normal;}
+				var modelHtml = `<style>.multi_order_table {border-spacing: 0 4px; margin-bottom: 10px; width: 895px;} .multi_order_cell {position: relative; width: 100%; display: inline-block; line-height: normal;}
 								.multi_order_table td {padding: 0 5px; box-sizing: border-box; display: inline-block;} .multi_order_item_img {width: 48px; height: 48px; margin-right: 5px; cursor: pointer;}
 								.multi_order_table thead td:not(:last-child) {border-right: 1px solid #404040;} .multi_order_table td:nth-child(1) {width: 430px;} .multi_order_table td:nth-child(2) {width: 88px;} 
 								.multi_order_table td:nth-child(3) {width: 80px;} .multi_order_table td:nth-child(4) {width: 104px;} .multi_order_table td:nth-child(5) {width: 136px;} .multi_order_table td:nth-child(6) {width: 42px;}
 								.multi_order_table tr {background-color: #00000033;} .multi_order_table thead td {height: 30px; line-height: 30px; text-align: center;} .multi_order_table tbody td {height: 58px; line-height: 58px;} 
 								.multi_order_cell input {box-sizing: border-box; width: 100%; color: #acb2b8;} .multi_order_name {display: flex; align-items: center; margin: 5px 0px; overflow: hidden; text-wrap: nowrap;}
-								#multi_order_purchase {float: right;  background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
+								#multi_order_actions {float: right;} #multi_order_purchase { margin-left: 10px; display: inline-block; background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
 								#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {font-size: 13px; text-wrap: nowrap;} .multi_order_status {text-align: center;} .multi_order_name_link:hover {text-decoration: underline;}
 								.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888; text-wrap: nowrap;}
 								#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name_link {overflow: hidden; text-overflow: ellipsis; font-weight: bold; color: inherit;}
@@ -3758,7 +3758,9 @@
 								<a class="multi_order_action multi_order_clearAll" title="清空全部物品的数量和价格"><img src="${imgClear}"></a></div></td>
 								<td>数量</td><td>价格</td><td style="width: 178px;">总价</td></tr></thead>
 								<tbody>${html}</tbody></table>
-								<div style="width: 880px;"><div id="multi_order_purchase">提交订单</div><div style="white-space: nowrap;"><span>订购单的总价：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
+								<div style="width: 880px;"><div id="multi_order_actions"><input id="multi_order_auto_purchase" type="checkbox" style="vertical-align: middle; cursor: pointer;">
+								<label for="multi_order_auto_purchase" style="font-size: small; cursor: pointer;">自动提交直至成功</label><div id="multi_order_purchase">提交订单</div></div>
+								<div style="white-space: nowrap;"><span>订购单的总价：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
 								<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div></div>`;
 		
 				this.container = document.createElement("div");
@@ -3789,7 +3791,7 @@
 
 			this.cmodel = ShowDialogBetter("购买多种物品", this.container);
 			this.cmodel.OnResize((maxWidth, maxHeight) => {
-				this.container.querySelector("tbody").style.maxHeight = (maxHeight - 80) + "px";
+				this.container.querySelector("tbody").style.maxHeight = (maxHeight - 86) + "px";
 			});
 			this.showOrderStatus();
 			this.cmodel.AdjustSizing();
@@ -3812,6 +3814,7 @@
 			var button = event.target;
 			button.setAttribute("disabled", "disabled");
 			button.textContent = "提交中...";
+			var allSuccess = true;
 			var sessionid = unsafeWindow.g_sessionID;
 			var currency = this.walletCurrencyInfo.eCurrencyCode;
 			for(var elem of this.container.querySelectorAll(".multi_order_row")) {
@@ -3838,11 +3841,20 @@
 							elem.querySelector(".multi_order_message").textContent = "⚠️";
 							elem.querySelector(".multi_order_message").title = "抱歉！我们无法从 Steam 服务器获得关于您订单的信息。请再次检查您的订单是否确已创建或填写。如没有，请稍后再试。";
 						}
+
+						if (result.success != "1") {
+							allSuccess = false;
+						}
+		
 					}
 				}
 			}
 			button.setAttribute("disabled", "");
 			button.textContent = "提交订单";
+
+			if (!allSuccess && this.container.querySelector("#multi_order_auto_purchase").checked) {
+				this.multiOrderPurchase(event);
+			}
 		},
 		updatePriceTotal: function(event) {
 			var elem = event.currentTarget;
@@ -5589,7 +5601,7 @@
 			"country": "RU",
 			"strCode": "RUB",
 			"eCurrencyCode": 5,
-			"strSymbol": "pуб.",
+			"strSymbol": "руб.",
 			"bSymbolIsPrefix": false,
 			"bWholeUnitsOnly": true,
 			"strDecimalSymbol": ",",
