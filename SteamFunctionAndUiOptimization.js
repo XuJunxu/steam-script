@@ -3547,37 +3547,48 @@
 					}
 
 					//计算并显示第二价格
-					if (checkCurrencyRateUpdated(walletCode)) {
-						if (data.sell_order_table) {
-							var rows = elem1.querySelectorAll(".sell_order_table tr");
+					var showSecondPrice = checkCurrencyRateUpdated(walletCode);
+					if (data.sell_order_table) {
+						var rows = elem1.querySelectorAll(".sell_order_table tr");
+						if (showSecondPrice) {
 							var th = document.createElement("th");
-							th.textContent = rows[0].firstElementChild.textContent + "-2";
+							th.textContent = rows[0].firstElementChild.textContent + " 2";
 							rows[0].insertBefore(th, rows[0].lastElementChild);
-							for (var i = 1; i < rows.length; i++) {
-								var text = rows[i].firstElementChild.textContent;
-								var pay = getPriceFromSymbolStr(text);
-								var price = calculatePriceYouReceive(pay);
-								var [pay2, price2] = calculateSecondSellPrice(price, null, reverseRate);
-								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price, currencyInfo)})</div>`;
+						}
+
+						for (var i = 1; i < rows.length; i++) {
+							var text = rows[i].firstElementChild.textContent;
+							var pay = getPriceFromSymbolStr(text);
+							var price = calculatePriceYouReceive(pay);
+							var [pay2, price2] = calculateSecondSellPrice(price, null, reverseRate);
+							rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price, currencyInfo)})</div>`;
+
+							if (showSecondPrice) {
 								var td = document.createElement("td");
-								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 								rows[i].insertBefore(td, rows[i].lastElementChild);
+								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 							}
 						}
-						if (data.buy_order_table) {
-							var rows = elem1.querySelectorAll(".buy_order_table tr");
+					}
+					if (data.buy_order_table) {
+						var rows = elem1.querySelectorAll(".buy_order_table tr");
+						if(showSecondPrice) {
 							var th = document.createElement("th");
-							th.textContent = rows[0].firstElementChild.textContent + "-2";
+							th.textContent = rows[0].firstElementChild.textContent + " 2";
 							rows[0].insertBefore(th, rows[0].lastElementChild);
-							for (var i = 1; i < rows.length; i++) {
-								var text = rows[i].firstElementChild.textContent;
-								var pay = getPriceFromSymbolStr(text);
-								var price = calculatePriceYouReceive(pay);
-								var [pay2, price2] = calculateSecondBuyPrice(price, null, reverseRate);
-								rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price, currencyInfo)})</div>`;
+						}
+
+						for (var i = 1; i < rows.length; i++) {
+							var text = rows[i].firstElementChild.textContent;
+							var pay = getPriceFromSymbolStr(text);
+							var price = calculatePriceYouReceive(pay);
+							var [pay2, price2] = calculateSecondBuyPrice(price, null, reverseRate);
+							rows[i].firstElementChild.innerHTML = `<div class="orders_price_pay">${text}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price, currencyInfo)})</div>`;
+
+							if (showSecondPrice) {
 								var td = document.createElement("td");
-								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 								rows[i].insertBefore(td, rows[i].lastElementChild);
+								td.innerHTML = `<div class="orders_price_pay">${getSymbolStrFromPrice(pay2, currencyInfo2)}</div><div class="orders_price_receive">(${getSymbolStrFromPrice(price2, currencyInfo2)})</div>`;
 							}
 						}
 					}
