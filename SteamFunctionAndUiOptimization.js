@@ -3864,6 +3864,7 @@
 			button.textContent = "提交订单";
 
 			if (!allSuccess && this.container.querySelector("#multi_order_auto_purchase").checked) {
+				await sleep(500);
 				this.multiOrderPurchase(event);
 			}
 		},
