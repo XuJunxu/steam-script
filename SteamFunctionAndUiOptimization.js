@@ -1260,8 +1260,11 @@
 			var logHtml = `<style>#sell_log_container {width: 100%; overflow: hidden;}  
 						   #sell_log_text {font-size: 12px; max-height: 300px; overflow-y: auto; margin-top: 10px;} 
 						   #sell_log_total {font-weight: bold; margin-top: 5px}</style>
-						   <div id="sell_log_text"></div><div id="sell_log_total"></div><div>
-						   <a id="clear_sell_log" style="display: none; margin-top: 10px" class="pagecontrol_element pagebtn">清空</a></div>`;
+						   <div id="sell_log_text"></div><div id="sell_log_total"></div>
+						   <div id="sell_log_actions" style="display: none; margin-top: 10px;">
+						   <a id="clear_sell_log" class="pagecontrol_element pagebtn" style="margin-right: 2px;">清空</a>
+						   <a id="scroll_bottom_sell_log" class="pagecontrol_element pagebtn">滚动到底</a>
+						   </div>`;
 			var logContainer = document.createElement("div");
 			logContainer.id = "sell_log_container";
 			logContainer.innerHTML = logHtml;
@@ -1273,8 +1276,12 @@
 				sellCount = 0;
 				document.querySelector("#sell_log_text").innerHTML = "";
 				document.querySelector("#sell_log_total").innerHTML = "";
-				document.querySelector("#clear_sell_log").style.display = "none";
+				document.querySelector("#sell_log_actions").style.display = "none";
 			};
+
+			document.querySelector("#scroll_bottom_sell_log").onclick = function() {
+				document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
+			}
 		}
 
 		function showMarketInfoDialog(item) {
@@ -1467,6 +1474,9 @@
 		async function sellSelectedItem(amount, item, priceReceive=0, pricePay=0, quantity=1) {
 			var price = priceReceive || calculatePriceYouReceive(amount, item);
 			if (price > 0) {
+				var sellLogText = document.querySelector("#sell_log_text");
+				var sellLogTotal = document.querySelector("#sell_log_total");
+
 				var data = await sellItem(unsafeWindow.g_sessionID, item.appid, item.contextid, item.assetid, quantity, price);
 
 				var strQuantity = "";
@@ -1476,6 +1486,7 @@
 					strEach = "每件";
 				}
 
+				var needScrollToBottom = Math.ceil(sellLogText.scrollTop) >= (sellLogText.scrollHeight - sellLogText.clientHeight - 2);
 				if (data.success) {
 					if (quantity >= item.amount) {
 						item.element.style.background = "green";
@@ -1494,19 +1505,23 @@
 
 					var logText = `<${sellCount}> ${strQuantity}${item.description.name} 已在市场上架，${strEach}售价为 ${strBuyerPay}，${strEach}将收到 ${strPrice}` + (data.requires_confirmation ? " (需要确认)" : "") + "<br>";
 					var logTotal = `累计上架物品的总价为 ${strTotalBuyerPay}，将收到 ${strTotalReceive}`;
-					document.querySelector("#sell_log_text").innerHTML += logText;
-					document.querySelector("#sell_log_total").innerHTML = logTotal;
+					sellLogText.innerHTML += logText;
+					sellLogTotal.innerHTML = logTotal;
 				} else {
 					var logText = `<Failed> ${strQuantity}${item.description.name} 上架市场失败，原因：${data.message || errorTranslator(data)}` + "<br>";
-					document.querySelector("#sell_log_text").innerHTML += logText;
+					sellLogText.innerHTML += logText;
 
 					if (data.message && data.message.match(/物品不再存在|no longer in your inventory/)) {
 						item.element.style.background = "green";
 						item.element.setAttribute("data-sold", "1");
 					}
 				}
-				document.querySelector("#sell_log_text").scroll(0, document.querySelector("#sell_log_text").scrollHeight);
-				document.querySelector("#clear_sell_log").style.display = "inline-block";
+
+				if (needScrollToBottom) {
+					sellLogText.scroll(0, sellLogText.scrollHeight);
+				}
+				
+				document.querySelector("#sell_log_actions").style.display = "inline-block";
 				return data;
 			}
 			return null;
