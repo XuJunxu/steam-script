@@ -1984,6 +1984,7 @@
 			var listings = container.querySelectorAll(".market_listing_row");
 			var listingsTemp = [];
 			for (var i = 0; i < listings.length; i++) {
+				var assetInfo = getListingAssetInfo(listings[i]);
 				var gameName = listings[i].querySelector(".market_listing_game_name").textContent.toLowerCase();
 				var itemName = listings[i].querySelector(".market_listing_item_name_link").textContent.toLowerCase();
 				var pricePay = getPriceFromSymbolStr(listings[i].querySelector(".market_listing_price > span > span:first-child").textContent);
@@ -1991,10 +1992,9 @@
 				listingsTemp.push([gameName, itemName, pricePay, listings[i]]);
 
 				listings[i].querySelector(".market_listing_my_price").onclick = showListingPriceInfo;
-				totalPay += pricePay;
-				totalReceive += pricReceive;
+				totalPay += pricePay * assetInfo.amount;
+				totalReceive += pricReceive * assetInfo.amount;
 
-				var assetInfo = getListingAssetInfo(listings[i]);
 				var itemType = "";
 				if (assetInfo.appid == 753 && assetInfo.contextid == "6" && gameCardsLink(assetInfo)) {
 					if (gameCardsLink(assetInfo).search(/border\=1/) > 0) {
