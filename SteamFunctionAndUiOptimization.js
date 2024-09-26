@@ -1594,7 +1594,7 @@
 				return true;
 			} else if (selectedItem.description.owner_descriptions) {
 				for (var des of selectedItem.description.owner_descriptions) {
-					if (des.value.search(/\[date\]\d{10}\[\/date\]/) >= 0) {
+					if (des.value.search(/\[date\]\d{10}\[\/date\]/) >= 0 || (selectedItem.description.appid == 322330 && des.value.includes("marketable"))) {
 						return true;
 					}
 				}
