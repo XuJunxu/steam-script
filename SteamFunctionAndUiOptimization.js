@@ -584,7 +584,7 @@
 
 	}
 
-	//交易报价页面
+	//创建交易报价页面
 	function steamTradeOfferPage() {
 		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/tradeoffer\b/)) {
 			return;
@@ -648,7 +648,11 @@
 
 		function waitLoadInventory() {  
 			customContainer.style.display = "none";
-			if (!unsafeWindow.g_ActiveInventory?.appid || unsafeWindow.g_ActiveInventory.BIsPendingInventory()) {
+			if (!unsafeWindow.g_ActiveInventory) {
+				return;
+			}
+
+			if (!unsafeWindow.g_ActiveInventory.appid || unsafeWindow.g_ActiveInventory.BIsPendingInventory()) {
 				setTimeout(function() {
 					waitLoadInventory();
 				}, 100);
@@ -979,6 +983,84 @@
 				}
 			}
 		}
+	}
+
+	//全部交易报价页面
+	function steamTradeOffersPage() {
+		if(!location.href.match(/^https?\:\/\/steamcommunity\.com\/(id|profiles)\/[^\/]+\/tradeoffers\b/)) {
+			return;
+		}
+		
+		var styleElem = document.createElement("style");
+		styleElem.innerHTML = `.tradeoffer_item_list { overflow: auto; max-height: 250px; z-index: 2; position: relative; }`;
+		document.body.appendChild(styleElem);
+
+		for (var actions of document.querySelectorAll(".tradeoffer_footer_actions")) {
+			if (actions.firstElementChild.href.match(/\bShowTradeOffer\b/)) {
+				var tradeOfferID = actions.firstElementChild.href.match(/\b(\d+)\b/)[1];
+				var elem = document.createElement("a");
+				elem.className = "whiteLink";
+				elem.textContent = "接受交易";
+				elem.setAttribute("data-tradeOfferID", tradeOfferID);
+				elem.onclick = acceptTradeOffer;
+
+				var textNode = document.createTextNode(" | ");
+				actions.insertBefore(textNode, actions.firstChild);
+				actions.insertBefore(elem, actions.firstChild);
+			}
+		}
+
+		function acceptTradeOffer(event) {
+			var tradeOfferID = event.target.getAttribute("data-tradeOfferID");
+			unsafeWindow.ShowConfirmDialog("接受交易", "您确定要接受此报价吗？", "接受交易", null, "进行还价").done(function(button) {
+				if (button == "OK") {
+					sendAcceptTradeOffer(tradeOfferID);
+				} else {
+					unsafeWindow.ShowTradeOffer(tradeOfferID, {counteroffer: 1});
+				}
+			});
+		}
+
+		async function sendAcceptTradeOffer(tradeOfferID) {
+			var tradeOfferPage = await getHtmlDocument("https://steamcommunity.com/tradeoffer/" + tradeOfferID);
+			var tradePartnerSteamID = tradeOfferPage?.body.innerHTML.match(/\bg_ulTradePartnerSteamID\s*=\s*\'(\d+)\'/)[1];
+
+			var xhr = new XMLHttpRequest();
+			xhr.open("POST", `https://steamcommunity.com/tradeoffer/${tradeOfferID}/accept`, true);
+			xhr.setRequestHeader("content-type", "application/x-www-form-urlencoded; charset=UTF-8");
+			xhr.withCredentials = true;
+			xhr.onload = function(e) {
+				var data = JSON.parse(e.target.response);
+				var bNeedsEmailConfirmation = data && data.needs_email_confirmation;
+				var bNeedsMobileConfirmation = data && data.needs_mobile_confirmation;
+				var Modal;
+
+				if (e.target.status == 200) {
+					if (bNeedsMobileConfirmation) {
+						Modal = unsafeWindow.ShowAlertDialog("需要额外确认", "若要完成此交易，您必须在 Steam 手机应用中进行验证。您可以通过启动应用并从菜单导航至确认页面来验证。");
+						//MessageWindowOpener( { type: 'await_confirm', tradeofferid: nTradeOfferID } );
+					} else if (bNeedsEmailConfirmation) {
+						Modal = unsafeWindow.ShowAlertDialog("需要额外确认", `若要发送此交易报价，您必须完成一个额外的验证步骤。对于该验证的说明已发送到您（结尾是“${data.email_domain}”）的电子邮件地址。`);
+						//MessageWindowOpener( { type: 'await_confirm', tradeofferid: nTradeOfferID } );
+					} else {
+						//MessageWindowOpener( { type: 'accepted', tradeofferid: nTradeOfferID } );
+					}
+
+				} else {
+					unsafeWindow.ShowAlertDialog("接受交易", data && data.strError ? data.strError : "发送交易报价时发生了一个错误。请稍后再试。");
+				}
+			};
+			xhr.onerror = function(data) {
+				console.log(data);
+				unsafeWindow.ShowAlertDialog("接受交易", data && data.strError ? data.strError : "发送交易报价时发生了一个错误。请稍后再试。");
+			};
+			xhr.ontimeout = function(data) {
+				console.log(data);
+				unsafeWindow.ShowAlertDialog("接受交易", data && data.strError ? data.strError : "发送交易报价时发生了一个错误。请稍后再试。");
+			};
+			xhr.send(`sessionid=${unsafeWindow.g_sessionID}&serverid=1&tradeofferid=${tradeOfferID}&partner=${tradePartnerSteamID}&captcha=`);
+		}
+
 	}
 
 	//库存界面
@@ -3066,6 +3148,8 @@
 		addSteamCommunitySetting();
 		var currencyInfo = getCurrencyInfo();
 
+		var myBuyOrderTotalAmount = null;
+
 		//修改页面布局
 		if (globalSettings.gamecards_set_style) {
 			changeGameCardsPage();
@@ -3226,7 +3310,7 @@
 					cardAssets.push(elem.asset);
 				}
 			}
-			dialogMultiCreateBuyOrder.show(cardAssets, currencyInfo);
+			dialogMultiCreateBuyOrder.show(cardAssets, currencyInfo, myBuyOrderTotalAmount, unsafeWindow.g_rgWalletInfo);
 		}
 
 		//添加显示该游戏的所有求购订单
@@ -3271,6 +3355,7 @@
 					}
 					totalBuy += getPriceFromSymbolStr(order.price) * order.quantity;
 				}
+				myBuyOrderTotalAmount = totalBuy;
 				container.querySelector("#my_buy_order_number").textContent = `（${myOrders.length} ▶ ${getSymbolStrFromPrice(totalBuy, currencyInfo)}）`;
 
 				if (gameOrders.length > 0) {
@@ -3744,9 +3829,11 @@
 
 	//批量创建订购单的弹窗
 	var dialogMultiCreateBuyOrder = {
-		show: function(assets, currencyInfo) {
+		show: function(assets, currencyInfo, myBuyOrdersAmount, walletInfo) {
 			this.assets = assets;
 			this.walletCurrencyInfo = currencyInfo;
+			this.myBuyOrdersAmount = myBuyOrdersAmount;
+			this.walletInfo = walletInfo;
 
 			if (!this.container) {
 				var imgCopy = "data:image/png;base64,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";
@@ -3772,21 +3859,27 @@
 								.multi_order_table tr {background-color: #00000033;} .multi_order_table thead td {height: 30px; line-height: 30px; text-align: center;} .multi_order_table tbody td {height: 58px; line-height: 58px;} 
 								.multi_order_cell input {box-sizing: border-box; width: 100%; color: #acb2b8;} .multi_order_name {display: flex; align-items: center; margin: 5px 0px; overflow: hidden; text-wrap: nowrap;}
 								#multi_order_actions {float: right;} #multi_order_purchase { margin-left: 10px; display: inline-block; background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; width: 80px; text-align: center; cursor: pointer; color: #FFFFFF;}
-								#multi_order_purchase:hover {background: #79b92b;} .multi_order_total {font-size: 13px; text-wrap: nowrap;} .multi_order_status {text-align: center;} .multi_order_name_link:hover {text-decoration: underline;}
+								#multi_order_purchase:hover, #multi_order_calc_btn:hover {background: #79b92b;} .multi_order_total {font-size: 13px; text-wrap: nowrap;} .multi_order_status {text-align: center;} .multi_order_name_link:hover {text-decoration: underline;}
 								.multi_order_status span {cursor: default; position: relative; z-index: 9;} .multi_order_second {position: absolute; font-size: 12px; color: #888888; text-wrap: nowrap;}
 								#multi_order_purchase[disabled="disabled"] {pointer-events: none; background: #4b4b4b; box-shadow: none; color: #bdbdbd;} .multi_order_name_link {overflow: hidden; text-overflow: ellipsis; font-weight: bold; color: inherit;}
 								#multi_order_all_price {text-wrap: nowrap;} .multi_order_table tbody {display: inline-block; overflow-x: hidden; overflow-y: auto; min-height: 130px;}
 								.multi_order_cell_actions {display: flex; height: 100%; width: 100%; align-items: center; justify-content: center;} 
 								.multi_order_action {user-select: none; margin: 0 1px; line-height: 24px; height: 24px; width: 24px; text-align: center; border-radius: 3px;}
-								.multi_order_action:hover {background: #FFFFFF18} .multi_order_action img {pointer-events: none; width: 16px; height: 16px; margin: 4px;}</style>
+								.multi_order_action:hover {background: #FFFFFF18} .multi_order_action img {pointer-events: none; width: 16px; height: 16px; margin: 4px;}
+								.multi_order_calc_container {float: right; margin: -20px 15px 0 0;} .multi_order_calc_container input {margin: 0 10px 0 5px; width: 80px;}
+								#multi_order_calc_btn {background: #588a1b; box-shadow: 1px 1px 1px #00000099; border-radius: 2px; padding: 2px 10px; font-size: small; text-align: center; color: #FFFFFF;}</style>
+								<div class="multi_order_calc_container">
+								<span>总金额</span><input type="number" id="multi_order_calc_total" step="0.01" min="0.03" placeholder="Max">
+								<span>单价</span><input type="number" id="multi_order_calc_price" step="0.01" min="0.03" placeholder="0.04"><a id="multi_order_calc_btn">计算</a></div>
+								<div style="clear:both;"></div>
 								<table class="multi_order_table">
 								<thead style="display: inline-block;"><tr><td>物品名称</td><td><div class="multi_order_cell_actions"><a class="multi_order_action multi_order_pasteAll" title="粘贴已复制的数量和价格到全部物品"><img src="${imgPaste}"></a>
 								<a class="multi_order_action multi_order_clearAll" title="清空全部物品的数量和价格"><img src="${imgClear}"></a></div></td>
-								<td>数量</td><td>价格</td><td style="width: 178px;">总价</td></tr></thead>
+								<td>数量</td><td>单价</td><td style="width: 178px;">金额</td></tr></thead>
 								<tbody>${html}</tbody></table>
 								<div style="width: 880px;"><div id="multi_order_actions"><input id="multi_order_auto_purchase" type="checkbox" style="vertical-align: middle; cursor: pointer;">
 								<label for="multi_order_auto_purchase" style="font-size: small; cursor: pointer;">自动提交直至成功</label><div id="multi_order_purchase">提交订单</div></div>
-								<div style="white-space: nowrap;"><span>订购单的总价：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
+								<div style="white-space: nowrap;"><span>订购单的总金额：</span><div class="multi_order_cell" style="width: auto;"><div id="multi_order_all_price">--</div>
 								<div class="multi_order_all_price_second multi_order_second" style="font-size: 13px;"></div></div></div><div style="clear:both;"></div></div>`;
 		
 				this.container = document.createElement("div");
@@ -3813,6 +3906,7 @@
 				}
 	
 				this.container.querySelector("#multi_order_purchase").onclick = event => this.multiOrderPurchase(event);
+				this.container.querySelector("#multi_order_calc_btn").onclick = event => this.calcOrderQuantity(event);
 			}
 
 			this.cmodel = ShowDialogBetter("购买多种物品", this.container);
@@ -3821,6 +3915,37 @@
 			});
 			this.showOrderStatus();
 			this.cmodel.AdjustSizing();
+		},
+		calcOrderQuantity: function() {
+			var cardNum = this.container.querySelectorAll("td .multi_order_name").length;
+			var total = this.container.querySelector("#multi_order_calc_total").value;
+			var price = this.container.querySelector("#multi_order_calc_price").value;
+			var quantity = 0;
+
+			if (!price) {
+				price = this.container.querySelector("#multi_order_calc_price").getAttribute("placeholder");
+			}
+			price = Math.round(Number(price) * 100);
+
+			if (price > 0) {
+				if (!total) {
+					if (typeof(this.myBuyOrdersAmount) == "number" && this.walletInfo?.wallet_balance > 0) {
+						total = this.walletInfo.wallet_balance * 10 - this.myBuyOrdersAmount;
+						quantity = Math.min(Math.floor(total / price / cardNum),  Math.floor(this.walletInfo.wallet_balance / price));
+					}
+				} else {
+					total = Math.round(Number(total) * 100);
+					if (total > 0) {
+						quantity = Math.floor(total / price / cardNum);
+					}
+				}
+			}
+
+			if (quantity > 0) {
+				this.copyQuantity = quantity;
+				this.copyPrice = (price / 100).toFixed(2);
+				this.pasteAllBuyOrderInput();
+			}
 		},
 		showOrderStatus: function() {
 			for(var elem of this.container.querySelectorAll(".multi_order_row")) {
@@ -5810,6 +5935,7 @@
 		steamAppStorePage();
 		steamExplorePage();
 		steamTradeOfferPage();
+		//steamTradeOffersPage();
 		steamInventoryPage();
 		steamMarketListingPage();
 		await steamGameCardsPage();
